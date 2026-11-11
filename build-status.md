@@ -18,15 +18,13 @@
     - Settings has a Browser tasks card.
     - The UI and the app runtime use the routes `/browser`, `/browser/stop` and `/browser/continue`.
   - Test: `test/browser-v55.mjs`. It runs end to end: the real agent drives headless Chromium on a test site.
-- **GitHub (in progress):**
-  - The source is a git repo in `w/` (first commit 5f6c78b). A backup zip is on the Desktop: "Command source (backup).zip".
-  - The workflows are:
-    - **Test:** runs on every push.
-    - **Deploy Command:** run manually by typing DEPLOY. It builds, tests, backs up the live worker, does a code-only PUT to `/workers/scripts/{name}/content` (bindings and secrets stay) and checks the APP etag plus health. If that fails, it rolls back automatically.
-  - Still waiting on Ty:
-    - Connect GitHub to Claude.
-    - Create the private repo `studio-ai-command`.
-    - Add the secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.
+- **GitHub (live since 12 Nov 2026):**
+  - Private repo: github.com/studioaicommand/studio-ai-command.
+  - The **Test** workflow runs every test on every push, including the real-browser test of browser tasks.
+  - To deploy: Actions › **Deploy Command** › Run workflow › type DEPLOY. It builds and tests, backs up the live worker, uploads the code only (bindings and secrets stay), checks the live APP etag (weak `W/` etags are handled) and health, and rolls back automatically.
+  - The first deploy was a false alarm on the weak etag. It rolled back safely and the check is now fixed. The second run was green.
+  - The secrets CLOUDFLARE_API_TOKEN (Edit Workers template, expires about Nov 2027) and CLOUDFLARE_ACCOUNT_ID are in the repo.
+  - Workflow from now on: Claude pushes each version, and Ty clicks Deploy Command. No more pasting into Cloudflare.
 - **v54 (Jarvis + Command Link)** is included in v55.
 - **v54:**
   - The Cedar voice is listed as "Jarvis (Cedar)". Picking Jarvis style switches the Command voice to it.
@@ -105,7 +103,6 @@
 
 ## Ty to do
 1. Deploy worker v55 (it includes v54, v53 and v52). Then set up Command Link (Unlink and set up again if you linked on v54), log in to your tools in the Command Chrome window, and try a browser task.
-2. GitHub: connect GitHub to Claude, create the private repo studio-ai-command, then add the 2 Cloudflare secrets.
 2. Set up and test v53:
    - Settings › Brand & features › Voice & personality: choose Jarvis style + Cedar, then tap "Send me a voice test on Telegram".
    - Send yourself a test email from Command.
