@@ -1,6 +1,8 @@
 # Studio AI Intelligence: build status (11 Nov 2026)
 
 ## Where we are (12 Nov 2026)
+- **v56 (email tracking) is in the repo.** The GHL workflow "SF | Command | Email Events -> Command" posts opened/clicked/bounced/unsubscribed/complained events to the inbox webhook with `event=email_*`. They're counted in team_settings `email_stats` (unique per person per day). Bounces are tagged `email-bounced` + `hold-do-not-send`, and unsubscribes and complaints get `outreach-opted-out`. The counts appear in the snapshot and the morning brief. Code: `v56-team.js`, `patch-v56.py`. Test: `test/email-events-v56.mjs`. GHL has no "delivered" event.
+- **Tests now really run in CI.** `schema/strict.mjs` needs `/tmp/claude-0/cols.txt`, and CI never created it, so every test crashed and was counted as a pass. `scripts/schema-cols.py` now builds it from `schema/*.sql`, and `test-all.sh` counts any non-zero exit as a failure. All 34 tests pass. The browser test was skipped locally and runs in CI.
 - **Worker v55 (browser tasks)** is ready in 1 Deploy Now. It includes v40 to v54, and v54 has moved to Previous Versions.
 - **v55: Command works Chrome on Ty's Mac.**
   - Command Link agent v2 is a Node + playwright-core@1.49.1 LaunchAgent. It runs a separate "Command Chrome" window with its own profile under ~/Library/Application Support/StudioCommandLink.
