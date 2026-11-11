@@ -30,7 +30,7 @@ assert(job && job.status === "completed", "The saved job is marked complete (so 
 // daily email limit
 const call = async (path, b) => { const x = await w.fetch(new Request("https://studioflowandsystems.app/api/v1/team" + path, { method: b ? "POST" : "GET", headers: { Authorization: "Bearer k", "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }), env, ctx); await flush(); return x.json(); };
 let d = await call("/outreach/daily");
-assert(d.email_cap === 40 && d.sending.domains.join() === "mail.studioflowandsystems.com,outreach.studioflowandsystems.com" && d.sending.total === 80, "Default: 40 per sending domain x 2 domains = 80 a day");
+assert(d.email_cap === 40 && d.sending.domains.join() === "outreach.studioflowandsystems.com" && d.sending.total === 40, "Default: 40 a day from outreach.studioflowandsystems.com only (client domain stays clean)");
 await call("/outreach/daily", { email_cap: 30, domains: ["mail.studioflowandsystems.com", " Outreach.studioflowandsystems.com ", "bad domain", "go.example.com"] });
 d = await call("/outreach/daily");
 assert(d.email_cap === 30 && d.sending.domains.length === 3 && d.sending.domains[1] === "outreach.studioflowandsystems.com" && d.sending.total === 90, "Ty can change emails per domain and the domain list (bad entries dropped)");

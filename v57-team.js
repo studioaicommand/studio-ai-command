@@ -1,7 +1,7 @@
 // ── v57: instant Telegram approvals, one daily email number, approved-but-held emails send themselves. ──
 var tgQuick = (env, method, payload) => env.TELEGRAM_BOT_TOKEN ? fetch(API2(env, method), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload || {}), signal: AbortSignal.timeout(8e3) }).then((r) => r.json()).catch(() => null) : Promise.resolve(null);
-// Each sending domain sends up to per_domain_cap emails a day (default 40). Two domains = 80 a day.
-var SENDING_DOMAINS_DEFAULT = ["mail.studioflowandsystems.com", "outreach.studioflowandsystems.com"];
+// Each sending domain sends up to per_domain_cap emails a day (default 40). Outreach sends only from the outreach domain (ty@outreach.studioflowandsystems.com).
+var SENDING_DOMAINS_DEFAULT = ["outreach.studioflowandsystems.com"]; // outreach only; client mail stays on mail.studioflowandsystems.com
 function sendingPlan(c) {
   const domains = Array.isArray(c?.sending_domains) && c.sending_domains.length ? c.sending_domains : SENDING_DOMAINS_DEFAULT;
   const per = Math.max(5, Math.min(100, Math.round(+c?.per_domain_cap || 40)));
