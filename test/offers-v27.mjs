@@ -15,5 +15,5 @@ assert(/Everything your business needs/.test(h)&&!/AI receptionist · website ch
 r=await w.fetch(new Request("https://studioflowandsystems.app/app/app.js"),env,{waitUntil(){}});const js=await r.text();
 try{new Function(js);console.log("✓ Command app script parses ("+js.length+" chars)")}catch(e){console.error("FAIL: app.js",e.message);process.exit(1)}
 assert(/data-offer-price/.test(js)&&/Monthly plan/.test(js),"Command > Offers has price fields");
-(await import("fs")).writeFileSync("/tmp/claude-0/-home-claude/9e17272a-7f38-5372-9a6c-d2a8d19b9a13/scratchpad/offers.html",h.replaceAll("/app/logo.webp","https://studioflowandsystems.app/app/logo.webp"));
+(await import("fs")).writeFileSync("/tmp/claude-0/offers.html",h.replaceAll("/app/logo.webp","https://studioflowandsystems.app/app/logo.webp"));
 console.log("All v27 offers tests passed.");
