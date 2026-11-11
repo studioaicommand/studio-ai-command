@@ -82,3 +82,5 @@ subprocess.check_call([sys.executable, 'patch-v54.py', 'worker.mjs'])
 subprocess.check_call([sys.executable, 'patch-v55.py', 'worker.mjs'])
 # v56 GHL email events -> Command (opens/clicks/bounces/unsubscribes)
 subprocess.check_call([sys.executable, 'patch-v56.py', 'worker.mjs'])
+# v57 instant Telegram approvals, daily email number, held approvals send themselves
+subprocess.check_call([sys.executable, 'patch-v57.py', 'worker.mjs'])
