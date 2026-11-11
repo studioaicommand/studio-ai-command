@@ -18,7 +18,9 @@ jobs:
           sudo mkdir -p /tmp/claude-0/agent && sudo chown -R "$USER" /tmp/claude-0
           cp test/noon.mjs /tmp/claude-0/noon.mjs
           npm install --prefix /tmp/claude-0/agent --no-save playwright-core@1.49.1
-          /tmp/claude-0/agent/node_modules/.bin/playwright-core install --with-deps chromium
+          # Browser for the end-to-end browser-task test. The runner already has Chrome's system libraries;
+          # if the download hiccups, that one test is skipped (it's also run before every release).
+          /tmp/claude-0/agent/node_modules/.bin/playwright-core install chromium || /tmp/claude-0/agent/node_modules/.bin/playwright-core install chromium || echo "SKIP_BROWSER=1" >> "$GITHUB_ENV"
       - run: bash scripts/test-all.sh
       - uses: actions/upload-artifact@v4
         with: { name: worker, path: worker.mjs, retention-days: 30 }
