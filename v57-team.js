@@ -1,8 +1,15 @@
 // ── v57: instant Telegram approvals, one daily email number, approved-but-held emails send themselves. ──
 var tgQuick = (env, method, payload) => env.TELEGRAM_BOT_TOKEN ? fetch(API2(env, method), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload || {}), signal: AbortSignal.timeout(8e3) }).then((r) => r.json()).catch(() => null) : Promise.resolve(null);
+// Each sending domain sends up to per_domain_cap emails a day (default 40). Two domains = 80 a day.
+var SENDING_DOMAINS_DEFAULT = ["mail.studioflowandsystems.com", "outreach.studioflowandsystems.com"];
+function sendingPlan(c) {
+  const domains = Array.isArray(c?.sending_domains) && c.sending_domains.length ? c.sending_domains : SENDING_DOMAINS_DEFAULT;
+  const per = Math.max(5, Math.min(100, Math.round(+c?.per_domain_cap || 40)));
+  return { domains, per, total: per * domains.length };
+}
 async function enrolCap(env, c) {
   const od = await outCfg(env).catch(() => null);
-  return Math.max(+c.daily_cap || 25, od ? outCapacity(od) : 0);
+  return Math.max(sendingPlan(c).total, od ? outCapacity(od) : 0);
 }
 // Ty approved these, they were only held by the daily limit: send them as room frees up (7am to 7pm Brisbane).
 async function heldApprovedTick(env, { force = false } = {}) {

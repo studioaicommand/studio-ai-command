@@ -30,12 +30,12 @@ assert(job && job.status === "completed", "The saved job is marked complete (so 
 // daily email limit
 const call = async (path, b) => { const x = await w.fetch(new Request("https://studioflowandsystems.app/api/v1/team" + path, { method: b ? "POST" : "GET", headers: { Authorization: "Bearer k", "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }), env, ctx); await flush(); return x.json(); };
 let d = await call("/outreach/daily");
-assert(d.email_cap === 25, "Default minimum is 25 a day");
-await call("/outreach/daily", { email_cap: 40 });
+assert(d.email_cap === 40 && d.sending.domains.join() === "mail.studioflowandsystems.com,outreach.studioflowandsystems.com" && d.sending.total === 80, "Default: 40 per sending domain x 2 domains = 80 a day");
+await call("/outreach/daily", { email_cap: 30, domains: ["mail.studioflowandsystems.com", " Outreach.studioflowandsystems.com ", "bad domain", "go.example.com"] });
 d = await call("/outreach/daily");
-assert(d.email_cap === 40 && DB.team_settings.find((x) => x.key === "campaign").value.daily_cap === 40, "Ty can set the daily email number (40)");
+assert(d.email_cap === 30 && d.sending.domains.length === 3 && d.sending.domains[1] === "outreach.studioflowandsystems.com" && d.sending.total === 90, "Ty can change emails per domain and the domain list (bad entries dropped)");
 await call("/outreach/daily", { email_cap: 900 });
-assert(DB.team_settings.find((x) => x.key === "campaign").value.daily_cap === 40, "Silly numbers are ignored (max 200)");
+assert(DB.team_settings.find((x) => x.key === "campaign").value.per_domain_cap === 30, "Silly numbers are ignored (max 100 per domain)");
 const src = (await import("node:fs")).readFileSync(W, "utf8");
-assert(/Minimum emails per day/.test(src) && /sends by itself \(no need to tap again\)/.test(src) && /heldApprovedTick\(e\)/.test(src), "Outreach shows the limit; held approvals show they'll send by themselves and a 15-minute check sends them");
+assert(/Emails per sending domain per day/.test(src) && /sends by itself \(no need to tap again\)/.test(src) && /heldApprovedTick\(e\)/.test(src), "Outreach shows the limit; held approvals show they'll send by themselves and a 15-minute check sends them");
 console.log("v57 approvals OK");
