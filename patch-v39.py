@@ -5,7 +5,7 @@
 import sys, json, os
 W = sys.argv[1] if len(sys.argv) > 1 else 'worker.mjs'
 s = open(W).read()
-SITE = '/home/claude/demo-src'
+SITE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'demo-src')
 MOTION = 'https://www.studioflowandsystems.com/vendor/motion.js'
 DEMOS = {
   'karinya': ('Karinya Montessori', 'karinya'),

@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
+<title>Playball Sunny Coast · Concept preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--red:#c9302a;--red-d:#a8241f;--navy:#072c55;--blue:#00539f;--cream:#fbf7f0;--sun:#ffc23d;--grass:#3aa856;--ink:#16273a;--mute:#56677a;--line:#e2e8ee}
+*{box-sizing:border-box}html{-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--cream);color:var(--ink);font:17px/1.6 Lexend,system-ui,sans-serif;overflow-x:clip}
+img{display:block;max-width:100%}a{color:inherit}
+.wrap{width:min(1180px,100% - 40px);margin:0 auto}
+h1,h2,h3{font-family:Fraunces,Georgia,serif;font-weight:700;line-height:1.08;margin:0;letter-spacing:-.01em}
+.kick{font-size:13px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--red);margin:0 0 14px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:15px 26px;border-radius:99px;font-weight:600;font-size:16px;text-decoration:none;border:0;cursor:pointer;transition:transform .2s,box-shadow .2s}
+.btn:hover{transform:translateY(-2px)}
+.btn-red{background:var(--red);color:#fff;box-shadow:0 10px 24px -12px #c9302a99}
+.btn-navy{background:var(--navy);color:#fff}
+.btn-line{background:#fff;color:var(--navy);border:2px solid var(--line)}
+.concept{position:sticky;top:0;z-index:60;background:var(--navy);color:#dbe6f2;font-size:13px;text-align:center;padding:8px 14px}
+.concept b{color:#fff}.concept a{color:#ffd57a}
+header.top{position:sticky;top:36px;z-index:50;background:#ffffffee;backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;height:74px;gap:20px}
+.nav img{height:40px;width:auto}
+.nav .loc{font-weight:600;color:var(--red);font-size:14px;margin-left:10px;padding-left:12px;border-left:2px solid var(--line)}
+.nav ul{display:flex;gap:24px;list-style:none;margin:0;padding:0;font-weight:500;font-size:15px}.nav ul a{text-decoration:none;color:var(--mute)}.nav ul a:hover{color:var(--red)}
+@media(max-width:960px){.nav ul{display:none}.nav .loc{display:none}}
+/* hero */
+.hero{position:relative;overflow:hidden;padding:56px 0 90px}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:50px;align-items:center}
+.hero h1{font-size:clamp(46px,7vw,92px);color:var(--navy)}
+.hero h1 .r{color:var(--red)}
+.hero p.lede{font-size:clamp(18px,1.6vw,21px);color:var(--mute);margin:22px 0 30px;max-width:36ch}
+.acts{display:flex;gap:12px;flex-wrap:wrap}
+.pills{display:flex;gap:10px;flex-wrap:wrap;margin-top:28px}
+.pills span{background:#fff;border:1px solid var(--line);border-radius:99px;padding:8px 14px;font-size:14px;font-weight:500}
+.pills span:before{content:'●';color:var(--grass);margin-right:7px;font-size:10px;vertical-align:2px}
+.photo-stack{position:relative;height:540px}
+.photo-stack .p{position:absolute;border-radius:28px;overflow:hidden;box-shadow:0 30px 60px -30px #072c5577;border:6px solid #fff}
+.photo-stack .p img{width:100%;height:100%;object-fit:cover}
+.p1{width:68%;height:72%;right:0;top:0;transform:rotate(2.5deg)}
+.p2{width:52%;height:50%;left:0;bottom:0;transform:rotate(-3deg)}
+.sticker{position:absolute;left:8%;top:6%;background:var(--sun);color:var(--navy);font-weight:700;border-radius:50%;width:118px;height:118px;display:grid;place-items:center;text-align:center;font-size:15px;line-height:1.2;transform:rotate(-12deg);box-shadow:0 14px 30px -14px #0006;z-index:2}
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr}.photo-stack{height:380px}.sticker{width:96px;height:96px;font-size:13px}}
+/* bouncing ball */
+.ball{position:fixed;right:max(16px,calc((100vw - 1180px)/2 - 70px));top:0;width:64px;height:64px;z-index:5;pointer-events:none;will-change:transform}
+.ball img{width:100%;height:100%;filter:drop-shadow(0 10px 10px #072c5533)}
+@media(max-width:1300px){.ball{display:none}}
+section{padding:96px 0}@media(max-width:700px){section{padding:68px 0}}
+.h2{font-size:clamp(36px,4.6vw,60px);color:var(--navy);max-width:17ch}.h2 .r{color:var(--red)}
+.sub{color:var(--mute);max-width:56ch;font-size:18px;margin-top:16px}
+/* programs */
+.prog-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:44px}
+.prog{background:#fff;border-radius:24px;overflow:hidden;border:1px solid var(--line);display:flex;flex-direction:column;transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s}
+.prog:hover{transform:translateY(-8px) rotate(-.6deg);box-shadow:0 30px 50px -30px #072c5566}
+.prog .im{aspect-ratio:4/3;overflow:hidden}.prog .im img{width:100%;height:100%;object-fit:cover;transition:transform .8s}.prog:hover .im img{transform:scale(1.07)}
+.prog .bd{padding:22px;display:flex;flex-direction:column;gap:8px;flex:1}
+.prog .tag{align-self:flex-start;font-size:12px;font-weight:600;letter-spacing:.06em;border-radius:99px;padding:4px 11px;color:#fff;background:var(--red)}
+.prog:nth-child(2) .tag{background:var(--blue)}.prog:nth-child(3) .tag{background:#e08a1e}.prog:nth-child(4) .tag{background:var(--grass)}
+.prog h3{font-size:24px;color:var(--navy)}.prog p{margin:0;color:var(--mute);font-size:15px;flex:1}
+.prog a{font-weight:600;color:var(--red);text-decoration:none;margin-top:8px}
+@media(max-width:1000px){.prog-grid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.prog-grid{grid-template-columns:1fr}}
+/* find a class */
+.find{background:var(--navy);color:#dbe6f2;overflow:hidden}
+.find .h2{color:#fff}.find .h2 .r{color:var(--sun)}.find .sub{color:#b9c9db}.find .kick{color:var(--sun)}
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin:34px 0 22px}
+.filters button{font:500 15px Lexend;border-radius:99px;border:1.5px solid #ffffff33;background:transparent;color:#fff;padding:10px 18px;cursor:pointer}
+.filters button.on{background:var(--sun);color:var(--navy);border-color:var(--sun)}
+.classes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.cls{background:#0c3866;border:1px solid #ffffff1c;border-radius:20px;padding:20px;transition:opacity .3s,transform .3s}
+.cls.hide{display:none}
+.cls b{display:block;font-size:19px;color:#fff;margin-bottom:4px}.cls span{display:block;color:#b9c9db;font-size:14.5px}
+.cls .bk{display:inline-block;margin-top:14px;background:var(--red);color:#fff;border-radius:99px;padding:8px 16px;font-weight:600;font-size:14px;text-decoration:none;cursor:pointer;border:0}
+.example{font-size:13px;color:#ffd57a;margin-top:16px}
+@media(max-width:900px){.classes{grid-template-columns:1fr}}
+/* party builder */
+.party-grid{display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center}
+.builder{background:#fff;border-radius:26px;padding:30px;border:1px solid var(--line);box-shadow:0 30px 60px -40px #072c5577}
+.builder h3{font-size:26px;color:var(--navy);margin-bottom:16px}
+.builder label{display:grid;gap:6px;font-size:14px;font-weight:600;color:var(--mute);margin-bottom:14px}
+.builder input[type=range]{accent-color:var(--red)}
+.builder select,.builder input[type=date],.builder input[type=text]{font:inherit;padding:12px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--cream)}
+.kids{font-family:Fraunces,serif;font-size:40px;color:var(--red);line-height:1}
+.confetti{position:relative}
+.ok{display:none;background:#e9f6ec;border-radius:14px;padding:14px;color:#1d6b33;font-weight:500;margin-top:12px}
+@media(max-width:900px){.party-grid{grid-template-columns:1fr;gap:30px}}
+/* centres */
+.centres{background:#fff}
+.c-grid{display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center}
+.c-img{border-radius:28px;overflow:hidden;aspect-ratio:5/4}.c-img img{width:100%;height:118%;object-fit:cover;will-change:transform}
+.ticks{list-style:none;padding:0;margin:24px 0 28px;display:grid;gap:12px}
+.ticks li{padding-left:34px;position:relative}.ticks li:before{content:'✓';position:absolute;left:0;top:0;width:24px;height:24px;border-radius:50%;background:var(--grass);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700}
+@media(max-width:900px){.c-grid{grid-template-columns:1fr}}
+/* coach */
+.coach{display:grid;grid-template-columns:auto 1fr;gap:40px;align-items:center;background:#fff;border-radius:30px;padding:40px;border:1px solid var(--line)}
+.coach-av{width:200px;height:200px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffd57a,var(--sun));display:grid;place-items:center;font-family:Fraunces,serif;font-size:76px;color:var(--navy);border:6px solid #fff;box-shadow:0 20px 40px -20px #0005}
+.coach-av small{display:block;font:500 12px Lexend;text-align:center;margin-top:-8px}
+.vals{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.vals span{background:var(--cream);border-radius:99px;padding:7px 14px;font-size:14px;font-weight:500;color:var(--navy)}
+@media(max-width:800px){.coach{grid-template-columns:1fr;text-align:center;justify-items:center;padding:30px}.vals{justify-content:center}}
+/* faq */
+details{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px 22px;margin-bottom:10px}
+summary{cursor:pointer;font-weight:600;color:var(--navy);list-style:none;display:flex;justify-content:space-between;gap:16px}
+summary::-webkit-details-marker{display:none}summary:after{content:'+';color:var(--red);font-size:22px;line-height:1}
+details[open] summary:after{content:'–'}details p{margin:12px 0 0;color:var(--mute)}
+.final{background:var(--red);color:#fff;text-align:center;border-radius:34px;padding:60px 26px;position:relative;overflow:hidden}
+.final h2{font-size:clamp(36px,5vw,62px);color:#fff}.final p{color:#ffe1dd;font-size:19px;margin:14px auto 26px;max-width:40ch}
+.final .btn-line{border:0}
+footer{padding:40px 0 100px;color:var(--mute);font-size:14px}
+footer b{color:var(--navy)}
+.rv{opacity:0;transform:translateY(30px) scale(.98);transition:opacity .8s cubic-bezier(.2,.8,.2,1),transform .8s cubic-bezier(.34,1.4,.5,1)}
+.rv.in{opacity:1;transform:none}
+.word{display:inline-block;opacity:0;transform:translateY(60%) rotate(4deg);transition:opacity .6s,transform .7s cubic-bezier(.34,1.5,.5,1)}
+.in .word{opacity:1;transform:none}
+/* receptionist */
+.ai-btn{position:fixed;right:20px;bottom:20px;z-index:80;display:flex;align-items:center;gap:10px;background:var(--red);color:#fff;border:0;border-radius:99px;padding:10px 18px 10px 10px;font:600 15px Lexend;cursor:pointer;box-shadow:0 16px 40px -14px #000a}
+.ai-btn img{width:36px;height:36px}.ai-btn small{display:block;font-weight:400;font-size:11.5px;color:#ffe1dd}
+.ai{position:fixed;right:20px;bottom:86px;z-index:81;width:min(380px,calc(100vw - 32px));height:min(560px,calc(100vh - 140px));background:#fff;border-radius:22px;box-shadow:0 30px 80px -20px #0007;display:none;flex-direction:column;overflow:hidden}
+.ai.open{display:flex}
+.ai-h{background:var(--navy);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center}.ai-h small{color:#b9c9db;font-size:12px;display:block}
+.ai-h button{background:none;border:0;color:#fff;font-size:22px;cursor:pointer}
+.ai-log{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:var(--cream)}
+.m{white-space:pre-line;max-width:85%;padding:11px 14px;border-radius:16px;font-size:15px;line-height:1.5}
+.m.bot{background:#fff;border:1px solid var(--line);border-bottom-left-radius:4px}.m.me{background:var(--red);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.typing{display:inline-flex;gap:4px}.typing i{width:6px;height:6px;border-radius:50%;background:var(--red);animation:tp 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes tp{50%{opacity:.25}}
+.ai-chips{display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line)}
+.ai-chips button{border:1px solid var(--line);background:var(--cream);border-radius:99px;padding:7px 12px;font:500 13px Lexend;cursor:pointer;color:var(--navy)}
+.ai-in{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
+.ai-in input{flex:1;font:inherit;font-size:15px;padding:11px 14px;border-radius:99px;border:1.5px solid var(--line)}
+.ai-in button{background:var(--red);color:#fff;border:0;border-radius:99px;padding:0 16px;font-weight:600;cursor:pointer}
+.ai-note{font-size:11.5px;color:var(--mute);text-align:center;padding:0 12px 10px}
+@media(prefers-reduced-motion:reduce){.rv,.word{opacity:1;transform:none;transition:none}.ball{display:none}}
+
+.btn{white-space:nowrap}
+@media(max-width:700px){.concept{position:relative;font-size:11.5px;padding:6px 10px}header.top{top:0}.nav{height:64px}.nav .btn{padding:11px 16px;font-size:14px}.logo small{display:none}.ai-btn{padding:8px 14px 8px 8px;font-size:14px}.ai-btn small{display:none}}
+
+/* ===== premium scroll motion ===== */
+html.lenis,html.lenis body{height:auto}.lenis.lenis-smooth{scroll-behavior:auto!important}
+.skills{padding:50px 0;overflow:hidden;background:var(--cream)}
+.sk-row{display:flex;gap:.5em;white-space:nowrap;font-family:Fraunces,serif;font-weight:700;font-size:clamp(56px,10vw,150px);line-height:1.05;color:var(--navy);will-change:transform}
+.sk-row span:after{content:'●';color:var(--red);font-size:.3em;vertical-align:.6em;margin-left:.5em}
+.sk-row .o{color:transparent;-webkit-text-stroke:2px var(--red)}
+.sk-row[data-dir="-1"]{color:var(--red);margin-top:6px}.sk-row[data-dir="-1"] .o{-webkit-text-stroke-color:var(--navy)}
+.confetti-bit{position:fixed;width:10px;height:14px;z-index:90;pointer-events:none;border-radius:2px}
+.photo-stack .p{will-change:transform}
+</style>
+</head>
+<body>
+<div class="concept">⚽ <b>Concept preview</b> prepared by Studio Flow &amp; Systems for Playball Sunny Coast. Not a live Playball website. · <a href="/demo/playball-sunny-coast/report/">See the leak report</a></div>
+<header class="top"><div class="wrap nav">
+ <a href="#top" style="display:flex;align-items:center"><img src="https://playball.com.au/wp-content/uploads/2025/09/Playball-Logo-Main-Logo-No-Tagline-OnWhite.svg" alt="Playball"><span class="loc">Sunny Coast</span></a>
+ <ul><li><a href="#programs">Programs</a></li><li><a href="#classes">Find a class</a></li><li><a href="#parties">Parties</a></li><li><a href="#centres">Centres &amp; schools</a></li><li><a href="#faq">FAQ</a></li></ul>
+ <a class="btn btn-red" href="#classes">Book a class</a>
+</div></header>
+<div class="ball" id="ball" aria-hidden="true"><img src="https://playball.com.au/wp-content/uploads/2025/09/Playball-Ball-web.png" alt=""></div>
+
+<main id="top">
+<section class="hero"><div class="wrap hero-grid">
+ <div>
+  <p class="kick rv">Playball Sunny Coast · Ages 2–8</p>
+  <h1 class="split">Sunny Coast kids, <span class="r">let's play!</span></h1>
+  <p class="lede rv">Weekly classes, holiday camps, birthday parties and programs for centres and schools. Coach Luke and the team build confidence through movement and play.</p>
+  <div class="acts rv"><a class="btn btn-red" href="#classes">Find a class near you</a><a class="btn btn-line" href="#parties">Plan a party</a></div>
+  <div class="pills rv"><span>Trained Playball coaches</span><span>Ages 2–8</span><span>Inclusive, child-first</span></div>
+ </div>
+ <div class="photo-stack rv">
+  <div class="sticker">Book online<br>in 60 secs</div>
+  <div class="p p1"><img src="https://playball.com.au/wp-content/uploads/2025/09/franchise-hero-image-1_03-1.jpg" alt="Child at a Playball session" fetchpriority="high"></div>
+  <div class="p p2"><img src="https://playball.com.au/wp-content/uploads/2025/11/1702-Playball_397.jpg" alt="Children playing in a Playball group"></div>
+ </div>
+</div></section>
+
+<section id="programs" style="padding-top:20px"><div class="wrap">
+ <p class="kick rv">Programs</p>
+ <h2 class="h2 split">Four ways to <span class="r">get moving.</span></h2>
+ <div class="prog-grid">
+  <div class="prog rv"><div class="im"><img src="https://playball.com.au/wp-content/uploads/2025/09/1702-Playball_566-web.jpg" alt="" loading="lazy"></div><div class="bd"><span class="tag">FAMILIES</span><h3>Weekly classes</h3><p>Purposeful play that builds skills, confidence and friendships, term by term.</p><a href="#classes">Find a class →</a></div></div>
+  <div class="prog rv"><div class="im"><img src="https://playball.com.au/wp-content/uploads/2025/09/225A1126web-768x512.jpg" alt="" loading="lazy"></div><div class="bd"><span class="tag">HOLIDAYS</span><h3>Holiday camps</h3><p>Active, fun-filled days when school's out, led by trained coaches.</p><a href="#classes">See camp dates →</a></div></div>
+  <div class="prog rv"><div class="im"><img src="https://playball.com.au/wp-content/uploads/2025/11/1702-Playball_233.jpg" alt="" loading="lazy"></div><div class="bd"><span class="tag">CELEBRATE</span><h3>Birthday parties</h3><p>A coach leads the games, so you can enjoy the party with less to organise.</p><a href="#parties">Plan a party →</a></div></div>
+  <div class="prog rv"><div class="im"><img src="https://playball.com.au/wp-content/uploads/2025/10/1702-Playball_558-1.jpg" alt="" loading="lazy"></div><div class="bd"><span class="tag">CENTRES</span><h3>Centres &amp; schools</h3><p>On-site programs for early learning centres and junior primary, equipment supplied.</p><a href="#centres">Bring Playball in →</a></div></div>
+ </div>
+</div></section>
+
+
+<section class="skills" aria-hidden="true"><div class="sk-row" data-dir="1"><span>Run</span><span class="o">Jump</span><span>Throw</span><span class="o">Catch</span><span>Kick</span><span class="o">Balance</span><span>Run</span><span class="o">Jump</span><span>Throw</span><span class="o">Catch</span><span>Kick</span><span class="o">Balance</span></div>
+<div class="sk-row" data-dir="-1"><span class="o">Confidence</span><span>Teamwork</span><span class="o">Friendship</span><span>Fun</span><span class="o">Confidence</span><span>Teamwork</span><span class="o">Friendship</span><span>Fun</span></div></section>
+<section class="find" id="classes"><div class="wrap">
+ <p class="kick rv">Find a class</p>
+ <h2 class="h2 split">Pick a day. <span class="r">Book in seconds.</span></h2>
+ <p class="sub rv">Parents see real classes, times and spots left, and book on their phone. No more "contact your local team" and waiting.</p>
+ <div class="filters rv" id="filters"><button class="on" data-f="all">All ages</button><button data-f="2">2–3 yrs</button><button data-f="4">4–5 yrs</button><button data-f="6">6–8 yrs</button><button data-f="camp">Holiday camps</button></div>
+ <div class="classes" id="classList">
+  <div class="cls rv" data-a="2"><b>Mini Movers · 2–3 yrs</b><span>Saturday 8:30am · Your venue here</span><span>6 spots left this term</span><button class="bk" data-book>Book a spot</button></div>
+  <div class="cls rv" data-a="4"><b>Little Champions · 4–5 yrs</b><span>Saturday 9:30am · Your venue here</span><span>3 spots left this term</span><button class="bk" data-book>Book a spot</button></div>
+  <div class="cls rv" data-a="6"><b>Sport Stars · 6–8 yrs</b><span>Wednesday 3:45pm · Your venue here</span><span>8 spots left this term</span><button class="bk" data-book>Book a spot</button></div>
+  <div class="cls rv" data-a="2"><b>Mini Movers · 2–3 yrs</b><span>Thursday 9:30am · Your venue here</span><span>Waitlist open</span><button class="bk" data-book>Join waitlist</button></div>
+  <div class="cls rv" data-a="camp"><b>Holiday Camp · 4–8 yrs</b><span>School holidays · Full or half days</span><span>Early-bird places</span><button class="bk" data-book>Reserve a place</button></div>
+  <div class="cls rv" data-a="4"><b>Little Champions · 4–5 yrs</b><span>Sunday 9:00am · Your venue here</span><span>5 spots left this term</span><button class="bk" data-book>Book a spot</button></div>
+ </div>
+ <p class="example">Example timetable for this concept. In the live version these come straight from Luke's booking system, with real venues, times and spots.</p>
+</div></section>
+
+<section id="parties"><div class="wrap party-grid">
+ <div>
+  <p class="kick rv">Birthday parties</p>
+  <h2 class="h2 split">The party they'll <span class="r">talk about all year.</span></h2>
+  <p class="sub rv">A Playball coach brings the games and the energy. Parents send three details and get a tailored quote back fast, by text, while they're still deciding.</p>
+ </div>
+ <form class="builder rv" id="party" novalidate>
+  <h3>Get a party quote</h3>
+  <label>How many kids? <span class="kids" id="kidsN">12</span><input type="range" min="5" max="30" value="12" id="kids"></label>
+  <label>Birthday child turns<select><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option></select></label>
+  <label>Party date<input type="date"></label>
+  <label>Suburb<input type="text" placeholder="e.g. Buderim" autocomplete="off"></label>
+  <button class="btn btn-red" type="submit" style="width:100%;justify-content:center">Send me a quote</button>
+  <div class="ok" id="pok">🎉 Demo only: nothing was sent. Live, Luke gets the request on his phone with a ready-to-send quote, and the parent gets a text straight away.</div>
+ </form>
+</div></section>
+
+<section class="centres" id="centres"><div class="wrap c-grid">
+ <div class="c-img rv"><img src="https://playball.com.au/wp-content/uploads/2025/09/211215-Playball_090-2-square-4cb3259f479818bfd5249801824452bc-61b6c176be94c-1024x1024.jpg" alt="Children enjoying a Playball session" loading="lazy"></div>
+ <div>
+  <p class="kick rv">For centres &amp; schools</p>
+  <h2 class="h2 split">Bring Playball to <span class="r">your centre.</span></h2>
+  <ul class="ticks rv"><li>Delivered on site, equipment supplied</li><li>Shaped around your timetable and group sizes</li><li>Supports early years learning outcomes</li><li>One simple weekly program, invoiced per term</li></ul>
+  <a class="btn btn-navy" href="#faq" data-centre>Request a centre proposal</a>
+ </div>
+</div></section>
+
+<section><div class="wrap">
+ <div class="coach rv"><div class="coach-av">L<small>Photo here</small></div>
+  <div><p class="kick">Meet your coach</p><h2 class="h2" style="font-size:clamp(32px,3.6vw,46px)">Hi, I'm Coach Luke.</h2>
+  <p class="sub">I help Sunny Coast kids build confidence through movement and play. Every session is inclusive and child-first, so every child feels part of the game. (Luke's own words and photo go here.)</p>
+  <div class="vals"><span>Confidence</span><span>Competence</span><span>Communication</span><span>Capability</span></div></div></div>
+</div></section>
+
+<section id="faq" style="padding-top:0"><div class="wrap">
+ <p class="kick rv">Questions</p><h2 class="h2 split">Sunny Coast <span class="r">FAQ.</span></h2>
+ <div style="margin-top:30px">
+  <details class="rv"><summary>What ages is Playball for?</summary><p>Children aged 2 to 8, in age-based groups so every child is challenged at the right level.</p></details>
+  <details class="rv"><summary>Where are classes held?</summary><p>Your local venues and suburbs are listed here with maps, so parents know exactly where to go.</p></details>
+  <details class="rv"><summary>Do you run holiday camps and parties?</summary><p>Yes, check the camp dates above or get a party quote in under a minute.</p></details>
+  <details class="rv"><summary>Can Playball come to our early learning centre?</summary><p>Yes. Request a proposal and Luke will send a tailored program for your centre.</p></details>
+ </div>
+ <div class="final rv" style="margin-top:60px"><h2>Ready to play?</h2><p>Book a class, plan a party or ask Luke a question. Our receptionist answers instantly, day or night.</p><a class="btn btn-line" href="#classes">Find a class</a></div>
+</div></section>
+</main>
+<footer><div class="wrap"><b>Playball Sunny Coast</b> · Independently owned and operated Playball partner · Sunshine Coast QLD<br>Concept designed by <b>Studio Flow &amp; Systems</b>, Brisbane · <a href="https://www.studioflowandsystems.com">studioflowandsystems.com</a> · Photos and logo © Playball Australia, used for this private preview.</div></footer>
+
+<button class="ai-btn" id="aiBtn"><img src="https://playball.com.au/wp-content/uploads/2025/09/Playball-Ball-web.png" alt=""><span>Ask Playball<small>Replies instantly, 24/7</small></span></button>
+<div class="ai" id="ai" role="dialog" aria-label="Playball AI receptionist">
+ <div class="ai-h"><span><b>Playball Sunny Coast</b><small>Live AI receptionist · demo</small></span><button id="aiX" aria-label="Close">×</button></div>
+ <div class="ai-log" id="log"></div><div class="ai-chips" id="chips"></div>
+ <form class="ai-in" id="aiForm"><input id="aiQ" placeholder="Ask about classes, parties, camps…" autocomplete="off"><button>Send</button></form>
+ <div class="ai-note">A real AI receptionist built by Studio Flow &amp; Systems. Demo only: it can't see the timetable, so nothing is booked.</div>
+</div>
+<script>
+// words pop in
+document.querySelectorAll('.split').forEach(h=>{const walk=n=>{[...n.childNodes].forEach(c=>{if(c.nodeType===3){const f=document.createDocumentFragment();c.textContent.split(/(\s+)/).forEach(w=>{if(!w)return;if(/^\s+$/.test(w))f.append(w);else{const s=document.createElement('span');s.className='word';s.textContent=w;f.append(s);}});c.replaceWith(f);}else if(c.nodeType===1)walk(c);});};walk(h);h.querySelectorAll('.word').forEach((w,i)=>w.style.transitionDelay=(i*.07)+'s');});
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{rootMargin:'0px 0px -8% 0px'});
+document.querySelectorAll('.rv,.split').forEach((el,i)=>{if(el.classList.contains('rv'))el.style.transitionDelay=((i%4)*.07)+'s';io.observe(el);});
+// the Playball ball bounces down the page as you scroll
+const ball=document.getElementById('ball'),pars=[...document.querySelectorAll('[data-par]')];let tk=0;
+const calm=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function frame(){tk=0;const H=innerHeight,max=Math.max(1,document.documentElement.scrollHeight-H),p=scrollY/max;
+ const bounces=9,ph=(p*bounces)%1,h=Math.abs(Math.sin(ph*Math.PI));const y=120+p*(H-260)-h*110;const squash=h<.12?1.18-h:1;
+ ball.style.transform=`translate3d(0,${y.toFixed(1)}px,0) rotate(${(p*1440).toFixed(0)}deg) scale(${squash.toFixed(2)},${(2-squash).toFixed(2)})`;
+ pars.forEach(im=>{const r=im.parentElement.getBoundingClientRect();if(r.bottom<0||r.top>H)return;im.style.transform=`translate3d(0,${(((r.top+r.height/2)/H-.5)*-parseFloat(im.dataset.par)*100).toFixed(2)}%,0)`;});}
+if(!calm){addEventListener('scroll',()=>{if(!tk)tk=requestAnimationFrame(frame)},{passive:true});frame();}
+// class filter
+document.getElementById('filters').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;document.querySelectorAll('#filters button').forEach(x=>x.classList.toggle('on',x===b));const f=b.dataset.f;document.querySelectorAll('#classList .cls').forEach(c=>c.classList.toggle('hide',f!=='all'&&c.dataset.a!==f));});
+document.querySelectorAll('[data-book]').forEach(b=>b.addEventListener('click',()=>{b.textContent='✓ Demo: booked';b.style.background='#3aa856';}));
+// party builder (demo, nothing sent)
+const kids=document.getElementById('kids');kids.addEventListener('input',()=>document.getElementById('kidsN').textContent=kids.value);
+document.getElementById('party').addEventListener('submit',e=>{e.preventDefault();document.getElementById('pok').style.display='block';});
+// AI receptionist (demo)
+const A=[[/age|old|toddler|year/i,"Playball is for children aged 2 to 8, in age groups so every child is challenged at the right level. How old is your little one? I'll show you the best class."],
+ [/class|term|weekly|timetable|when|time|day/i,"We run weekly classes for ages 2–8 across the Sunny Coast. Tap 'Find a class' to see days, times and spots left, then book your spot in a few taps."],
+ [/party|birthday/i,"Playball parties are so much fun: a coach leads the games and you get to enjoy the day! Tell me how many kids, their age and the date, and Luke will text you a tailored quote."],
+ [/camp|holiday/i,"Our holiday camps are active, fun-filled days led by trained coaches, with full or half days. Want me to reserve a place for the next school holidays?"],
+ [/centre|center|school|daycare|childcare|elc|kindy/i,"Yes! Playball comes to early learning centres and schools on site, with equipment supplied and shaped around your timetable. Can I take your centre's name and number so Luke can send a proposal?"],
+ [/price|cost|how much|\$|fee/i,"Prices depend on the program. Luke will confirm the exact term fee for your class. Would you like me to send you the current Sunny Coast prices by text?"],
+ [/where|venue|location|suburb|near/i,"We run sessions across the Sunshine Coast. Which suburb are you in? I'll find your nearest venue."],
+ [/trial|try|first/i,"Great idea! Tell me your child's age and suburb and I'll find a class with space where they can give it a go."]];
+const log=document.getElementById('log'),ai=document.getElementById('ai');
+const add=(t,w)=>{const d=document.createElement('div');d.className='m '+w;d.innerHTML=t;log.append(d);log.scrollTop=log.scrollHeight;return d;};
+const H=[],P=location.search.indexOf('preview=1')>-1?'?preview=1':'';
+function reply(q){add(q.replace(/</g,'&lt;'),'me');H.push({role:'user',content:q});const t=add('<span class="typing"><i></i><i></i><i></i></span>','bot');
+ const local=()=>{const hit=A.find(([r])=>r.test(q));return hit?hit[1]:"Good question! I'll pass it to Coach Luke and he'll reply today. What's the best number to reach you on?";};
+ const show=a=>{t.textContent=a;H.push({role:'assistant',content:a});log.scrollTop=log.scrollHeight;};
+ const url=location.pathname.replace(/\/$/,'')+'/chat'+P;
+ if(!/^\/demo\//.test(location.pathname)){setTimeout(()=>show(local()),800);return;}
+ fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({messages:H.slice(-12)})}).then(r=>r.ok?r.json():Promise.reject()).then(j=>show(j.reply||local())).catch(()=>show(local()));}
+const CH=['What ages?','Class times','Birthday party','Holiday camps','For our centre'];
+document.getElementById('chips').innerHTML=CH.map(c=>`<button type="button">${c}</button>`).join('');
+document.getElementById('chips').addEventListener('click',e=>{if(e.target.tagName==='BUTTON')reply(e.target.textContent);});
+let g=false;document.getElementById('aiBtn').addEventListener('click',()=>{ai.classList.toggle('open');if(!g){g=true;add("Hi! 👋 I'm Playball Sunny Coast's assistant. I can help with classes, holiday camps, parties and programs for centres. What are you looking for?",'bot');}});
+document.getElementById('aiX').addEventListener('click',()=>ai.classList.remove('open'));
+document.getElementById('aiForm').addEventListener('submit',e=>{e.preventDefault();const v=document.getElementById('aiQ').value.trim();if(v){reply(v);document.getElementById('aiQ').value='';}});
+</script>
+<script src="/vendor/motion.js"></script>
+<script>
+(function(){const calm=matchMedia('(prefers-reduced-motion: reduce)').matches;if(calm||!window.gsap)return;
+const {gsap,ScrollTrigger}=window;gsap.registerPlugin(ScrollTrigger);ScrollTrigger.config({ignoreMobileResize:true});
+const mobile=matchMedia('(max-width:900px)').matches;
+document.querySelectorAll('.prog,.cls,.builder,.coach,.final').forEach(e=>{e.style.transition='none';e.classList.remove('rv');e.classList.add('in');e.style.transitionDelay='';});setTimeout(()=>document.querySelectorAll('.prog,.cls').forEach(e=>e.style.transition=''),3000);
+if(window.Lenis&&!mobile){const l=new Lenis({lerp:.09});l.on('scroll',ScrollTrigger.update);gsap.ticker.add(t=>l.raf(t*1000));gsap.ticker.lagSmoothing(0);
+ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{const t=document.querySelector(a.getAttribute('href'));if(t){e.preventDefault();l.scrollTo(t,{offset:-110});}}));}
+// hero photos drop in like a throw, then tilt with the mouse
+gsap.from('.p1',{y:-120,rotate:14,opacity:0,duration:1.4,ease:'bounce.out',delay:.2});
+gsap.from('.p2',{y:-160,rotate:-16,opacity:0,duration:1.5,ease:'bounce.out',delay:.45});
+gsap.from('.sticker',{scale:0,rotate:-60,duration:1,ease:'back.out(2.2)',delay:1.1});
+gsap.to('.sticker',{rotate:-4,y:-8,duration:2.2,ease:'sine.inOut',yoyo:true,repeat:-1,delay:2});
+if(!mobile){const st=document.querySelector('.photo-stack');const q1x=gsap.quickTo('.p1','x',{duration:.8,ease:'power3'}),q1y=gsap.quickTo('.p1','y',{duration:.8,ease:'power3'}),q2x=gsap.quickTo('.p2','x',{duration:.8,ease:'power3'}),q2y=gsap.quickTo('.p2','y',{duration:.8,ease:'power3'});
+ document.querySelector('.hero').addEventListener('pointermove',e=>{const r=st.getBoundingClientRect(),dx=(e.clientX-(r.left+r.width/2))/r.width,dy=(e.clientY-(r.top+r.height/2))/r.height;q1x(dx*26);q1y(dy*20);q2x(dx*-34);q2y(dy*-26);});}
+// photos drift apart as you scroll away
+gsap.to('.p1',{yPercent:-14,ease:'none',scrollTrigger:{trigger:'.hero',start:'top top',end:'bottom top',scrub:true}});
+gsap.to('.p2',{yPercent:12,ease:'none',scrollTrigger:{trigger:'.hero',start:'top top',end:'bottom top',scrub:true}});
+// program cards are thrown in, one after another
+gsap.fromTo('.prog',{y:140,rotate:i=>[-8,6,-5,7][i%4],opacity:0},{y:0,rotate:0,opacity:1,scale:1,duration:1.2,clearProps:'transform',ease:'back.out(1.5)',stagger:.12,scrollTrigger:{trigger:'.prog-grid',start:'top 85%',once:true}});
+// skills banner: rows slide with scroll and speed up when you scroll fast
+gsap.utils.toArray('.sk-row').forEach(r=>{const d=+r.dataset.dir;gsap.fromTo(r,{xPercent:d>0?0:-30},{xPercent:d>0?-30:0,ease:'none',scrollTrigger:{trigger:'.skills',start:'top bottom',end:'bottom top',scrub:.5}});});
+ScrollTrigger.create({trigger:'.skills',start:'top bottom',end:'bottom top',onUpdate:s=>{const v=Math.max(-12,Math.min(12,s.getVelocity()/300));gsap.to('.sk-row',{skewX:-v,duration:.3,overwrite:'auto'});gsap.to('.sk-row',{skewX:0,duration:.8,delay:.3});}});
+// class cards deal out like a hand of cards
+gsap.fromTo('.cls',{y:80,rotateY:-30,opacity:0,transformPerspective:900},{y:0,rotateY:0,opacity:1,scale:1,duration:1,clearProps:'transform',ease:'expo.out',stagger:.08,scrollTrigger:{trigger:'.classes',start:'top 85%',once:true}});
+// party builder pops, centre photo parallax, coach card swings in
+gsap.fromTo('.builder',{scale:.85,rotate:3,opacity:0},{scale:1,rotate:0,y:0,opacity:1,duration:1.2,ease:'back.out(1.6)',scrollTrigger:{trigger:'.builder',start:'top 85%',once:true}});
+gsap.fromTo('.c-img img',{yPercent:-10},{yPercent:6,ease:'none',scrollTrigger:{trigger:'.c-img',start:'top bottom',end:'bottom top',scrub:true}});
+gsap.fromTo('.c-img',{clipPath:'circle(20% at 50% 50%)'},{clipPath:'circle(75% at 50% 50%)',ease:'none',scrollTrigger:{trigger:'.c-img',start:'top 90%',end:'top 35%',scrub:.6}});
+gsap.fromTo('.coach',{rotate:-4,y:80,opacity:0},{rotate:0,y:0,scale:1,opacity:1,duration:1.2,ease:'back.out(1.4)',scrollTrigger:{trigger:'.coach',start:'top 85%',once:true}});
+gsap.fromTo('.ticks li',{x:-40,opacity:0},{x:0,opacity:1,stagger:.1,duration:.8,ease:'back.out(2)',scrollTrigger:{trigger:'.ticks',start:'top 85%',once:true}});
+gsap.fromTo('.final',{scale:.9,opacity:0},{scale:1,y:0,opacity:1,duration:1.2,ease:'expo.out',scrollTrigger:{trigger:'.final',start:'top 88%',once:true}});
+// magnetic buttons
+if(!mobile)document.querySelectorAll('.btn').forEach(b=>{const qx=gsap.quickTo(b,'x',{duration:.5,ease:'power3'}),qy=gsap.quickTo(b,'y',{duration:.5,ease:'power3'});b.addEventListener('pointermove',e=>{const r=b.getBoundingClientRect();qx((e.clientX-r.left-r.width/2)*.25);qy((e.clientY-r.top-r.height/2)*.35);});b.addEventListener('pointerleave',()=>{qx(0);qy(0);});});
+// confetti when a party quote is requested
+document.getElementById('party').addEventListener('submit',()=>{const b=document.querySelector('#party button').getBoundingClientRect(),cols=['#c9302a','#ffc23d','#3aa856','#00539f','#072c55'];
+ for(let i=0;i<60;i++){const c=document.createElement('i');c.className='confetti-bit';c.style.background=cols[i%5];c.style.left=(b.left+b.width/2)+'px';c.style.top=(b.top)+'px';document.body.append(c);
+  gsap.to(c,{x:gsap.utils.random(-260,260),y:gsap.utils.random(-320,-60),rotate:gsap.utils.random(-540,540),duration:gsap.utils.random(.8,1.3),ease:'power2.out'});
+  gsap.to(c,{y:'+=520',opacity:0,duration:1.4,delay:1,ease:'power1.in',onComplete:()=>c.remove()});}});
+addEventListener('load',()=>ScrollTrigger.refresh());
+})();
+</script>
+</body></html>
