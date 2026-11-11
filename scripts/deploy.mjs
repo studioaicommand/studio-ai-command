@@ -26,7 +26,7 @@ async function upload(src) {
 }
 async function liveVersion() {
   const r = await fetch(ORIGIN + "/app/app.js", { headers: { "cache-control": "no-cache" } }).catch(() => null);
-  return r ? String(r.headers.get("etag") || "").replace(/"/g, "") : "";
+  return r ? String(r.headers.get("etag") || "").replace(/^W\//, "").replace(/"/g, "") : "";
 }
 async function healthy() {
   const [a, b] = await Promise.all([fetch(ORIGIN + "/command-next").catch(() => null), fetch(ORIGIN + "/api/v1/team/health").catch(() => null)]);
