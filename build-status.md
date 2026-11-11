@@ -1,7 +1,33 @@
 # Studio AI Intelligence: build status (11 Nov 2026)
 
 ## Where we are (12 Nov 2026)
-- **Worker v54 (Jarvis + Command Link)** is ready in 1 Deploy Now. It includes v40 to v53, and v53 has moved to Previous Versions.
+- **Worker v55 (browser tasks)** is ready in 1 Deploy Now. It includes v40 to v54, and v54 has moved to Previous Versions.
+- **v55: Command works Chrome on Ty's Mac.**
+  - Command Link agent v2 is a Node + playwright-core@1.49.1 LaunchAgent. It runs a separate "Command Chrome" window with its own profile under ~/Library/Application Support/StudioCommandLink.
+  - Each step:
+    - The helper sends a screenshot, the numbered elements and the page text to `/api/v1/link/step`.
+    - Claude (smart model) picks one `browser_action`.
+    - The worker runs safety checks, then hands the action back.
+  - **Safety:**
+    - Pages are treated as untrusted data.
+    - Passwords, codes and card or ID fields are never typed. Those, logins and CAPTCHAs go to Ty as "needs you", with a Continue button.
+    - Clicks that send, submit, pay, book or delete, a bare Enter, and any action the model flags become a `browser_step` team_action. That sends an Approve card to Telegram and the Inbox, showing what was filled in on the page.
+    - Limits: one task at a time, 40 actions, a 60-minute approval wait and a 20-minute "needs you" wait.
+  - **Tools:**
+    - `browser_task` and `browser_task_status` (stop / continue) are owner-only.
+    - Settings has a Browser tasks card.
+    - The UI and the app runtime use the routes `/browser`, `/browser/stop` and `/browser/continue`.
+  - Test: `test/browser-v55.mjs`. It runs end to end: the real agent drives headless Chromium on a test site.
+- **GitHub (in progress):**
+  - The source is a git repo in `w/` (first commit 5f6c78b). A backup zip is on the Desktop: "Command source (backup).zip".
+  - The workflows are:
+    - **Test:** runs on every push.
+    - **Deploy Command:** run manually by typing DEPLOY. It builds, tests, backs up the live worker, does a code-only PUT to `/workers/scripts/{name}/content` (bindings and secrets stay) and checks the APP etag plus health. If that fails, it rolls back automatically.
+  - Still waiting on Ty:
+    - Connect GitHub to Claude.
+    - Create the private repo `studio-ai-command`.
+    - Add the secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.
+- **v54 (Jarvis + Command Link)** is included in v55.
 - **v54:**
   - The Cedar voice is listed as "Jarvis (Cedar)". Picking Jarvis style switches the Command voice to it.
   - **Command Link:** Settings › Brand & features. Ty pastes a one-time Terminal line (expires after 15 minutes).
@@ -78,7 +104,8 @@
   - The SF OUTREACH | 01 button still says "15-minute call".
 
 ## Ty to do
-1. Deploy worker v54. It includes v53 and the v52 branded emails. Then set up Command Link and test it.
+1. Deploy worker v55 (it includes v54, v53 and v52). Then set up Command Link (Unlink and set up again if you linked on v54), log in to your tools in the Command Chrome window, and try a browser task.
+2. GitHub: connect GitHub to Claude, create the private repo studio-ai-command, then add the 2 Cloudflare secrets.
 2. Set up and test v53:
    - Settings › Brand & features › Voice & personality: choose Jarvis style + Cedar, then tap "Send me a voice test on Telegram".
    - Send yourself a test email from Command.
@@ -140,7 +167,7 @@
 ## Infrastructure
 - **Worker:** `studio-intelligence-core-cb9c` on https://studioflowandsystems.app.
   - Paste the file, check the last line is `};`, deploy, then Cmd+Shift+R.
-- **Build:** `w/build-worker.py` (patches v21 to v54).
-- **Tests:** 33 files, all passing (exclude local-backend.mjs). Use `--import /tmp/claude-0/noon.mjs` at night.
-- **team_settings:** watch, coach, growth_goal, scout, voice_style, away_digest, mac_link, mac_link_queue, outreach_daily, members, instance, fleet, support, wsd_*.
+- **Build:** `w/build-worker.py` (patches v21 to v55; run `bash scripts/test-all.sh`).
+- **Tests:** 34 files, all passing (exclude local-backend.mjs). Use `--import /tmp/claude-0/noon.mjs` at night.
+- **team_settings:** watch, coach, growth_goal, scout, voice_style, away_digest, mac_link, mac_link_queue, browser_task, outreach_daily, members, instance, fleet, support, wsd_*.
 - **Website:** Pages project `studioflowandsystemswebsite`; source in `site-v14`.
