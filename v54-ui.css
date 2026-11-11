@@ -1,0 +1,5 @@
+/* v54 command link */
+.v54-st{display:flex;align-items:center;gap:8px;font-size:14px;margin:10px 0}
+.v54-st i{width:9px;height:9px;border-radius:50%;background:#64748b}.v54-st i.on{background:#34d399;box-shadow:0 0 10px #34d399}
+.v54-steps{margin:12px 0 0;padding-left:20px;display:grid;gap:10px;font-size:14px}
+.v54-pre{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.5 ui-monospace,Menlo,monospace;background:rgba(3,9,20,.6);border:1px solid rgba(125,190,255,.2);border-radius:10px;padding:10px 12px;margin:8px 0}

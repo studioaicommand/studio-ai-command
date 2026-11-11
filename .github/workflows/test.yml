@@ -1,0 +1,24 @@
+name: Test
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Same paths as the build machine
+        run: |
+          sudo mkdir -p /home/claude && sudo ln -sfn "$GITHUB_WORKSPACE" /home/claude/w
+          sudo mkdir -p /tmp/claude-0/agent && sudo chown -R "$USER" /tmp/claude-0
+          cp test/noon.mjs /tmp/claude-0/noon.mjs
+          npm install --prefix /tmp/claude-0/agent --no-save playwright-core@1.49.1
+          /tmp/claude-0/agent/node_modules/.bin/playwright-core install --with-deps chromium
+      - run: bash scripts/test-all.sh
+      - uses: actions/upload-artifact@v4
+        with: { name: worker, path: worker.mjs, retention-days: 30 }

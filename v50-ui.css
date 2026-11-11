@@ -1,0 +1,5 @@
+/* v50 AI company roster */
+.v50-roster p{margin:8px 0 0}
+.v50-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:10px;margin-top:14px}
+.v50-team{padding:12px 14px;border-radius:14px;border:1px solid rgba(125,190,255,.15);background:rgba(6,16,30,.55)}
+.v50-team b{font-size:13.5px}.v50-team ul{margin:6px 0 0;padding-left:16px;font-size:13px;color:#cfe3f3}.v50-team li{margin:3px 0}

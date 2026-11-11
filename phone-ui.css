@@ -1,0 +1,10 @@
+/* Phone AI (v45) */
+.ph-list{display:grid;gap:10px;margin-top:14px}
+.ph-call{border:1px solid rgba(125,190,255,.2);border-radius:16px;padding:14px 16px;background:rgba(8,22,44,.6)}
+.ph-call.urgent{border-color:rgba(248,113,113,.55);background:rgba(60,14,24,.45)}
+.ph-call p{margin:8px 0 0}
+.ph-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.ph-chips{display:flex;gap:6px;flex-wrap:wrap}
+.ph-ta{width:100%;font:12.5px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;margin:6px 0 8px}
+.fl-margin{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid rgba(125,190,255,.15);padding-top:12px;margin-top:4px;flex-wrap:wrap}
+.fl-margin b.good{color:#4ade80}.fl-margin b.warn{color:#fbbf24}.fl-margin b.bad{color:#f87171}

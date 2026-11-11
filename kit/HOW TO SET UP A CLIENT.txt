@@ -1,0 +1,45 @@
+SET UP A CLIENT'S OWN COMMAND (white-label)
+
+What it makes, in about 5 minutes:
+  - Their own database in Sydney (Supabase), 22 tables, all locked down
+  - Their own Command at  <name>.studioflowandsystems.app  with its own keys
+  - Their brand, industry template (charter, daily shifts) and features
+  - Command reads their website so inbox replies know their services and FAQs
+  - A Face ID sign-in link for the owner (and any staff you add)
+
+Before the first one (once only):
+  1. Supabase: supabase.com > your avatar > Account > Access Tokens > Generate.
+     Name it "Client setup". Each client database costs about US$10/month on the Pro plan.
+  2. Cloudflare: dash.cloudflare.com > My Profile > API Tokens > Create Token > Custom token. Permissions:
+       Account  > Workers Scripts > Edit
+       Zone     > Workers Routes  > Edit
+       Zone     > DNS             > Edit
+       Zone     > Zone            > Read
+     Zone Resources: Include > Specific zone > studioflowandsystems.app
+  Keep both tokens in Apple Passwords. You paste them into the setup window each time (they are never saved).
+
+Each new client:
+  1. Make sure the newest Command file is in "1 Deploy Now" (the client gets the same version as you).
+  2. Double-click "New client Command.command". If macOS blocks it: right-click > Open > Open.
+     (Or in Terminal: zsh ~/Desktop/"Studio AI Intelligence/Client setup kit/New client Command.command")
+  3. Answer the questions. Have ready: their business name, owner name, website, industry, and
+     optionally their GHL sub-account token + location ID, Telegram bot token and Stripe read key.
+  4. Send the owner the sign-in link it prints (privately). They open it in Safari, set up Face ID,
+     then Share > Add to Home Screen.
+  5. The private details are saved in "Client setups". Put them in Apple Passwords, then delete the file.
+
+Later changes for that client: open their Command > Settings > Brand & features.
+
+See all clients in your Studio console:
+  Your Command > Clients > Client Commands. Paste each client's connect code (it's printed at the end of
+  setup and saved in their file in "Client setups"). You'll see each client's health, version and AI cost.
+  You can't see their customers or messages. For that, tap "Ask for support access": their owner gets a
+  Telegram message and approves it in their Settings > Security (24 hours, logged, and you can't send
+  messages, take payments, see money or delete anything).
+
+Update every client to the newest version:
+  1. Put the new Command file in "1 Deploy Now" (deploy it to your own Command first).
+  2. Double-click "Update all clients.command" and paste your Cloudflare token.
+  3. It updates your test client (any client with "test" in its web name) first, checks it, then asks
+     before doing the rest. Every client keeps its own keys. If a check fails, that client is put back
+     on its old version straight away and nobody else is touched. Backups go in "Client setups/backups".

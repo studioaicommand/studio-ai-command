@@ -1,0 +1,17 @@
+/* Outreach today (v47) */
+.or-list{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:14px}
+.or-item{min-width:0;overflow:hidden;border:1px solid rgba(125,190,255,.2);border-radius:16px;padding:14px 16px;background:rgba(8,22,44,.6)}
+.or-top{display:flex;align-items:center;gap:12px;cursor:pointer}
+.or-top input{width:18px;height:18px;flex:none}
+.or-top>span:nth-child(2){flex:1;min-width:0}
+.or-score{font-weight:700;color:#7fd4ff}
+.or-chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 6px}
+.or-links{display:flex;gap:14px;flex-wrap:wrap;font-size:13.5px}
+.or-links a{color:#7fd4ff;text-decoration:none;font-weight:600}
+.or-mail{margin-top:10px}
+.or-mail summary{cursor:pointer;color:#cfe3f3;font-size:13.5px}
+.or-mail pre{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.55 var(--font-hanken,system-ui);background:rgba(3,9,20,.5);border-radius:12px;padding:12px 14px;margin:8px 0;color:#e6f2fb}
+.or-switch{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.or-switch input{width:20px;height:20px}
+.or-verts{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:14px}
+.or-verts label{display:flex;align-items:center;gap:6px}

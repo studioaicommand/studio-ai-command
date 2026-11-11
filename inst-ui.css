@@ -1,0 +1,4 @@
+/* White-label settings (v43) */
+.ib-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.ib-mod{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--ln,rgba(125,190,255,.15));cursor:pointer}.ib-mod input{margin-top:4px;width:18px;height:18px;flex:none}.ib-mod span{display:grid;gap:2px}
+input.in[type=color]{padding:4px;height:44px}

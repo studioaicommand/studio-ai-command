@@ -1,0 +1,6 @@
+/* People + passkeys + security log (v41) */
+.pk-user{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--ln,rgba(125,190,255,.18))}
+.pk-seal{padding:12px 14px;border-radius:12px;font-size:14px;line-height:1.45}.pk-seal.good{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.35);color:#bbf7d0}.pk-seal.bad{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.4);color:#fecaca}
+.pk-log{display:grid;gap:2px;margin-top:12px;max-height:340px;overflow:auto}.pk-log>div{display:grid;grid-template-columns:150px 1fr;gap:10px;padding:7px 0;border-top:1px solid var(--ln,rgba(125,190,255,.12));font-size:13.5px}
+.pk-roles{width:100%;border-collapse:collapse;margin-top:16px;font-size:13.5px}.pk-roles td{padding:8px 6px;border-top:1px solid var(--ln,rgba(125,190,255,.15));vertical-align:top}.pk-roles td:first-child{width:90px}
+@media(max-width:700px){.pk-log>div{grid-template-columns:1fr}}

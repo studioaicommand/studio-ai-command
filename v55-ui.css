@@ -1,0 +1,6 @@
+/* v55 browser tasks */
+.v55-warn{margin:10px 0 0;padding:10px 14px;border-radius:12px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);font-size:14px}
+.v55-task{margin-top:12px;padding:14px 16px;border-radius:14px;border:1px solid rgba(125,190,255,.2);background:rgba(3,9,20,.45)}
+.v55-hd{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}.v55-hd b{min-width:0;overflow-wrap:anywhere}
+.v55-ask{margin:10px 0 0;color:#fcd34d;font-size:14px}.v55-res{margin:10px 0 0;white-space:pre-wrap;font-size:14px;line-height:1.5}
+.v55-steps{margin:10px 0 12px;padding-left:20px;font-size:13px;color:#9fb6c8;display:grid;gap:4px}

@@ -1,0 +1,42 @@
+name: Deploy Command
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type DEPLOY to put this version live on studioflowandsystems.app"
+        required: true
+concurrency: deploy-command
+jobs:
+  deploy:
+    if: github.event.inputs.confirm == 'DEPLOY'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Same paths as the build machine
+        run: |
+          sudo mkdir -p /home/claude && sudo ln -sfn "$GITHUB_WORKSPACE" /home/claude/w
+          sudo mkdir -p /tmp/claude-0/agent && sudo chown -R "$USER" /tmp/claude-0
+          cp test/noon.mjs /tmp/claude-0/noon.mjs
+          npm install --prefix /tmp/claude-0/agent --no-save playwright-core@1.49.1
+          /tmp/claude-0/agent/node_modules/.bin/playwright-core install --with-deps chromium
+      - name: Build and test (stops here if anything fails)
+        run: bash scripts/test-all.sh
+      - name: Deploy with backup, health check and automatic rollback
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/deploy.mjs worker.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-backup-and-new-worker
+          retention-days: 90
+          path: |
+            backup/
+            worker.mjs

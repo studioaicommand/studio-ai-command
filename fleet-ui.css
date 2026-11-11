@@ -1,0 +1,8 @@
+/* Studio console (v44) */
+.fl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:18px}
+.fl-card{border:1px solid rgba(125,190,255,.23);border-radius:20px;padding:20px;background:linear-gradient(135deg,rgba(18,42,77,.85),rgba(5,17,35,.92))}
+.fl-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.fl-top h3{margin:0 0 4px}
+.fl-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:16px 0}.fl-stats div{display:grid;gap:2px}.fl-stats b{font-size:18px}
+.fl-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sup-bar{position:fixed;left:0;right:0;top:0;padding:calc(5px + env(safe-area-inset-top,0px)) 12px 5px;z-index:2147480001;background:#7c2d12;color:#fff;border-bottom:1px solid #fb923c;font:600 12px/1.3 system-ui,sans-serif;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.has-sup{padding-top:calc(26px + env(safe-area-inset-top,0px))}

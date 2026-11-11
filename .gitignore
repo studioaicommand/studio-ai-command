@@ -1,0 +1,6 @@
+worker.mjs
+worker-v*.js
+backup/
+node_modules/
+*.log
+.DS_Store
