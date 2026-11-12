@@ -1,6 +1,13 @@
 # Studio AI Intelligence: build status (11 Nov 2026)
 
 ## Where we are (12 Nov 2026)
+- **v58: designer 2.** In the repo, tests pass; Ty deploys it with Deploy Command.
+  - **Photos always show.** Prospect photos are served through `/demo/img/p/<token>/<hash>`, fetched with their site as the referrer, and cached at the edge. Only photos in that demo are served. This fixes the blank gradient boxes caused by sites blocking hotlinking.
+  - **AI images.** `wsdImagesFix` runs on every build. It drops photos that are blocked or tiny (under 14KB), then generates up to 4 on-brand photos with OpenAI `gpt-image-2.5-flare` (env `WSD_IMAGE_MODEL` overrides; falls back to `gpt-image-1`). Settings: 1536x1024, medium quality, webp. They're stored as team_settings `wsdimg:<id>` and served from `/demo/img/<id>.webp`. Usage is logged as `demo_images`. The demo banner says some photos are AI concept images. The designer can ask for specific shots with `gen_images`.
+  - **Design DNA.** `spec.dna` sets corners, cards, image shape, section bands, headings, buttons and texture. It's picked so it never matches the last 4 demos.
+  - **7 new moments.** Zoom-through hero, big-type list, panels, flip cards, circle reveal, expand and compare (before/after). These are added to the signature rotation.
+  - **Spacing.** Section padding is roughly halved, and pinned sections are shorter.
+  - **getSettings** now skips `wsd*:*` keys (demo pages and images), with a fallback to the full query.
 - **v57: instant approvals and a single daily email number.** It's in the repo and the tests pass. Ty deploys it with Deploy Command.
   - **Telegram Approve/Reject:**
     - The button answers straight away.
