@@ -23,6 +23,8 @@ function check(u, init) {
   }
 }
 let inner = globalThis.fetch;
-const wrapped = (u, init) => { try { check(u, init); } catch {} return inner(u, init); };
+// v61: long prompts are sent cached as [{ type: "text", text, cache_control }]. Check that shape, then hand mocks the plain text.
+const flat = (u, init) => { try { if (!/api\.anthropic\.com/.test(String(u)) || !init || typeof init.body !== "string") return init; const b = JSON.parse(init.body); if (Array.isArray(b.system) && b.system.length === 1 && b.system[0]?.type === "text" && b.system[0].cache_control?.type === "ephemeral" && b.system[0].text.length > 3500) { b.system = b.system[0].text; return { ...init, body: JSON.stringify(b) }; } } catch {} return init; };
+const wrapped = (u, init) => { try { check(u, init); } catch {} return inner(u, flat(u, init)); };
 Object.defineProperty(globalThis, "fetch", { configurable: true, get: () => wrapped, set: (f) => { inner = f; } });
 process.on("exit", () => { if (bad.size) fs.appendFileSync(process.env.SCHEMA_REPORT || "/tmp/claude-0/schema-report.txt", [...bad].join("\n") + "\n"); });
