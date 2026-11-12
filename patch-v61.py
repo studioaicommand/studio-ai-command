@@ -36,6 +36,8 @@ rep('<span class="rc-pulse"></span>', '<span class="rc-pulse">${wsdUrl(spec.bran
 rep('<span class="rc-av">${nm.slice(0, 1)}</span>', '<span class="rc-av">${wsdUrl(spec.brand?.logo) ? `<img src="${wsdE(spec.brand.logo)}" alt="">` : nm.slice(0, 1)}</span>')
 rep('.rc-av{width:40px;height:40px;border-radius:50%;', '.rc-pulse img,.rc-av img{width:100%;height:100%;object-fit:contain;border-radius:50%;background:#fff;padding:5px;display:block}.rc-pulse{overflow:hidden}.rc-av{overflow:hidden;')
 rep('look: { accent: rec.spec?.brand?.primary, theme: rec.spec?.brand?.dark ? "dark" : "light", name: rec.spec?.receptionist_name || "" }', 'look: { accent: rec.spec?.brand?.primary, theme: rec.spec?.brand?.dark ? "dark" : "light", name: rec.spec?.receptionist_name || "", ...(/^https:\\/\\//.test(rec.spec?.brand?.logo || "") ? { logo: /\\/demo\\/img\\//.test(rec.spec.brand.logo) ? rec.spec.brand.logo : `${env.PUBLIC_ORIGIN || "https://studioflowandsystems.app"}/demo/img/p/${id}/${wsdH8(rec.spec.brand.logo)}` } : {}) }')
+# Command app: let the email preview show the logo hosted on GHL's image server (only that host)
+rep('  "img-src \'self\' data:",\n  "connect-src \'self\'",', '  "img-src \'self\' data: https://assets.cdn.filesafe.space",\n  "connect-src \'self\'",')
 oldv = re.search(r'var APP = \{ "v": "([0-9a-f]+)"', s).group(1)
 s = s.replace('var APP = { "v": "' + oldv + '"', 'var APP = { "v": "' + hashlib.sha1(s.encode()).hexdigest()[:10] + '"', 1)
 open(W, 'w').write(s)
