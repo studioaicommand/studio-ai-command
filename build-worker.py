@@ -96,3 +96,5 @@ subprocess.check_call([sys.executable, 'patch-v61.py', 'worker.mjs'])
 subprocess.check_call([sys.executable, 'patch-v62.py', 'worker.mjs'])
 # v63 Leak Report engine
 subprocess.check_call([sys.executable, 'patch-v63.py', 'worker.mjs'])
+# v66 onboarding intake
+subprocess.check_call([sys.executable, 'patch-v66.py', 'worker.mjs'])
