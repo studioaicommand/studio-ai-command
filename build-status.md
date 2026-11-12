@@ -1,6 +1,17 @@
 # Studio AI Intelligence: build status (11 Nov 2026)
 
 ## Where we are (12 Nov 2026)
+- **v60: email rules** (Studio AI tool `email_rules`).
+  - Rules block a sender or keyword; there's an AI pitch and phishing filter, a log and a sweep (dry run first).
+  - Deletes run through the GHL inbox webhook as `DELETE /conversations/{id}`, and the contact is tagged `blocked-sender`.
+  - Safe tags are never touched.
+  - Needs GHL scopes conversations.write and contacts.write.
+- **v59: the Playball standard.**
+  - WSD_STANDARD is prepended to the Director and critique prompts.
+  - New sections: finder, quote and founder.
+  - Up to 6 AI photos per demo.
+  - "More of our work" (Katia and PLF screenshots via Browser Rendering, stored as wsdimg:work-*).
+  - Delete-demo button (`DELETE /website-demos/:token`).
 - **v58: designer 2.** In the repo, tests pass; Ty deploys it with Deploy Command.
   - **Photos always show.** Prospect photos are served through `/demo/img/p/<token>/<hash>`, fetched with their site as the referrer, and cached at the edge. Only photos in that demo are served. This fixes the blank gradient boxes caused by sites blocking hotlinking.
   - **AI images.** `wsdImagesFix` runs on every build. It drops photos that are blocked or tiny (under 14KB), then generates up to 4 on-brand photos with OpenAI `gpt-image-2.5-flare` (env `WSD_IMAGE_MODEL` overrides; falls back to `gpt-image-1`). Settings: 1536x1024, medium quality, webp. They're stored as team_settings `wsdimg:<id>` and served from `/demo/img/<id>.webp`. Usage is logged as `demo_images`. The demo banner says some photos are AI concept images. The designer can ask for specific shots with `gen_images`.
