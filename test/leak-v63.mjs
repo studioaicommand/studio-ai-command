@@ -37,6 +37,6 @@ assert(em && em.body.type === "Email" && /Your Leak Report/.test(em.body.subject
 assert(tg >= 1, "Ty gets a Telegram ping");
 const page = await w.fetch(new Request(j.report_url), env, ctx); const html = await page.text();
 assert(page.status === 200 && /Smile Co/.test(html) && /\$6,645 a month/.test(html) && /Missed calls/.test(html) && /noindex/.test(page.headers.get("X-Robots-Tag")), "The hosted report shows their number, leaks and fixes (noindex)");
-assert(/Save as PDF/.test(html) && /Full Leak Report \(\$350, credited to Command\)/.test(html), "Report has Save as PDF and the Full Leak Report offer");
+assert(/Save as PDF/.test(html) && /Full Leak Report \(\$350\) or 2-hour Business Audit \(\$497\)/.test(html), "Report has Save as PDF and the Full Leak Report offer");
 const bad = await w.fetch(new Request("https://studioflowandsystems.app/leak/" + "0".repeat(24)), env, ctx); assert(bad.status === 404, "Unknown reports 404");
 console.log("leak-v63 OK");
