@@ -77,7 +77,7 @@ const brief = (JSON.stringify(design.messages).match(/Hero variant: ([a-z-]+)/) 
 assert(brief && /CREATIVE BRIEF/.test(JSON.stringify(design.messages)) && /Signature moment/.test(JSON.stringify(design.messages)), "Every concept gets a creative brief picked for variety");
 assert(/THE AI RECEPTIONIST IS THE CLOSER/.test(design.system) && /20 booked sales calls a week/.test(design.system), "The designer knows its job: the receptionist moment and 20 booked calls a week");
 let page = await get("/demo/" + T + "/site?preview=1");
-assert(new RegExp('hero-' + ({ "split-arch": "arch", fullbleed: "full", "giant-type": "giant", collage: "collage" })[brief]).test(page.t), "The hero follows the brief (" + brief + ")");
+assert(new RegExp('hero-' + ({ "split-arch": "arch", fullbleed: "full", "giant-type": "giant", collage: "collage", zoomthrough: "zt" })[brief]).test(page.t), "The hero follows the brief (" + brief + ")");
 assert(/class="sec rcp rcp-chat"/.test(page.t) && /Are you open Sat/.test(page.t) && /rc-try/.test(page.t), "Their own AI receptionist is shown answering their real questions, with Try it now");
 assert(/id="sfPitch"/.test(page.t) && /Book a free call/.test(page.t) && /<iframe src="https:\/\/links\.studioflowandsystems\.com\/widget\/booking\//.test(page.t) && /id="book"/.test(page.t), "A pitch bar and a booking calendar right on the concept");
 assert(/class="h-hero"[^>]*style="--lw:\d+"/.test(page.t) && /100cqi/.test(page.t) && /text-wrap:balance/.test(page.t), "Big headlines are sized to fit their longest word (no cut-off text)");

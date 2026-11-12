@@ -84,3 +84,5 @@ subprocess.check_call([sys.executable, 'patch-v55.py', 'worker.mjs'])
 subprocess.check_call([sys.executable, 'patch-v56.py', 'worker.mjs'])
 # v57 instant Telegram approvals, daily email number, held approvals send themselves
 subprocess.check_call([sys.executable, 'patch-v57.py', 'worker.mjs'])
+# v58 designer 2: images always show (proxy + AI images), design DNA, 7 new scroll moments, tighter spacing
+subprocess.check_call([sys.executable, 'patch-v58.py', 'worker.mjs'])

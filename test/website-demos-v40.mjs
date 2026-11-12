@@ -76,7 +76,7 @@ assert(/Web Design Director|WEB DESIGN DIRECTOR/.test(JSON.stringify(design.syst
 assert(DB.team_usage.length >= 2, "Costs are logged to Money");
 x = await get(`/demo/${T}/site?preview=1`);
 assert(x.r.status === 200 && /Gentle vets/.test(x.t) && /--p:#1f7a8c/.test(x.t) && /family=Poppins/.test(x.t), "Homepage renders in their brand colour and font");
-assert(/cdn\.sunnypaws\.test\/team\.jpg/.test(x.t) && !/evil\.test/.test(x.t), "Uses their real photos and drops made-up image links");
+assert(/\/demo\/img\/p\/[0-9a-f]{40}\/[0-9a-f]{8}/.test(x.t) && !/evil\.test/.test(x.t) && JSON.stringify(DB).includes("cdn.sunnypaws.test/team.jpg"), "Uses their real photos (served through Command) and drops made-up image links");
 assert(/studioflowandsystems\.com\/vendor\/motion\.js/.test(x.t) && /\/w\/demo-[a-f0-9]{40}\.js\?preview=1/.test(x.t), "Full motion engine + the receptionist we sell on the page");
 assert(/The team were so gentle/.test(x.t) && /Google/.test(x.t) && /4\.9/.test(x.t), "Real Google reviews show in the rolling banner");
 assert(/What we can switch on|AI receptionist/.test(x.t) && /Book a free 30-minute call/.test(x.t), "Offers section and book-a-call button are on the demo");
