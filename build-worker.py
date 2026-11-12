@@ -88,3 +88,5 @@ subprocess.check_call([sys.executable, 'patch-v57.py', 'worker.mjs'])
 subprocess.check_call([sys.executable, 'patch-v58.py', 'worker.mjs'])
 # v59 the Playball standard (finder, quote builder, founder), delete demos, our work on every demo
 subprocess.check_call([sys.executable, 'patch-v59.py', 'worker.mjs'])
+# v60 email rules for the GHL inbox via Studio AI
+subprocess.check_call([sys.executable, 'patch-v60.py', 'worker.mjs'])
