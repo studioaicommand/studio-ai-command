@@ -46,6 +46,7 @@ function leakReportHtml(r, origin) {
   const max = Math.max(1, ...top.map((l) => l.monthly));
   const book = "https://links.studioflowandsystems.com/widget/booking/tfzrthnax3Ldpncejghq";
   const audit = "https://links.studioflowandsystems.com/widget/booking/letd3kiR8QpsaVL6SXkJ";
+  const leak = "https://links.studioflowandsystems.com/widget/booking/vND5nQhzXNvi1K5Aa8nq";
   const date = new Date(r.at).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Brisbane" });
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Leak Report · ${leakE(r.business || r.name)} · Studio Flow & Systems</title>
 <style>
@@ -84,7 +85,7 @@ h2{color:var(--ink);font-size:24px;letter-spacing:-.02em;margin:34px 0 14px}
 <div class="hero"><div class="stat big"><b>${leakAud(r.calc.monthly)}</b><small>estimated lost each month</small></div><div class="stat"><b>${leakAud(r.calc.yearly)}</b><small>estimated lost each year</small></div></div>
 <h2>Where it's leaking</h2>
 ${top.map((l) => `<div class="leak"><div class="lh"><b>${leakE(l.label)}</b><strong>${leakAud(l.monthly)}/mo</strong></div><div class="bar"><i style="width:${Math.max(4, Math.round(l.monthly / max * 100))}%"></i></div><div class="fix">${leakE(l.agent)}</div><div class="how">How we worked it out: ${leakE(l.how)}</div></div>`).join("")}
-<div class="cta"><h3>Want these leaks plugged?</h3><p>Studio AI Command runs an AI team that answers, follows up, books and chases payments for you, and you approve anything that matters from your phone. Book a free 30-minute call and we'll show you which leak to fix first. If you go ahead within 30 days, the cost of a Full Leak Report or Business Audit comes off your setup price.</p><div class="btns"><a class="btn p" href="${book}">Book a free call</a><a class="btn g" href="${audit}">Full Leak Report ($350) or 2-hour Business Audit ($497)</a></div></div>
+<div class="cta"><h3>Want these leaks plugged?</h3><p>Studio AI Command runs an AI team that answers, follows up, books and chases payments for you, and you approve anything that matters from your phone. Book a free 30-minute call and we'll show you which leak to fix first. If you go ahead within 30 days, the cost of a Full Leak Report or Business Audit comes off your setup price.</p><div class="btns"><a class="btn p" href="${book}">Book a free call</a><a class="btn g" href="${leak}">Full Leak Report ($350)</a><a class="btn g" href="${audit}">2-hour Business Audit ($497)</a></div></div>
 <p class="note">These are estimates using conservative assumptions (shown under each leak) and the numbers you entered. The Full Leak Report checks your real phone, inbox, CRM and invoices for exact figures. Studio Flow & Systems · Brisbane · 0495 105 377 · studioflowandsystems.com</p>
 </div><button class="print" onclick="window.print()">Save as PDF</button></body></html>`;
 }
