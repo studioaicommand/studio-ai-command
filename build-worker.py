@@ -86,3 +86,5 @@ subprocess.check_call([sys.executable, 'patch-v56.py', 'worker.mjs'])
 subprocess.check_call([sys.executable, 'patch-v57.py', 'worker.mjs'])
 # v58 designer 2: images always show (proxy + AI images), design DNA, 7 new scroll moments, tighter spacing
 subprocess.check_call([sys.executable, 'patch-v58.py', 'worker.mjs'])
+# v59 the Playball standard (finder, quote builder, founder), delete demos, our work on every demo
+subprocess.check_call([sys.executable, 'patch-v59.py', 'worker.mjs'])
