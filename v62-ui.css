@@ -1,6 +1,0 @@
-/* v62 profit & loss */
-.v62-big{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0}.v62-big>div{padding:14px 16px;border-radius:14px;background:rgba(6,16,30,.55);border:1px solid rgba(125,190,255,.16);display:grid;gap:4px}.v62-big strong{font-size:clamp(18px,2.4vw,26px)}.v62-big small{color:#9fb6c8}
-.v62-pos strong{color:#6ee7b7}.v62-neg strong{color:#fca5a5}.v62-t th{text-align:left;padding-top:14px;color:#7fd4ff;font-size:12px;letter-spacing:.1em;text-transform:uppercase}.v62-t td:last-child{text-align:right;white-space:nowrap}
-.v62-ok,.v62-est{font-size:11px;padding:2px 7px;border-radius:999px;margin-left:4px}.v62-ok{background:rgba(52,211,153,.16);color:#6ee7b7}.v62-est{background:rgba(245,158,11,.14);color:#fcd34d}
-.v62-x{border:0;background:none;color:#fca5a5;cursor:pointer;font-size:12px}.v62-ed{margin-top:12px}.v62-ed summary{cursor:pointer;color:#7fd4ff}
-@media(max-width:600px){.v62-big{grid-template-columns:1fr}}
