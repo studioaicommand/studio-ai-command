@@ -90,3 +90,5 @@ subprocess.check_call([sys.executable, 'patch-v58.py', 'worker.mjs'])
 subprocess.check_call([sys.executable, 'patch-v59.py', 'worker.mjs'])
 # v60 email rules for the GHL inbox via Studio AI
 subprocess.check_call([sys.executable, 'patch-v60.py', 'worker.mjs'])
+# v61 free Workers AI for internal-only jobs + prompt caching
+subprocess.check_call([sys.executable, 'patch-v61.py', 'worker.mjs'])
