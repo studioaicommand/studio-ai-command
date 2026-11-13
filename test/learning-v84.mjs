@@ -16,6 +16,8 @@ globalThis.fetch = async (u, init = {}) => { u = String(u); const m = (init.meth
     if (m === "DELETE") { const keep = t.filter((r) => !match(r, q)); DB[path] = keep; return Response.json([]); } return Response.json([]); }
   if (u.includes("api.anthropic.com")) { const s = JSON.stringify(body.system || "");
     if (s.includes("You keep the standing rulebook")) { learnCalls++; return text(JSON.stringify(learnQ.shift() || { learn: [], forget: [] })); }
+    if (s.includes("careless assistant")) return text("Text a new lead to say hi, keep it upbeat and quick");
+    if (s.includes("strict examiner")) return text('{"pass":false,"why":"used a dash"}');
     if (s.includes("Librarian") || s.includes("You tidy an AI team")) return text(JSON.stringify(libQ.shift() || {}));
     sys.push(s); return text("Sure thing."); }
   if (u.includes("api.telegram.org")) { tg.push(body); return Response.json({ ok: true, result: { message_id: 500 + tg.length } }); }
@@ -89,6 +91,18 @@ assert(mid && !rules().some((x) => x.id === target.id) && tg.some((x) => /Droppe
 const keepIt = rules()[0];
 r = await call("/api/v1/team/brain/rules", { rules: rules() });
 assert(r.j.rules.find((x) => x.id === keepIt.id)?.said === keepIt.said, "Editing the rulebook in Command keeps how many times each rule was said");
+
+// v86 nightly exam: a rule the team slips on gets pinned and Ty is told
+{ const RD2 = Date; const f2 = new RD2("2026-11-14T10:30:00Z").getTime();
+  globalThis.Date = class extends RD2 { constructor(...a) { super(...(a.length ? a : [f2])); } static now() { return f2; } };
+  tg.length = 0;
+  const ps2 = []; await w.scheduled({ cron: "*/15 * * * *" }, env, { waitUntil(p) { ps2.push(p); } }); await Promise.all(ps2);
+  globalThis.Date = RD2;
+  const s2 = tg.find((x) => /Tonight's exam/.test(x.text || ""));
+  assert(s2 && /Slipped on/.test(s2.text) && rules().some((x) => x.pinned), "v86: the nightly exam tests Ty's rules; one the team slips on is pinned to the top and Ty is told");
+  const ex2 = (await call("/api/v1/team/brain/examples")).j;
+  assert(ex2.exam && ex2.exam.last.failed.length >= 1, "v86: the Team brain page shows the last exam");
+}
 const app = await (await w.fetch(new Request(O + "/app/app.js"), env, { waitUntil() {} })).text();
 new Function(app);
 assert(/Your rulebook/.test(app), "Studio AI › Knowledge › Team brain shows the rulebook");

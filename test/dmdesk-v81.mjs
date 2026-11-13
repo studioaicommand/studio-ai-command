@@ -65,6 +65,7 @@ assert(fu && fu.business_name === "Peak Mindset Coaching" && fu.profile_url === 
 
 // they replied: the Reply Coach drafts the answer
 r = await call("/dm-queue/reply-draft", { id: x1.id, reply: "Ha how did you notice that? What would it cost?" });
+assert(((DB.team_settings.find((x) => x.key === "examples") || {}).value?.items || []).some((x) => x.kind === "worked" && /Jess/.test(x.text)), "v86: a DM that got a reply becomes a \"this worked\" example");
 assert(r.j.ok && /video/.test(r.j.reply) && DB.agent_prospects[0].status === "replied", "They replied: the Reply Coach drafts Ty's answer and the lead is marked replied");
 st = (await call("/dm-queue")).j;
 assert(!st.ready.some((x) => x.business_name === "Peak Mindset Coaching"), "Once they reply, the pending follow-up is cancelled");
