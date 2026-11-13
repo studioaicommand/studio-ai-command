@@ -25,7 +25,7 @@ globalThis.fetch = async (u, init = {}) => {
   }
   if (u === "https://api.openai.com/v1/realtime/calls") { const s = JSON.parse(init.body.get("session")); calls.openai.push(s); return new Response("v=0\r\nanswer", { status: 201, headers: { Location: "/v1/realtime/calls/rtc_abc123" } }); }
   if (u.includes("/hangup")) { calls.hangup.push(u); return new Response("{}"); }
-  if (u.includes("sb.test")) { calls.supabase.push(u); if (u.includes("key=eq.offer")) return Response.json([{ value: { pilot_price: 497, pilot_price_voice: 697, monthly_voice: 797 } }]); if (u.includes("key=eq.telegram")) return Response.json([{ value: { chat_id: 4242 } }]); return Response.json([]); }
+  if (u.includes("sb.test")) { calls.supabase.push(u); if (u.includes("key=eq.voice_style")) return Response.json([{ value: { command_voice: "cedar", persona: "calm_british" } }]); if (u.includes("key=eq.offer")) return Response.json([{ value: { pilot_price: 497, pilot_price_voice: 697, monthly_voice: 797 } }]); if (u.includes("key=eq.telegram")) return Response.json([{ value: { chat_id: 4242 } }]); return Response.json([]); }
   if (u.startsWith("https://services.leadconnectorhq.com")) { calls.ghl.push({ u, body: body && JSON.parse(body), method: init.method || "GET" });
     if (u.includes("/free-slots")) { if (globalThis.CAL_DOWN) return new Response("{}", { status: 401 }); return Response.json({ [SLOT_DAY]: { slots: FREE.slice() }, traceId: "x" }); }
     if (u.endsWith("/appointments") && (init.method || "GET") === "GET") return Response.json({ events: EXISTING.slice() });
@@ -157,6 +157,7 @@ globalThis.CAL_DOWN = false;
 r = await call("voice", { token: tok, raw: "v=0\r\nm=audio 9 UDP" , headers: { "Content-Type": "application/sdp" } });
 assert(r.status === 200 && String(r.data).startsWith("v=0"), "Voice call starts (SDP answer)");
 const vs = calls.openai[0];
+assert(vs.audio.output.voice === "cedar" && /very calm, refined British/.test(vs.instructions), "The website Studio AI speaks with the voice and calm British style chosen in Command (not a fixed female voice)");
 assert(vs.tools.map((t) => t.name).join() === "find_times,prepare_booking,suggest_next_step,prepare_enquiry" && /EARLIER IN THIS CHAT/.test(vs.instructions) && vs.audio.input.turn_detection.type === "semantic_vad", "Voice session: public tools only, chat context carried over, steady turn-taking");
 r = await call("voice", { token: tok, raw: "v=0\r\nm=audio 9 UDP" });
 assert(r.status === 409, "Repeated Start voice clicks don't start a second call");
