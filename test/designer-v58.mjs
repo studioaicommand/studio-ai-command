@@ -45,7 +45,7 @@ vm.createContext(box); vm.runInContext(code.replace(/^\/\/ ── v57[\s\S]*?(?=
 const res = await box.wsdImagesFix(env, fixed, { name: "Sunrise Kids", industry: "childcare", area: "Ipswich", website: "https://sunrise.test", origin: "https://studioflowandsystems.app" });
 const gen = calls.filter((c) => c.model);
 assert(res.removed === 2 && res.generated === 3 && gen.length === 3, "Blocked + tiny photos removed; hero, the empty card and the expand photo generated (" + JSON.stringify(res) + ")");
-assert(gen[0].model === "gpt-image-2.5-flare" && /Sunrise Kids/.test(gen[0].prompt) && /no text/.test(gen[0].prompt) && /#2f5bd8/.test(gen[0].prompt), "Prompts are on-brand (their name, brand colour, no text or logos)");
+assert(gen[0].model === "gpt-image-2.6-flare" && /Sunrise Kids/.test(gen[0].prompt) && /no text/.test(gen[0].prompt) && /#2f5bd8/.test(gen[0].prompt), "Prompts are on-brand (their name, brand colour, no text or logos)");
 assert(/^https:\/\/studioflowandsystems\.app\/demo\/img\/[0-9a-f]{16}\.webp$/.test(fixed.sections[0].images[0]) && fixed.ai_images === 3, "Generated images are stored and used in the demo, and the demo says some photos are AI concept images");
 assert(fixed.sections[1].items[0].image === "https://sunrise.test/good.jpg", "Good photos are kept");
 const stored = DB.team_settings.find((x) => x.key.startsWith("wsdimg:"));
