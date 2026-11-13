@@ -37,3 +37,17 @@ const app = await (await w.fetch(new Request("https://studioflowandsystems.app/a
 new Function(app);
 assert(/YOUR OWN VOICES \(ELEVENLABS\)/.test(app) && /v77add/.test(app), "Settings › Brand & features has a place to add your own voices");
 console.log("voices-v77 OK");
+// v78: free British voices on Cloudflare Workers AI
+const aiCalls = [];
+env.AI = { run: async (model, input) => { aiCalls.push(model + " " + input.speaker + " " + input.encoding + "/" + input.container); return new Uint8Array([79, 103, 103, 83]); } };
+r = await call("/voice-style");
+assert(r.j.has_cf_ai && r.j.cf_voices.draco && r.j.cf_voices.pandora, "Free British voices Draco and Pandora are offered when Workers AI is connected");
+r = await call("/voice-style", { command_cf: "draco" });
+calls.length = 0;
+r = await call("/voice-style/test", {});
+assert(r.j.engine === "cloudflare" && aiCalls[0] === "@cf/deepgram/aura-2-en draco opus/ogg" && calls.includes("telegram"), "Voice notes speak in Draco (warm British baritone) as an Ogg voice note");
+env.AI = { run: async () => { throw new Error("no AI"); } };
+r = await call("/voice-style/test", {});
+assert(r.j.sent && r.j.engine === "openai", "If Cloudflare's voice fails, the note still arrives in the OpenAI voice");
+console.log("voices-v78 OK");
+
