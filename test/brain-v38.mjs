@@ -46,7 +46,7 @@ modelReply = '{"reply":"Hi Jo, great to hear. The AI Receptionist starts at $497
 systems = [];
 await hook();
 const inboxSys = systems.find((x) => /THIS CHANNEL OVERRIDES/.test(x)) || "";
-assert(/TEAM RULES/.test(inboxSys) && /14-day money-back/.test(inboxSys) && !/under 80 words/.test(inboxSys), "Replies follow the inbox rules (and not the outreach-only ones)");
+assert(/RULEBOOK/.test(inboxSys) && /14-day money-back/.test(inboxSys) && !/under 80 words/.test(inboxSys), "Replies follow the inbox rules (and not the outreach-only ones)");
 assert(/SALES ALREADY KNOWS THEM: Sparky Bros/.test(inboxSys) && /book a quote online/.test(inboxSys), "Shared brain: reply writer knows Sales already emailed Sparky Bros and what we noticed");
 const act = DB.team_actions.find((a) => a.type === "ghl_reply");
 assert(act && /Hot lead/.test(act.title) && tags.includes("hot-lead"), "Hot lead: flagged for Ty and tagged hot-lead in GHL");

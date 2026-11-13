@@ -108,6 +108,7 @@ assert(x.s === 403, "Staff can't touch login security");
 x = await call("/api/v1/operator/chat", { method: "POST", body: { message: "What's our revenue this month and who should I call?" }, auth: sarahTok });
 const ask = asks.at(-1), names = (ask?.tools || []).map((t) => t.name), sent = JSON.stringify(ask?.messages || []) + JSON.stringify(ask?.system || []);
 assert(x.s === 200 && x.j.reply && names.length > 0, "Staff can talk to Studio AI");
+assert(!asks.some((a) => JSON.stringify(a.system || "").includes("You keep the standing rulebook")), "v84: staff can't change the team's rulebook (\"who should I call\" from Sarah teaches nothing)");
 assert(!names.some((n) => /stripe|revenue|invoice|clients_overview|autopilot|offer|decide_approval/.test(n)) && names.includes("build_website_demo"), "Staff's Studio AI has no money, settings or approval tools");
 assert(/You are talking with Sarah, a Staff/.test(sent) && /only Ty \(the owner\) can see money/.test(sent) && /Hidden: only the owner sees money/.test(sent), "Studio AI knows it's talking to Sarah and hides money from her");
 x = await call("/api/v1/operator/tool", { method: "POST", body: { name: "clients_overview", arguments: {} }, auth: sarahTok });
