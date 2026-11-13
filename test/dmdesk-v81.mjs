@@ -48,6 +48,7 @@ assert(ready.every((x) => x.review && x.review.score >= 8 && x.profile_url.start
 const x1 = ready.find((x) => x.business_name === "Peak Mindset Coaching");
 r = await call("/dm-queue/mark", { id: x1.id, status: "sent", message: x1.message + " Cheers" });
 assert(r.j.ok && r.j.item.edited && DB.agent_prospects[0].status === "sent", "Ty sends it himself and taps Sent: his edits are kept and the prospect moves to sent");
+assert(((DB.team_settings.find((x) => x.key === "examples") || {}).value?.items || []).some((x) => x.type === "dm" && x.kind === "edited" && /Cheers/.test(x.after)), "v85: the DM Ty actually sent (with his edit) becomes an example for the DM Writer");
 let st = (await call("/dm-queue")).j;
 assert(st.today.instagram === 1 && st.waiting.length === 1, "Today's count per platform goes up and it waits for a reply");
 
