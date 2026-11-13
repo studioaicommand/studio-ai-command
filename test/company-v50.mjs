@@ -54,11 +54,11 @@ const st = (k) => DB.team_settings.find((r) => r.key === k)?.value;
 
 // Full Company: heads hand work to specialists
 let x = await call("/chat", { department: "head_of_sales", message: "Write a proposal for Sunny Paws" });
-assert(TOOLSEEN.length && TOOLSEEN[0].length === 5 && TOOLSEEN[0].includes("no_show_rebooker"), "On Full Company the Head of Sales leads 5 specialists");
+assert(TOOLSEEN.length && TOOLSEEN[0].length === 6 && TOOLSEEN[0].includes("no_show_rebooker") && TOOLSEEN[0].includes("dm_reply_coach"), "On Full Company the Head of Sales leads 6 specialists (Reply Coach added in v81)");
 assert(SPEC.length === 1 && /Proposal Writer/.test(SPEC[0]) && /YOUR PERFORMANCE CONTRACT/.test(SPEC[0]), "The head hands the task to the Proposal Writer, who works to the same contract");
 x = await call("/performance");
 const total = Object.values(x.j.specialists).reduce((n, l) => n + l.length, 0);
-assert(x.j.spec_count === 36 && total === 36 && x.j.scorecards.length + total === 44, "8 heads + 36 specialists = 44 agents");
+assert(x.j.spec_count === 41 && total === 41 && x.j.scorecards.length + total === 49, "8 heads + 41 specialists = 49 agents (DM team added in v81)");
 // Demo watcher
 DB.agent_demos.push({ token: "a".repeat(40), prospect_id: "p2", business_name: "Sunny Paws Vet", views: 0, chats: 0 });
 DB.agent_prospects.find((p) => p.id === "p2").business_name = "Sunny Paws Vet";
@@ -82,7 +82,7 @@ const before = TOOLSEEN.length;
 await call("/chat", { department: "head_of_sales", message: "Plan my day" });
 assert(TOOLSEEN.length === before && NOSPEC.length > 0, "On Core Team, heads work without specialists");
 x = await call("/performance");
-assert(x.j.specialists === null && x.j.spec_count === 36, "Core Team sees what Full Company adds");
+assert(x.j.specialists === null && x.j.spec_count === 41, "Core Team sees what Full Company adds");
 // AI budget grows with revenue
 x = await call("/costs/budget", { monthly_usd: 100, rev_pct: 10, warn_pct: 80, pause_pct: 95 });
 assert(st("ai_budget").rev_pct === 10, "The AI budget can grow with revenue (10% of the last 30 days' sales)");

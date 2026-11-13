@@ -11,4 +11,8 @@ assert(r.ok && !/Jarvis/.test(JSON.stringify(r)) && r.personas.jarvis.name === "
 const app = await (await w.fetch(new Request("https://glow.studioflowandsystems.app/app/app.js"), env, { waitUntil() {} })).text();
 new Function(app);
 assert(/The Butler style/.test(app), "The settings note says Butler style on client copies");
+const dq = await w.fetch(new Request("https://glow.studioflowandsystems.app/api/v1/team/dm-queue", { headers: { Authorization: "Bearer k" } }), env, { waitUntil() {} });
+assert(dq.status === 404, "v81: a client's Command has no DM Desk (it's Studio Flow's own outreach)");
+const pf = await (await w.fetch(new Request("https://glow.studioflowandsystems.app/api/v1/team/performance", { headers: { Authorization: "Bearer k" } }), env, { waitUntil() {} })).json();
+assert(pf.spec_count === 36 && !/dm_writer|Reply Coach/.test(JSON.stringify(pf)), "v81: a client's Full Company is still 8 heads + 36 specialists = 44 agents (" + pf.spec_count + ")");
 console.log("whitelabel-voice-v80 OK");
