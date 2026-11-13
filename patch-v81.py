@@ -25,11 +25,11 @@ FIRST MESSAGE, in this order:
 2. One line that proves you actually looked (the specific thing).
 3. One line on what it costs them, in their words (enquiries going cold after hours, people who can't book from Instagram, missed calls while they're with a client). Only if you really saw it. Never invent a problem.
 4. Who you are, once and short: "I'm Ty, I run Studio Flow & Systems."
-5. One low-pressure question that's easy to say yes to: "Want me to send a 2-minute video showing what I mean?" or "Worth a quick look?"
+5. One low-pressure question that's easy to say yes to: "Want me to send a 2 minute video showing what I mean?" or "Worth a quick look?"
 6. An easy out: "No worries if not."
 Length: under 450 characters on Instagram and Facebook; LinkedIn connection notes under 300. Vary the structure and wording every time: no two messages may open the same way.
 
-SOUND HUMAN (this matters as much as anything else): write it the way Ty would type it on his phone to another business owner. Contractions (I'm, you're, it's). Short, slightly uneven sentences; it's fine to start with "Hey" or "Hi" or just their name. Plain words. One thought per line. It should read like a real person noticed something, not like a template or a sales script. No em dashes, no semicolons, no bullet points, no perfect three-part lists. Never use AI-sounding phrases: "I hope this finds you well", "I came across your profile", "I wanted to reach out", "elevate", "leverage", "seamless", "streamline", "unlock", "take it to the next level", "in today's world". Emojis: a natural one here and there (about every second message, never more than two, never as decoration at the start of every line). Pick ones that fit the moment, like a wave, a smile, hands up or a thumbs up. On LinkedIn use none or one.
+SOUND HUMAN (this matters as much as anything else): write it the way Ty would type it on his phone to another business owner. Contractions (I'm, you're, it's). Short, slightly uneven sentences; it's fine to start with "Hey" or "Hi" or just their name. Plain words. One thought per line. It should read like a real person noticed something, not like a template or a sales script. No dashes of any kind (no -, no en dash, no em dash, not even in words: write "2 minute video", "after hours", "follow up"), no asterisks (*) or other formatting symbols, no semicolons, no bullet points, no perfect three-part lists. Never use AI-sounding phrases: "I hope this finds you well", "I came across your profile", "I wanted to reach out", "elevate", "leverage", "seamless", "streamline", "unlock", "take it to the next level", "in today's world". Emojis: a natural one here and there (about every second message, never more than two, never as decoration at the start of every line). Pick ones that fit the moment, like a wave, a smile, hands up or a thumbs up. On LinkedIn use none or one.
 
 NEVER: prices, packages, discounts or "free" bait; links or attachments in a first message (they get filtered as spam); flattery you can't back up; fake familiarity ("as we discussed"); pretending to be a customer, patient or fan; hype (guarantee, 10x, skyrocket, game-changer, limited time, act now); anything about a patient's health or treatment (for health businesses talk only about bookings, enquiries, calls and admin); more than one follow-up.
 
@@ -50,6 +50,9 @@ var DM_OUT = /(no worries if not|not for you|won.t message again|happy to leave 
 var DM_AI = /(—|hope this (message )?finds you|came across your profile|wanted to reach out|\belevate\b|\bleverage\b|\bseamless(ly)?\b|\bstreamline\b|\bunlock\b|next level|in today.s (world|digital|fast))/i;
 var DM_EMOJI = /\p{Extended_Pictographic}/gu;
 var DM_FAKE = /\b(as (a|one of your) (customer|patient|client)s?|as we (discussed|spoke)|as promised|following up on our call)\b/i;
+function dmClean(t) {
+  return String(t || "").replace(/\*+/g, "").replace(/\s*[–—]\s*/g, ", ").replace(/\s+-+\s+/g, ", ").replace(/^\s*-+\s*/gm, "").replace(/([A-Za-z0-9])-(?=[A-Za-z0-9])/g, "$1 ").replace(/ ,/g, ",").replace(/,\s*([.!?])/g, "$1").replace(/[ \t]{2,}/g, " ").trim();
+}
 function dmShingles(t) { const w = String(t || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean); const out = new Set(); for (let i = 0; i + 2 < w.length; i++) out.add(w[i] + " " + w[i + 1] + " " + w[i + 2]); return out; }
 function dmSimilar(a, b) { const A = dmShingles(a), B = dmShingles(b); if (!A.size || !B.size) return 0; let n = 0; for (const x of A) if (B.has(x)) n++; return n / (A.size + B.size - n); }
 function dmOpening(t) { return String(t || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean).slice(2, 8).join(" "); }
@@ -66,6 +69,7 @@ function dmCheck(item, items) {
   if (item.step !== "reply" && !/\bty\b/i.test(m)) return "Say who it's from (Ty, Studio Flow & Systems).";
   if (["first", "connect"].includes(item.step) && !DM_OUT.test(m)) return "Give them an easy out, like \"No worries if not.\"";
   if ((m.match(/!/g) || []).length > 2) return "Calm it down: two exclamation marks at most.";
+  if (/[*\u2013\u2014-]/.test(m)) return "No dashes or asterisks.";
   if (DM_AI.test(m)) return "Sounds like AI or a template (" + (m.match(DM_AI) || [""])[0] + "). Write it the way Ty would text it.";
   if ((m.match(DM_EMOJI) || []).length > 2) return "Two emojis at most.";
   if (item.step !== "reply") {
@@ -157,14 +161,14 @@ async function dmWrite(env, pr, items, u, { channel = "", step = "first", parent
   if (!out.found || !String(out.message || "").trim()) return { skip: String(out.why_not || "Couldn't find anything specific to say.").slice(0, 200) };
   const ch = parent ? parent.channel : DM_CHANNELS[out.channel] ? out.channel : channel || "instagram";
   const item = { id: "dm" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), prospect_id: pr.id, business_name: pr.business_name, location: pr.location || "", vertical: pr.vertical || pr.niche || "", channel: ch, step: step === "first" && ch === "linkedin" ? "connect" : step,
-    profile_url: parent ? parent.profile_url : String(out.profile_url || known[ch] || "").trim().replace(/[).,]+$/, ""), person_name: String(out.person_name || parent?.person_name || "").slice(0, 40), hook: String(out.hook || "").slice(0, 160), message: String(out.message).trim(), why: String(out.why || "").slice(0, 240),
+    profile_url: parent ? parent.profile_url : String(out.profile_url || known[ch] || "").trim().replace(/[).,]+$/, ""), person_name: String(out.person_name || parent?.person_name || "").slice(0, 40), hook: dmClean(out.hook).slice(0, 160), message: dmClean(out.message), why: String(out.why || "").slice(0, 240),
     parent: parent ? parent.id : null, status: "ready", created_at: new Date().toISOString() };
   if (!item.profile_url) return { skip: "No " + DM_CHANNELS[ch].name + " profile found." };
   // the DM Reviewer: a second pair of eyes before Ty ever sees it
   const rv = await wsdAsk(env, u, "fast", { max_tokens: 900, system: "You are the DM Reviewer in Studio Flow & Systems' marketing team. You check one message against the playbook before Ty sees it. Be strict: generic, salesy, made-up or pushy messages fail.\n\n" + DM_PLAYBOOK,
     messages: [{ role: "user", content: facts + "\n\nChannel: " + DM_CHANNELS[ch].name + " (" + item.step + ")\nSpecific thing mentioned: " + item.hook + "\n\nMessage:\n" + item.message + "\n\nCall review_dm." }] }, "review_dm").catch(() => ({ score: 7 }));
   item.review = { score: Math.max(1, Math.min(10, +rv.score || 7)), problems: (Array.isArray(rv.problems) ? rv.problems : []).slice(0, 4).map((x) => String(x).slice(0, 160)) };
-  if (item.review.score < 8 && String(rv.improved || "").trim().length > 60) { const alt = { ...item, message: String(rv.improved).trim() }; if (!dmCheck(alt, items)) { item.message = alt.message; item.review.improved = true; } }
+  if (item.review.score < 8 && String(rv.improved || "").trim().length > 60) { const alt = { ...item, message: dmClean(rv.improved) }; if (!dmCheck(alt, items)) { item.message = alt.message; item.review.improved = true; } }
   const bad = dmCheck(item, items);
   if (bad) return { skip: bad };
   if (item.review.score < 6) return { skip: "The reviewer scored it " + item.review.score + "/10: " + (item.review.problems[0] || "not specific enough") };
@@ -237,7 +241,7 @@ async function dmReplyDraft(env, x, theirs) {
     tools: [{ name: "save_reply", description: "Save the draft.", input_schema: { type: "object", properties: { reply: { type: "string" }, intent: { type: "string", enum: ["interested", "question", "not_now", "no", "other"] }, next_step: { type: "string" } }, required: ["reply", "intent"] } }],
     messages: [{ role: "user", content: "Business: " + (pr?.business_name || x.business_name) + " (" + ((OUTREACH[pr?.vertical] || {}).name || pr?.niche || "") + ", " + (pr?.location || "") + ")\nWhat we saw: " + (pr?.leak || x.hook) + "\nChannel: " + DM_CHANNELS[x.channel].name + "\n\nTy's message:\n" + x.message + "\n\nTheir reply:\n" + String(theirs).slice(0, 1500) + "\n\nCall save_reply." }] }, "save_reply");
   await wsdLog(env, u, "dm_desk").catch(() => {});
-  return { reply: String(out.reply || "").trim(), intent: out.intent || "other", next_step: String(out.next_step || "").slice(0, 200) };
+  return { reply: dmClean(out.reply), intent: out.intent || "other", next_step: String(out.next_step || "").slice(0, 200) };
 }
 async function dmRoute(p, m, body, env) {
   const inst = await instGet(env).catch(() => ({}));

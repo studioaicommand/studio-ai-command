@@ -103,6 +103,13 @@ await call("/dm-queue/mark", { id: "dmX", status: "sent" });
 r = await call("/dm-queue/mark", { id: "dmY", status: "sent" });
 assert(/over your limit/.test(r.j.warn), "Going over the daily limit for a platform gives a clear warning");
 
+
+// no dashes or asterisks, ever
+DB.agent_prospects.push({ id: "p10", business_name: "Bayside Brows", location: "Brisbane", vertical: "coaching", niche: "coaching", leak: "Booking link in bio is broken", status: "to_send", score: 9, leak_report: {} });
+writer = [{ found: true, channel: "instagram", profile_url: "https://www.instagram.com/baysidebrows", hook: "booking link in your bio is broken", message: "Hey Bayside Brows 👋 the booking link in your bio is broken right now — so anyone keen hits a dead end. I'm Ty, I run Studio Flow & Systems. Want a **2-minute** video showing the fix? No worries if not.", why: "broken link" }];
+await call("/dm-queue/fill", { count: 1 });
+const bb = (await call("/dm-queue")).j.ready.find((x) => x.business_name === "Bayside Brows");
+assert(bb && !/[*\u2013\u2014-]/.test(bb.message) && /2 minute video/.test(bb.message), "No dashes or asterisks in any message, even if the writer slips: " + (bb && bb.message));
 // the team knows about it
 const app = await (await w.fetch(new Request(O + "/app/app.js"), env, { waitUntil() {} })).text();
 new Function(app);
