@@ -16,6 +16,7 @@ globalThis.fetch = async (u, init = {}) => { u = String(u); const m = (init.meth
     if (m === "POST") { const rows = [].concat(body).map((r) => { if (r.key) { const i = t.findIndex((x) => x.key === r.key); if (i >= 0) { t[i] = { ...t[i], ...r }; return t[i]; } } const n = { id: "id" + (++seq), created_at: new Date().toISOString(), ...r }; t.push(n); return n; }); return Response.json(rows); }
     if (m === "PATCH") { const rows = t.filter((r) => match(r, q)); rows.forEach((r) => Object.assign(r, body)); return Response.json(rows); } return Response.json([]); }
   if (u.includes("api.anthropic.com")) { const sys = JSON.stringify(body.system || "");
+    if (sys.includes("LinkedIn network")) return toolUse("save_people", globalThis.__people || { people: [] });
     if (sys.includes("You are the Social Prospect Finder")) return toolUse("save_businesses", hunt);
     if (sys.includes("You are the DM Reviewer")) return toolUse("review_dm", reviewer);
     if (sys.includes("You are the Reply Coach")) return toolUse("save_reply", { reply: "Ha, fair question! It's a quick fix. Want me to send the 2-minute video?", intent: "interested", next_step: "Send the video, then offer a 15-minute call" });
@@ -110,10 +111,26 @@ writer = [{ found: true, channel: "instagram", profile_url: "https://www.instagr
 await call("/dm-queue/fill", { count: 1 });
 const bb = (await call("/dm-queue")).j.ready.find((x) => x.business_name === "Bayside Brows");
 assert(bb && !/[*\u2013\u2014-]/.test(bb.message) && /2 minute video/.test(bb.message), "No dashes or asterisks in any message, even if the writer slips: " + (bb && bb.message));
+
+// v83 LinkedIn connections with decision makers
+let people = { people: [{ name: "Dr Priya Shah", title: "Principal Dentist", company: "Harbour Dental", location: "Perth", linkedin: "https://au.linkedin.com/in/priya-shah-dental", signal: "Runs a 4 chair practice, booking by phone only" }, { name: "Fake Person", company: "Nowhere", linkedin: "https://example.com/x", signal: "x" }, { name: "No Reason", company: "Blank Co", linkedin: "https://www.linkedin.com/in/blank", signal: "" }] };
+globalThis.__people = people;
+r = await call("/dm-queue/linkedin-fill", { count: 3 });
+const hp = DB.agent_prospects.find((p) => p.business_name === "Harbour Dental");
+assert(hp && hp.decision_maker === "Dr Priya Shah" && hp.source === "li_hunt" && !DB.agent_prospects.some((p) => /Nowhere|Blank Co/.test(p.business_name)), "The Social Prospect Finder finds real decision makers on LinkedIn, and nothing made up");
+st = (await call("/dm-queue")).j;
+const lc = st.ready.find((x) => x.business_name === "Harbour Dental");
+assert(lc && lc.step === "connect" && lc.no_note && lc.message === "" && /Principal Dentist/.test(lc.why), "Connection requests are queued without a note by default (free LinkedIn only allows a few)");
+r = await call("/dm-queue/linkedin-fill", { count: 3 });
+assert(!(await call("/dm-queue")).j.ready.filter((x) => x.business_name === "Harbour Dental")[1], "The same person is never queued twice");
+const dq3 = DB.team_settings.find((x) => x.key === "dm_queue");
+for (let i = 0; i < 100; i++) dq3.value.items.push({ id: "w" + i, prospect_id: "z" + i, business_name: "Z" + i, channel: "linkedin", step: "connect", no_note: true, profile_url: "https://www.linkedin.com/in/z" + i, message: "", status: "sent", sent_at: new Date().toISOString(), created_at: new Date().toISOString() });
+r = await call("/dm-queue/linkedin-fill", { count: 3 });
+assert(/weekly limit/.test(r.j.note || ""), "It stops at LinkedIn's weekly limit of about 100 requests");
 // the team knows about it
 const app = await (await w.fetch(new Request(O + "/app/app.js"), env, { waitUntil() {} })).text();
 new Function(app);
-assert(/VIEWS\.dms = /.test(app) && /\["dms", "DM Desk"\]/.test(app) && /Copy &amp; open profile/.test(app), "Growth › DM Desk is in the app");
+assert(/Find 10 LinkedIn connections/.test(app) && /dmNotes/.test(app) && /VIEWS\.dms = /.test(app) && /\["dms", "DM Desk"\]/.test(app) && /Copy &amp; open profile/.test(app), "Growth › DM Desk is in the app");
 r = await call("/dm-queue");
 assert(r.s === 200, "DM Desk answers");
 console.log("dmdesk-v81 OK");
