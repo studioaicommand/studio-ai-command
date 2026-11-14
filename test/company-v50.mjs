@@ -71,6 +71,7 @@ assert(DB.studio_command_jobs.filter((j) => j.source === "demo_watcher").length 
 // No-show rebooker
 EVENTS["tfzrthnax3Ldpncejghq"] = [{ id: "n1", appointmentStatus: "noshow", title: "Free call: Harbour Physio", startTime: "2026-11-11T00:00:00Z", contactId: "c9" }, { id: "n2", appointmentStatus: "confirmed" }];
 EVENTS["letd3kiR8QpsaVL6SXkJ"] = [];
+(DB.team_settings || (DB.team_settings = [])).push({ key: "inbox", value: { noshow_flow: "command" } }); // v97: by default GHL chases no-shows; this test covers Command doing it
 x = await call("/performance/noshow-check", {});
 const ns = DB.studio_command_jobs.filter((j) => j.source === "no_show_rebooker");
 assert(x.j.queued === 1 && ns.length === 1 && /missed \(no-show\)/.test(ns[0].request) && /two concrete times/.test(ns[0].request), "No-show rebooker: a missed sales call gets a rebooking proposal the same day");
