@@ -83,7 +83,28 @@ a = await agent("step", { task_id: n.task.id, page: page(task().dm.queue[1].prof
 a = await agent("step", { task_id: n.task.id, page: page("about:blank") });
 st = (await call("/dm-queue")).j;
 assert(task().status === "done" && /1 of 2 messages sent/.test(task().result) && st.ready.some((x) => x.id === task().dm.queue[1].id), "When the batch ends Ty gets a summary, and one that couldn't send goes back to his DM Desk");
+
+// v90 guided login, one tab: Facebook, then Instagram, then LinkedIn, with Continue in between
+{ const bt0 = DB.team_settings.find((x) => x.key === "browser_task"); if (bt0) bt0.value.status = "done";
+  r = await call("/dm-queue/login", {});
+  assert(r.j.ok && task().kind === "social_login", "\"Log in to my socials\" starts a guided login in Command Chrome");
+  n = await agent("next");
+  assert(/facebook\.com/.test(n.task.start_url), "It opens Facebook first");
+  a = await agent("step", { task_id: n.task.id, page: page("https://www.facebook.com/") });
+  assert(task().status === "needs_ty" && /Log in to Facebook/.test(task().ask) && /Next up: Instagram/.test(task().ask), "It waits for Ty to log in to Facebook");
+  st = (await call("/dm-queue")).j;
+  assert(st.browser.task.kind === "social_login" && st.browser.task.ask, "The DM Desk shows what it needs, with a Continue button");
+  await call("/browser/continue", {});
+  a = await agent("step", { task_id: n.task.id, page: page("https://www.facebook.com/") });
+  assert(a.act.kind === "goto" && /instagram\.com/.test(a.act.url), "After Continue, the same tab moves on to Instagram");
+  await agent("step", { task_id: n.task.id, page: page(a.act.url) }); await call("/browser/continue", {});
+  a = await agent("step", { task_id: n.task.id, page: page("https://www.instagram.com/") });
+  assert(a.act.kind === "goto" && /linkedin\.com/.test(a.act.url), "Then LinkedIn");
+  await agent("step", { task_id: n.task.id, page: page(a.act.url) }); await call("/browser/continue", {});
+  a = await agent("step", { task_id: n.task.id, page: page("https://www.linkedin.com/feed/") });
+  assert(task().status === "done" && /logged in to Facebook, Instagram, LinkedIn/.test(task().result), "Then it's done: logged in everywhere");
+}
 const app = await (await w.fetch(new Request(O + "/app/app.js"), env, { waitUntil() {} })).text();
 new Function(app);
-assert(/Send ticked for me/.test(app) && /Scan my friends/.test(app) && /COMMAND CHROME ON YOUR MAC/.test(app), "The DM Desk has Scan my friends, Send ticked for me and the Command Chrome status");
+assert(/Log in to my socials/.test(app) && /dmCont/.test(app) && /Send ticked for me/.test(app) && /Scan my friends/.test(app) && /COMMAND CHROME ON YOUR MAC/.test(app), "The DM Desk has Scan my friends, Send ticked for me and the Command Chrome status");
 console.log("socials-v88 OK");
