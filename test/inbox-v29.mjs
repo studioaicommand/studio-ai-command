@@ -90,7 +90,7 @@ reset({followup:"auto"},[],"x");state.actions.push(seed(30));contactData={...con
 r=await run(TUE.toISOString());assert(r.made===0,"Tagged needs-ty: never followed up");contactData={...contactData,tags:[]};
 
 // 9) Review request from a GHL workflow event
-reset({reviews:"approve",review_link:"https://g.page/r/abc123/review"},[],"Subject: Thank you, Sarah\n\nHi Sarah,\n\nLoved working with you. Would you mind leaving a quick review?\n\nTy");
+reset({reviews:"approve",review_flow:"command",review_link:"https://g.page/r/abc123/review"},[],"Subject: Thank you, Sarah\n\nHi Sarah,\n\nLoved working with you. Would you mind leaving a quick review?\n\nTy");
 await hook({contact_id:"ct1",customData:{event:"review"}});
 let rv=state.actions.filter(a=>a.params?.kind==="review");
 assert(rv.length===1&&rv[0].status==="pending"&&rv[0].params.message.includes("https://g.page/r/abc123/review"),"Review request drafted with the Google link");
@@ -100,7 +100,7 @@ reset({reviews:"approve"},[],"x");await hook({contact_id:"ct1",customData:{event
 assert(!state.actions.some(a=>a.params?.kind==="review"),"No review link set: nothing drafted");
 
 // 10) Approving sends on the right channel
-reset({reviews:"auto",review_link:"https://g.page/r/abc123/review"},[],"Subject: Thanks\n\nHi Sarah,\n\nThanks heaps!\n\nTy");
+reset({reviews:"auto",review_flow:"command",review_link:"https://g.page/r/abc123/review"},[],"Subject: Thanks\n\nHi Sarah,\n\nThanks heaps!\n\nTy");
 await hook({contact_id:"ct1",customData:{event:"review"}});
 assert(sent.length===1&&sent[0].type==="Email"&&sent[0].subject==="Thanks"&&/g\.page/.test(sent[0].html),"Auto review request emailed with the link");
 
