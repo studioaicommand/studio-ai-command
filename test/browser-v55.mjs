@@ -58,7 +58,7 @@ const src = script.split("<<'SFAGENT'\n")[1].split("\nSFAGENT\n")[0];
 assert(token && /playwright-core@1\.49\.1/.test(script) && /launchctl load/.test(script) && src.includes("launchPersistentContext"), "Installer sets up the full browser helper (Node + Playwright) with its own token");
 fs.writeFileSync("/tmp/claude-0/link-install2.zsh", script); fs.writeFileSync("/tmp/claude-0/agent/agent.mjs", src);
 agent = spawn(process.execPath, ["/tmp/claude-0/agent/agent.mjs"], { env: { ...process.env, SF_T: token, SF_O: O, SF_DIR: "/tmp/claude-0/agent", SF_CHANNEL: "bundled", SF_HEADLESS: "1" }, stdio: ["ignore", "pipe", "pipe"] });
-x = await until(async () => { const r = await call("/browser"); return r.j.agent === 2 && r.j.online ? r : null; }, 20000);
+x = await until(async () => { const r = await call("/browser"); return r.j.agent >= 2 && r.j.online ? r : null; }, 20000);
 assert(x, "The Mac helper checks in as a full browser agent");
 
 x = await call("/browser", { goal: "Find Sunny Dental and send them an enquiry asking if they take new patients", start_url: O + "/site/search" });

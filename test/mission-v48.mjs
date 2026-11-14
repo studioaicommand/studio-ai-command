@@ -86,7 +86,7 @@ const app = await (await w.fetch(new Request("https://studioflowandsystems.app/a
 try { new Function(app); console.log("\u2713 Command app script parses"); } catch (e) { console.error("FAIL: app.js", e.message); process.exit(1); }
 const hubs = app.slice(app.indexOf("const HUBS = ["), app.indexOf("const hubOf"));
 const tabs = (hubs.match(/\["[a-z]+", "[^"]+"\]/g) || []).length;
-assert(tabs === 21 && !/Systems lab|"Overview"|"Businesses"|"AI jobs"|"Memory"/.test(hubs), "21 tabs (DM Desk added in v81): Overview, Systems lab, Goals, Businesses, AI jobs, Memory and Team brain folded in");
+assert(tabs === 22 && !/Systems lab|"Overview"|"Businesses"|"AI jobs"|"Memory"/.test(hubs), "22 tabs (Do it for me added in v91): Overview, Systems lab, Goals, Businesses, AI jobs, Memory and Team brain folded in");
 assert(/VIEWS.knowledge/.test(app) && /VIEWS.scout/.test(app) && /THIS WEEK\\u2019S MISSION|THIS WEEK\u2019S MISSION/.test(app), "Knowledge, Scout ideas and the mission strip are in the app");
 console.log("v48 mission, Scout and streamlined Command: all passed");
 process.exit(0);
