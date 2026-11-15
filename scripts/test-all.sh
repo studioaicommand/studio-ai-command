@@ -2,7 +2,7 @@
 # Builds worker.mjs from source and runs every test. Used locally and by GitHub.
 set -uo pipefail
 cd "$(dirname "$0")/.."
-python3 build-worker.py >/dev/null || { echo "BUILD FAILED"; exit 1; }
+python3 build.py >/dev/null || { echo "BUILD FAILED"; exit 1; }
 # Schema column list for schema/strict.mjs (every test checks its Supabase calls against it).
 [ -n "${SCHEMA_COLS:-}" ] || python3 scripts/schema-cols.py >/dev/null || { echo "SCHEMA COLS FAILED"; exit 1; }
 node --check worker.mjs || exit 1

@@ -2,10 +2,12 @@
 
 The source for Studio AI Command, the Cloudflare Worker at https://studioflowandsystems.app (worker `studio-intelligence-core-cb9c`). Data lives in Supabase; secrets live in Cloudflare (never in this repo).
 
-## How a version is made
-- `worker-original-backup.mjs` is the original baseline. `build-worker.py` applies every `patch-vNN.py` in order to produce `worker.mjs`.
-- Each feature has its own source files (for example `v55-team.js` for server code, `v55-ui.js` / `v55-ui.css` for the app), plus a patch that wires it in and a test in `test/`.
-- `bash scripts/test-all.sh` builds and runs every test.
+## How a version is made (from v109)
+- `src/` is the source of truth: 46 organised files, joined in the order listed in `src/ORDER`. Edit the file you need directly.
+- `python3 build.py` joins them into `worker.mjs` (the file Cloudflare runs).
+- Every change gets a test in `test/`. `bash scripts/test-all.sh` builds and runs every test.
+- Add a `RELEASE_NOTES` entry for anything the agents should learn, so the Update Announcer teaches every bot after the deploy.
+- `legacy/` keeps the old patch chain (`worker-original-backup.mjs` + `patch-v01..v108.py` + `build-worker.py`) as history only. It is no longer built.
 
 ## Deploying (safe)
 GitHub > Actions > **Deploy Command** > Run workflow > type `DEPLOY`. It:
