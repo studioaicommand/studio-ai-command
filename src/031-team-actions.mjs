@@ -464,6 +464,48 @@ async function dmDaily(env) {
   if (ready) await notify(env, "\u{1F4AC} <b>DM Desk: " + ready + " ready</b>\n" + r.written + " new messages" + (li.queued ? " and " + li.queued + " LinkedIn connections" : "") + " today, each written from something real on their profile and checked by the reviewer" + (fu ? ", plus " + fu + " follow-ups" : "") + ".\nOpen Command › Growth › DM Desk: copy, open their profile, paste, send, tap Sent. Spread them through the day.").catch(() => {});
   return { ...r, followups: fu };
 }
+// ── v115 Video Coach: when someone says yes to "want me to send a 2 minute video?", Command writes Ty's script
+// (their gap, what to show on screen, what to say, which demo to open) and sends it to Telegram, ready to record. ──
+var VIDEO_OFFER = /\b(video|loom|screen ?recording)\b/i;
+var VIDEO_TOOL = { name: "save_script", description: "Save the video script.", input_schema: { type: "object", properties: {
+  said_yes: { type: "boolean", description: "True only if their reply says yes (or clearly invites) to the video. False for no, not now, questions only, or anything unclear." },
+  gap: { type: "string", description: "The one gap the video is about, in one plain sentence." },
+  check_first: { type: "string", description: "Anything Ty should double-check on their site or profile before recording (or empty)." },
+  demo: { type: "string", enum: ["receptionist", "site", "report", "none"], description: "Which demo to show in the fix section: their AI receptionist demo, their concept website, their leak report, or none." },
+  sections: { type: "array", items: { type: "object", properties: { time: { type: "string" }, show: { type: "string" }, say: { type: "string" } }, required: ["time", "show", "say"] } },
+  send_with: { type: "string", description: "The short message Ty sends with the video, in his voice." } }, required: ["said_yes"] } };
+function vcEsc(s) { return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+async function videoCoach(env, { prospectId = null, contactId = null, business = "", channel = "", ourMessage = "", theirReply = "", convo = [], key = "" } = {}) {
+  if (!VIDEO_OFFER.test(ourMessage || convo.join("\n"))) return null;
+  if (!String(theirReply || "").trim() || String(theirReply).length > 1500) return null;
+  const inst = await instGet(env).catch(() => ({})) || {};
+  if (inst.custom && !(inst.modules && inst.modules.outreach)) return null;
+  const k = String(key || (prospectId || contactId || business) + "|" + String(theirReply).slice(0, 60)).slice(0, 160);
+  const seen = (await select(env, "team_settings", "key=eq.video_scripts&select=value&limit=1").catch(() => []))?.[0]?.value || { keys: [] };
+  if ((seen.keys || []).includes(k)) return { skipped: "already scripted" };
+  let pr = null;
+  if (prospectId) [pr] = await select(env, "agent_prospects", "id=eq." + encodeURIComponent(prospectId) + "&select=id,business_name,website,location,niche,vertical,leak,evidence,instagram&limit=1").catch(() => []);
+  if (!pr && contactId) [pr] = await select(env, "agent_prospects", "ghl_contact_id=eq." + encodeURIComponent(contactId) + "&select=id,business_name,website,location,niche,vertical,leak,evidence,instagram&limit=1").catch(() => []);
+  const [demo] = pr && pr.id ? await select(env, "agent_demos", "prospect_id=eq." + encodeURIComponent(pr.id) + "&select=token&order=created_at.desc&limit=1").catch(() => []) : [];
+  if (demo) await tyMark(env).catch(() => null);
+  const links = demo ? wsdLinks(env, demo.token) : null;
+  const name = (pr && pr.business_name) || business || "them";
+  const u = wsdUsage();
+  let out;
+  try {
+    out = await wsdAsk(env, u, "smart", { max_tokens: 1400, system: "You are Ty's Video Coach at Studio Flow & Systems (Brisbane). Ty messaged a business owner about one specific gap he noticed and offered a short video. Decide if they said yes. If they did, write Ty's script for a quick, unpolished screen recording (like a Loom), 2 minutes at most, that feels like one business owner helping another.\n\nSTRUCTURE (4 sections, with times): 1) 0:00 to 0:15 who Ty is and that they said he could send it; 2) about 0:15 to 0:50 show the gap on their own website or profile, in plain words, with the cost to them (a customer booking elsewhere); 3) about 0:50 to 1:35 show the fix on screen" + (links ? " using their demo (receptionist = an AI assistant built for their business, site = a concept website for them, report = their leak report): say exactly what to click or type and what they'll see" : " using the AI Front Desk demo at studioflowandsystems.app (pick their industry and ask it the question their customer would ask)") + "; 4) about 1:35 to 2:00 a soft ask for a free 30-minute call, no pressure.\n\nRULES: Australian English, Ty's natural spoken voice, short sentences. Only facts from the conversation and the notes below; never invent numbers, results, reviews or clients. No prices. No dashes in what Ty says. Never mention AI cost. 'show' says exactly what's on screen; 'say' is what Ty says out loud. send_with is one or two short lines Ty sends with the video, no dashes." + brainRulesText(await brainRules(env).catch(() => []), "dm"),
+      tools: [VIDEO_TOOL], messages: [{ role: "user", content: "Business: " + name + (pr ? " (" + [((OUTREACH[pr.vertical] || {}).name || pr.niche), pr.location].filter(Boolean).join(", ") + ")\nWebsite: " + (pr.website || "unknown") + "\nWhat the team noticed: " + String(pr.leak || "").slice(0, 600) + (pr.evidence ? "\nEvidence: " + JSON.stringify(pr.evidence).slice(0, 600) : "") : "") + "\nChannel: " + channel + "\n\nTy's message:\n" + String(ourMessage || "").slice(0, 1500) + (convo.length ? "\n\nRecent conversation:\n" + convo.slice(-12).join("\n").slice(0, 3000) : "") + "\n\nTheir reply:\n" + String(theirReply).slice(0, 1500) + "\n\nDemo available: " + (links ? "receptionist, site, report" : "none (use the public AI Front Desk demo)") + "\n\nCall save_script." }] }, "save_script");
+  } finally { await wsdLog(env, u, "video_coach").catch(() => {}); }
+  if (!out || !out.said_yes || !Array.isArray(out.sections) || !out.sections.length) return { said_yes: false };
+  const open = links && out.demo && out.demo !== "none" ? links["ty_" + out.demo] || links[out.demo] : (String(env.PUBLIC_ORIGIN || DEFAULT_ORIGIN).replace(/\/+$/, "") + "/experience-next");
+  const text = "\u{1F3AC} <b>Video to film: " + vcEsc(name) + "</b>\nThey said yes" + (channel ? " on " + vcEsc(channel) : "") + ": “" + vcEsc(String(theirReply).slice(0, 200)) + "”\n\n<b>The gap:</b> " + vcEsc(out.gap || "") + (out.check_first ? "\n⚠️ <b>Check first:</b> " + vcEsc(out.check_first) : "") + "\n\n" +
+    out.sections.slice(0, 5).map((s) => "<b>" + vcEsc(s.time) + "</b>\n\u{1F5A5} " + vcEsc(s.show) + "\n\u{1F5E3} “" + vcEsc(s.say) + "”").join("\n\n") +
+    "\n\n\u{1F517} Open while recording" + (links ? " (your link, not tracked)" : "") + ":\n" + vcEsc(open) + (out.send_with ? "\n\n\u{1F4E8} <b>Send it with:</b> " + vcEsc(out.send_with) : "");
+  await notify(env, text.slice(0, 4000)).catch(() => {});
+  await saveSetting(env, "video_scripts", { keys: [...(seen.keys || []), k].slice(-200) }).catch(() => {});
+  await audit(env, { actor: "Studio AI Command", action: "video_script", target_type: "prospect", target_id: (pr && pr.id) || contactId || null, summary: "Video script for " + name }).catch(() => {});
+  return { said_yes: true, business: name, gap: out.gap, sections: out.sections, open, send_with: out.send_with || "" };
+}
 async function dmReplyDraft(env, x, theirs) {
   const u = wsdUsage();
   const [pr] = await select(env, "agent_prospects", "id=eq." + encodeURIComponent(x.prospect_id) + "&select=business_name,website,location,niche,vertical,leak,leak_report&limit=1").catch(() => []);
@@ -567,6 +609,8 @@ async function dmRoute(p, m, body, env) {
   if (p === "/dm-queue/reply-draft" && m === "POST") {
     if (!String(body.reply || "").trim()) return json({ ok: false, error: "Paste what they said first." }, 400);
     const r = await dmReplyDraft(env, x, body.reply);
+    const vc = await videoCoach(env, { prospectId: x.prospect_id, business: x.business_name, channel: (DM_CHANNELS[x.channel] || {}).name || x.channel, ourMessage: x.message, theirReply: body.reply, key: "dm|" + x.id }).catch((e) => ({ error: String(e.message || e).slice(0, 200) }));
+    if (vc && vc.said_yes) r.video_script = vc;
     if (x.status === "sent" && x.message) await exSave(env, { kind: "worked", type: "dm", dept: "head_of_marketing", title: DM_CHANNELS[x.channel].name + " " + x.step + " to " + x.business_name + " got a reply", text: x.message, note: [x.vertical, DM_CHANNELS[x.channel].name, x.hook].filter(Boolean).join(", ") }).catch(() => {});
     if (x.status === "sent") { x.status = "replied"; x.updated_at = new Date().toISOString(); x.their_reply = String(body.reply).slice(0, 1500); for (const k of q.items) if (k.prospect_id === x.prospect_id && k.id !== x.id && ["ready", "sent"].includes(k.status)) k.status = "closed"; await dmSave(env, q); const [pr] = await select(env, "agent_prospects", "id=eq." + encodeURIComponent(x.prospect_id) + "&select=status&limit=1").catch(() => []); if (pr && pr.status !== "won") await update(env, "agent_prospects", "id=eq." + encodeURIComponent(x.prospect_id), { status: r.intent === "no" ? "do_not_contact" : "replied", updated_at: new Date().toISOString() }).catch(() => {}); }
     return json({ ok: true, ...r });

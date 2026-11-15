@@ -75,7 +75,7 @@ x = await call("/actions/" + pend.id + "/approve", {});
 assert(x.j.ok, "Ty approves");
 const done = await until(() => st("browser_task").status === "done" ? st("browser_task") : null, 60000);
 assert(done && hits.some((h) => h.startsWith("/site/sent")), "After approval it sends, then finishes");
-assert(/07 5555 1234/.test(done.result) && /saw screenshot/.test(done.result) && tgs.some((t) => /Browser task done/.test(t)), "Result comes back with the facts (and it saw the page), and Ty is told");
+assert(/07 5555 1234/.test(done.result) && /saw screenshot/.test(done.result) && await until(() => tgs.some((t) => /Browser task done/.test(t)), 15000), "Result comes back with the facts (and it saw the page), and Ty is told");
 assert(asks.every((a) => /untrusted/.test(JSON.stringify(a.system)) || !a.tools?.some((t) => t.name === "browser_action")), "Pages are always treated as untrusted data");
 
 // password fields go to Ty

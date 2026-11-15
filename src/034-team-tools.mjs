@@ -2504,6 +2504,7 @@ async function apSweepResult(env, t, cur, last, st) {
   const x = q.items.filter((k) => k.channel === th.ch && ["sent", "accepted"].includes(k.status)).find((k) => apHas(th.name, k.person_name || k.business_name) || apHas(k.person_name || k.business_name, th.name));
   if (x) await dmRoute("/dm-queue/mark", "POST", { id: x.id, status: "replied" }, env).catch(() => {});
   const it = { id: x ? x.id : null, ch: th.ch, name: th.name, url: th.url, message: x ? x.message : "" };
+  if (x) await videoCoach(env, { prospectId: x.prospect_id, business: x.business_name, channel: DM_CHANNELS[th.ch].name, ourMessage: x.message, theirReply: rows.slice(-3).join("\n"), convo: rows, key: "dm|" + x.id }).catch(() => null);
   const d = await apDraft(env, it, rows, "reply").catch(() => null);
   if (!d || !d.needs) { t.steps.push({ n: t.steps.length + 1, kind: "read", desc: "Read " + th.name + ": nothing to answer" }); return null; }
   const row = await apCard(env, t, it, d, rows, "thread");

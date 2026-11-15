@@ -631,6 +631,8 @@ async function inboxHandle(env, body) {
   if (!history.length || history[history.length - 1].role !== 'user') history.push({ role: 'user', content: text });
 
   if (inboxIsMedia(inbound, text)) { const lc = await inboxLeadCheck(env, name, history, text, true); if (!lc.lead && !lc.needs_ty) return inboxQuiet(env, contactId, msgId, INBOX_CHANNELS[channel].label, text, lc.why); }
+  { const ob = [...msgs].reverse().find((m) => m.direction === 'outbound' && m.body);
+    if (ob && VIDEO_OFFER.test(inboxTxt(ob.body, 1500))) await videoCoach(env, { contactId, business: [contact.companyName, name].filter(Boolean).join(' / '), channel: INBOX_CHANNELS[channel].label, ourMessage: inboxTxt(ob.body, 1500), theirReply: text, convo: msgs.slice(-12).map((m) => (m.direction === 'inbound' ? 'Them: ' : 'Ty: ') + inboxTxt(m.body, 400)), key: 'ghl|' + msgId }).catch(() => null); }
   const voice94 = (await inboxVoice(env, contactId).catch(() => false)) || (!(await instGet(env).catch(() => null))?.custom && inboxTyStarted(channel, msgs, contact));
   const draft = await inboxWrite(env, channel, contact, history, '', { voice: voice94 });
   const label = INBOX_CHANNELS[channel].label;
@@ -711,6 +713,8 @@ var RELEASE_NOTES = [
     { rule: "Once a month the Head of Systems runs Evolve research: competitors' features, what their real users hate (only real, linked reviews, never invented) and new AI tech, ending in the top 5 upgrades for Command. Never suggest copying a competitor's code, design, branding or copy.", applies_to: ["head_of_systems", "command"] }] },
   { v: 107, title: "The Arena: nightly scoring of the team's replies", rules: [
     { rule: "Every night the Arena tests the team's replies against real conversations Ty approved, edited or rejected, and a set of golden scenarios. Write every reply as if it will be scored: follow the rulebook, match what Ty approved, avoid what he rejected.", applies_to: ["inbox", "dm"] }] },
+  { v: 115, studio_only: true, title: "Video Coach", rules: [
+    { rule: "When a prospect says yes to Ty's offer of a short video, the Video Coach sends Ty a ready-to-record script on Telegram (their gap, what to show, what to say, which demo to open). When drafting the text reply to that yes, keep it short (for example: thanks, I'll record it today and send it through) and never claim the video is already attached.", applies_to: ["dm", "sales", "all"] }] },
   { v: 113, studio_only: true, title: "Command runs the whole team", rules: [
     { rule: "Studio AI Command is in charge of every department and agent. When Ty changes the team through Command (a shift on or off, a new time, a pause, lean mode, a retired rule), that is the plan: follow it and don't undo it.", applies_to: ["all"] }] },
   { v: 112, studio_only: true, title: "Command opens its own system pages", rules: [
