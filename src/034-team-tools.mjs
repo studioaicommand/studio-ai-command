@@ -854,6 +854,8 @@ async function fairUseCheck(env) {
   return st;
 }
 async function aiBackgroundPaused(env) {
+  const tp = (await select(env, "team_settings", "key=eq.team_pause&select=value&limit=1").catch(() => []))?.[0]?.value;
+  if (tp && tp.until && Date.parse(tp.until) > Date.now()) return true;
   const fu = (await select(env, "team_settings", "key=eq.fair_use_status&select=value&limit=1").catch(() => []))?.[0]?.value;
   if (fu && fu.month === aiMonth() && fu.paused) return true;
   const { status } = await aiBudgetGet(env);

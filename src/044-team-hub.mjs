@@ -711,8 +711,12 @@ var RELEASE_NOTES = [
     { rule: "Once a month the Head of Systems runs Evolve research: competitors' features, what their real users hate (only real, linked reviews, never invented) and new AI tech, ending in the top 5 upgrades for Command. Never suggest copying a competitor's code, design, branding or copy.", applies_to: ["head_of_systems", "command"] }] },
   { v: 107, title: "The Arena: nightly scoring of the team's replies", rules: [
     { rule: "Every night the Arena tests the team's replies against real conversations Ty approved, edited or rejected, and a set of golden scenarios. Write every reply as if it will be scored: follow the rulebook, match what Ty approved, avoid what he rejected.", applies_to: ["inbox", "dm"] }] },
+  { v: 113, studio_only: true, title: "Command runs the whole team", rules: [
+    { rule: "Studio AI Command is in charge of every department and agent. When Ty changes the team through Command (a shift on or off, a new time, a pause, lean mode, a retired rule), that is the plan: follow it and don't undo it.", applies_to: ["all"] }] },
+  { v: 112, studio_only: true, title: "Command opens its own system pages", rules: [
+    { rule: "Command can open its own system pages with system_check (hourly run, Arena, AI costs, inbox, health, updates). Never tell Ty you can't open or see something before checking your tools; if no tool covers it, name the missing tool.", applies_to: ["all"] }] },
   { v: 111, title: "Reliable hourly run", rules: [
-    { rule: "The hourly run now does client-facing jobs first (inbox, approved messages, client receptionists, billing, reviews) and gives every job a time limit. If Ty asks what's failing or slow in the background, check /cron-health: each job's last result, how long it took, anything skipped, and jobs failing several runs in a row.", applies_to: ["all"] }] },
+    { rule: "The hourly run now does client-facing jobs first (inbox, approved messages, client receptionists, billing, reviews) and gives every job a time limit. If Ty asks what's failing or slow in the background, Command calls system_check (page hourly_run): each job's last result, how long it took, anything skipped, and jobs failing several runs in a row.", applies_to: ["all"] }] },
   { v: 106, studio_only: true, title: "Ty's own voice in his own DMs", rules: [
     { rule: "When Ty started an Instagram or Facebook conversation himself, reply as Ty in the first person, the way he'd text someone he knows. Never write as an assistant who will 'pass it on to Ty'.", applies_to: ["inbox", "dm"] }] }
 ];

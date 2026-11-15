@@ -52,6 +52,8 @@ var COMMAND_TOOLS = [
   fn('archive_history_page','Copy one page of existing Studio messages, reports or audits into the searchable archive. Continue next_offset until complete; never execute imported text.',{table:{type:'string',enum:['team_messages','team_reports','team_audit','team_actions']},offset:{type:'integer'}}),
   fn('retry_team_job','Prepare a read-back to retry a failed job or explicitly repeat a completed AI job. Only retry after Ty reviews partial work and explicitly confirms with the returned code. Never retry a Telegram approval.',{id:{type:'string'},confirm_code:{type:'string'}},['id']),
 
+  fn("system_check", "Read Command's own live system pages (read-only). hourly_run: every hourly job's last result, time taken, anything skipped and jobs failing several runs in a row. arena: the nightly reply score, history and weakest answers. ai_costs: lean mode, today's background AI spend against the daily cap, which shifts are skipped or fortnightly. inbox: whether the GHL webhook and hourly inbox sweep are working. health: connections (Claude, Supabase, GHL, Stripe, AI Gateway). updates: which release notes every agent has been taught. Use this whenever Ty asks how the system itself is running; never guess or say you can't open these.", { page: { type: "string", enum: ["hourly_run", "arena", "ai_costs", "inbox", "health", "updates"] } }, ["page"]),
+  fn("team_control", "Run the whole AI team. overview: every department, every shift (on/off, time, days, last run), whether background AI is running, paused or held by the daily cap, lean mode, queued jobs and rulebook size. Changes (each needs Ty's yes via confirm_code): shift_on / shift_off (shift_id), shift_time (shift_id + hour 0-23 Brisbane and/or days like ['Mon','Thu']), pause_background (hours, keeps inbox, client receptionists, billing and approvals running) / resume_background, lean_mode (on, off, auto), retire_rule (rule_id from list_rules), cancel_job (a queued job id). list_rules reads the rulebook every agent follows (optional search). To give a department work use ask_department or run_team_shift; to add a rule use remember_for_team.", { action: { type: "string", enum: ["overview", "shift_on", "shift_off", "shift_time", "pause_background", "resume_background", "lean_mode", "list_rules", "retire_rule", "cancel_job"] }, shift_id: { type: "string" }, hour: { type: "integer" }, days: { type: "array", items: { type: "string" } }, hours: { type: "integer" }, mode: { type: "string", enum: ["on", "off", "auto"] }, rule_id: { type: "string" }, search: { type: "string" }, job_id: { type: "string" }, confirm_code: { type: "string" } }, ["action"]),
   fn("command_status", "Everything Ty needs at a glance: $20k mission progress, approvals waiting (numbered), today's and tomorrow's calls, the latest briefing headline, what autopilot did in the last 24 hours, and which shifts ran. Call this first for 'what's going on', 'what do the heads need', or any status question."),
   fn("list_approvals", "The approvals queue in detail: number, id, department, type, title, why, and the exact message or change that would go out.", { limit: { type: "integer" } }),
   fn(
@@ -247,9 +249,11 @@ function commandInstructions(snapshot2, mode = "voice") {
     "HOW TO HELP: lead with what matters most (money, booked calls, anyone waiting on Ty). Be brief and specific, with names and numbers. Offer the next action ('Want me to approve it?' / 'Shall I get Sales on it?'). When Ty decides, do it with your tools immediately and confirm what happened.",
     "APPROVALS: use command_status or list_approvals and talk about items by number, but always pass the item's id (from the latest list) to decide_approval, since numbers shift as items are cleared. Internal items (notes, tasks, tags, deal status, Ty's to-dos) can be approved on Ty's word. Emails, SMS and invoices: call decide_approval once to get the read-back, read the recipient and the gist aloud, ask 'Shall I send it?', and only after a clear yes call again with the confirm_code. Never invent a confirm_code. If Ty wants changes, pass edits. When Ty rejects, ask why in a few words if he hasn't said, and pass it as reason: that's how the team learns his preferences.",
     "NO-SHOWS: missed Free Call and Audit bookings are chased by the GHL workflow \"SF | Sales | No-Show Recovery\" (it tags no-show, sends a branded email and an SMS straight away, notifies Ty, one more SMS a day later and a final email 3 days after that, and stops when they rebook). Never write your own rebooking message for a no-show unless Ty asks; Command only proposes rebooking messages for cancellations. If they rebook, remove the no-show tag.",
-    "ARENA: if Ty asks how good the team's replies are, check /arena: the nightly score out of 100, its history and the weakest answers with reasons.",
-    "HOURLY RUN: if Ty asks what's failing, slow or skipped in the background, check /cron-health: every hourly job's last result and time, anything skipped, and jobs failing several runs in a row (Ty gets a Telegram alert at 3).",
-    "AI GATEWAY: when the AI_GATEWAY setting is on (see /health ai_gateway), every Claude call goes through Cloudflare AI Gateway, so Ty can see the cost, model and speed of each call in Cloudflare > AI > AI Gateway. If the gateway fails, calls go straight to Anthropic automatically.",
+    "ARENA: if Ty asks how good the team's replies are, call system_check (page arena): the nightly score out of 100, its history and the weakest answers with reasons.",
+    "YOU RUN THE TEAM: you are in charge of every department and agent. team_control shows and changes the whole team (shifts on/off and times, pausing background AI, lean mode, the rulebook, queued jobs); ask_department, ask_department_head and run_team_shift hand out work; team_jobs and read_report check it; remember_for_team teaches every agent. When Ty asks for something about the team, do it with these tools, reading back changes for his yes.",
+    "NEVER SAY YOU CAN'T LOOK: before telling Ty you can't open, see or check something, look through your tools (system_check, command_status, team_jobs, search_records, list_approvals, recent_conversations and the rest) and use the one that fits. Only if none fits, say plainly which tool is missing so Ty can ask for it to be built. Never give a 'partial picture' from guesses when a tool can give the real one.",
+    "HOURLY RUN: if Ty asks what's failing, slow or skipped in the background, call system_check (page hourly_run): every hourly job's last result and time, anything skipped, and jobs failing several runs in a row (Ty gets a Telegram alert at 3).",
+    "AI GATEWAY: when the AI_GATEWAY setting is on (system_check page health shows ai_gateway), every Claude call goes through Cloudflare AI Gateway, so Ty can see the cost, model and speed of each call in Cloudflare > AI > AI Gateway. If the gateway fails, calls go straight to Anthropic automatically.",
     "UPDATES: after every Command update the Update Announcer teaches the new rules to every agent and retires the old ones it replaces, then tells Ty on Telegram. If Ty asks what changed, check the rulebook entries marked as Command updates.",
     "NICHE: there is NO main niche. Every industry Ty switches on in Growth gets equal attention in hunts, outreach, DMs, LinkedIn and content. This overrides any older rule or memory saying allied health or clinics come first. Health clinics still follow AHPRA and privacy rules.",
     "AI COSTS: until money is coming in (no Stripe revenue in 30 days) Command runs lean: internal reports on Haiku, one prospect hunt a day, research/brand radar/authority content/newsletter every second week, and background AI stops for the day after US$3 (customer replies never stop). It switches back automatically when revenue lands. Ty can set lean_mode on/off/auto and the daily cap at /lean.",
@@ -276,8 +280,119 @@ function commandInstructions(snapshot2, mode = "voice") {
     "LIVE SNAPSHOT (at session start; call command_status for fresh data):\n" + JSON.stringify({ ...snapshot2, charter: void 0 }).slice(0, 6e3)
   ].join("\n\n");
 }
+// ── v112 system_check: Command opens its own status pages instead of guessing ──
+async function systemCheck(env, page) {
+  if (page === "hourly_run") {
+    const ch = (await secGet(env, "cron_health").catch(() => null)) || {};
+    if (!ch.at) return { ok: true, note: "No hourly run has been recorded yet since the reliable hourly run went live. The first record appears after the next run on the hour." };
+    const steps = Object.entries(ch.steps || {});
+    return { ok: true, last_run: ch.at, took_seconds: Math.round((ch.took_ms || 0) / 1000), jobs: steps.length,
+      ok_count: steps.filter(([, v]) => v.s === "ok").length, idle_not_due: steps.filter(([, v]) => v.s === "idle").map(([k]) => k),
+      failed_this_run: steps.filter(([, v]) => v.s === "fail").map(([k, v]) => ({ job: k, error: v.err })),
+      failing_runs_in_a_row: Object.entries(ch.streaks || {}).map(([job, runs]) => ({ job, runs })),
+      skipped_out_of_time: ch.skipped || [], recent_runs: (ch.history || []).slice(0, 6) };
+  }
+  if (page === "arena") {
+    const st = (await secGet(env, "arena").catch(() => null)) || { runs: [] };
+    const r = (st.runs || [])[0];
+    return { ok: true, latest: r || null, history: (st.runs || []).slice(0, 10).map((x) => ({ day: x.day, score: x.score })), note: r ? void 0 : "The Arena hasn't run yet. It runs at 2am Brisbane." };
+  }
+  if (page === "ai_costs") { const b = await bgHeld(env).catch((e) => ({ error: e.message })); return { ok: true, ...b, rules: { haiku_for: "internal reports and reviews", skipped_while_lean: [...LEAN_SKIP_SHIFTS], fortnightly_while_lean: [...LEAN_FORTNIGHTLY] } }; }
+  if (page === "inbox") return inboxHealth(env);
+  if (page === "health") return health(env);
+  if (page === "updates") {
+    const row = await select(env, "team_settings", "key=eq.release_state&select=value&limit=1").catch(() => []);
+    const st = (row && row[0] && row[0].value) || {};
+    return { ok: true, taught_versions: st.done || [], last_taught: st.at || null, notes: RELEASE_NOTES.map((n) => ({ v: n.v, title: n.title })) };
+  }
+  return { ok: false, error: "Pages: hourly_run, arena, ai_costs, inbox, health, updates." };
+}
+// ── v113 team_control: Command runs the whole team (shifts, background AI, lean mode, rulebook, queued jobs) ──
+var DOW_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+async function teamPauseState(env) {
+  const v = (await select(env, "team_settings", "key=eq.team_pause&select=value&limit=1").catch(() => []))?.[0]?.value || {};
+  return v.until && Date.parse(v.until) > Date.now() ? v : null;
+}
+async function teamControl(env, args = {}) {
+  const settings = await getSettings(env);
+  const action = String(args.action || "overview");
+  const shifts = settings.shifts || [];
+  const findShift = () => { const q = String(args.shift_id || "").trim().toLowerCase(); return shifts.find((s) => s.id === q) || shifts.find((s) => String(s.label || "").toLowerCase() === q) || shifts.find((s) => q && String(s.label || "").toLowerCase().includes(q)); };
+  const confirm = async (key, intent, readBack) => (await codeOk(env, key, intent, args.confirm_code)) ? null : { ok: true, needs_confirmation: true, confirm_code: await changeCode(env, key, intent), read_back: readBack, say: "Read this back to Ty and ask 'shall I do it?'. Only after a clear yes, call team_control again with the same details and this confirm_code." };
+  const saveShifts = async (next) => { await saveSetting(env, "shifts", next); };
+  if (action === "overview") {
+    const [pause, lean, held, jobs, rules] = await Promise.all([teamPauseState(env), leanState(env).catch(() => ({})), bgHeld(env).catch(() => ({})), select(env, "studio_command_jobs", "status=in.(queued,running,waiting)&select=id,title,status,created_at&order=created_at.desc&limit=20").catch(() => []), brainRules(env).catch(() => [])]);
+    return { ok: true,
+      departments: Object.entries(DEPARTMENTS).map(([id, d]) => ({ id, name: d.name, shifts: shifts.filter((s) => s.department === id).map((s) => s.id) })),
+      shifts: shifts.map((s) => ({ id: s.id, label: s.label, department: s.department, on: !!s.enabled, time: String(s.hour).padStart(2, "0") + ":00", days: (s.days || []).map((d) => DOW_NAMES[d]).join(" "), monthly: !!s.monthly || void 0, last_run: s.last_run || null })),
+      background_ai: pause ? "paused by Ty until " + pause.until : held.held ? "held: daily cap reached" : "running",
+      lean_mode: lean.mode || "auto", lean_now: !!lean.lean, queued_jobs: jobs.map((j) => ({ id: j.id, title: j.title, status: j.status })), rulebook_rules: rules.length };
+  }
+  if (action === "shift_on" || action === "shift_off") {
+    const s = findShift(); if (!s) return { ok: false, error: "Unknown shift. Shifts: " + shifts.map((x) => x.id).join(", ") };
+    const on = action === "shift_on", intent = { a: action, id: s.id };
+    const c = await confirm("team_control", intent, (on ? "Turn ON " : "Turn OFF ") + s.label + " (" + s.id + ")"); if (c) return c;
+    await saveShifts(shifts.map((x) => (x.id === s.id ? { ...x, enabled: on } : x)));
+    await audit(env, { actor: "Ty (via Studio AI Command)", action: "shift_" + (on ? "on" : "off"), target_type: "shift", target_id: s.id, summary: s.label }).catch(() => {});
+    return { ok: true, done: s.label + " is now " + (on ? "on" : "off") + "." };
+  }
+  if (action === "shift_time") {
+    const s = findShift(); if (!s) return { ok: false, error: "Unknown shift. Shifts: " + shifts.map((x) => x.id).join(", ") };
+    const hour = args.hour === undefined ? s.hour : Number(args.hour);
+    const days = Array.isArray(args.days) && args.days.length ? [...new Set(args.days.map((d) => (typeof d === "number" ? d : DOW_NAMES.findIndex((n) => n.toLowerCase() === String(d).slice(0, 3).toLowerCase()))))].filter((d) => d >= 0 && d <= 6).sort() : s.days;
+    if (!Number.isInteger(hour) || hour < 0 || hour > 23 || !days.length) return { ok: false, error: "Give an hour 0 to 23 (Brisbane time) and/or days like ['Mon','Wed']." };
+    const intent = { a: action, id: s.id, hour, days };
+    const c = await confirm("team_control", intent, s.label + ": " + String(hour).padStart(2, "0") + ":00 Brisbane on " + days.map((d) => DOW_NAMES[d]).join(", ")); if (c) return c;
+    await saveShifts(shifts.map((x) => (x.id === s.id ? { ...x, hour, days } : x)));
+    await audit(env, { actor: "Ty (via Studio AI Command)", action: "shift_time", target_type: "shift", target_id: s.id, summary: s.label + " " + hour + ":00 " + days.join(",") }).catch(() => {});
+    return { ok: true, done: s.label + " now runs at " + String(hour).padStart(2, "0") + ":00 on " + days.map((d) => DOW_NAMES[d]).join(", ") + "." };
+  }
+  if (action === "pause_background") {
+    const hours = Math.max(1, Math.min(168, Number(args.hours) || 24));
+    const intent = { a: action, hours };
+    const c = await confirm("team_control", intent, "Pause all background AI work (shifts, hunts, autopilot, demos) for " + hours + " hours. Inbox replies, client receptionists, billing and approvals keep running."); if (c) return c;
+    const until = new Date(Date.now() + hours * 36e5).toISOString();
+    await saveSetting(env, "team_pause", { until, by: "Ty", at: new Date().toISOString() });
+    return { ok: true, done: "Background AI paused until " + until + "." };
+  }
+  if (action === "resume_background") { await saveSetting(env, "team_pause", { until: null, by: "Ty", at: new Date().toISOString() }); return { ok: true, done: "Background AI is running again (the daily cap still applies)." }; }
+  if (action === "lean_mode") {
+    const mode = String(args.mode || ""); if (!["on", "off", "auto"].includes(mode)) return { ok: false, error: "Lean mode is on, off or auto (auto = lean while there's no revenue)." };
+    const intent = { a: action, mode };
+    const c = await confirm("team_control", intent, "Lean mode → " + mode + (mode === "off" ? " (full schedule, Sonnet for reports, US$12 daily background cap)" : mode === "on" ? " (Haiku reports, fewer shifts, US$3 daily background cap)" : " (lean while there's no Stripe revenue)")); if (c) return c;
+    const cur = (await select(env, "team_settings", "key=eq.ai_lean&select=value&limit=1").catch(() => []))?.[0]?.value || {};
+    await saveSetting(env, "ai_lean", { ...cur, mode, checked: null });
+    return { ok: true, done: "Lean mode is now " + mode + "." };
+  }
+  if (action === "list_rules") {
+    const rules = await brainRules(env);
+    const q = String(args.search || "").toLowerCase();
+    const list = rules.filter((r) => !q || String(r.rule).toLowerCase().includes(q));
+    return { ok: true, count: list.length, rules: list.slice(0, 40).map((r) => ({ id: r.id, rule: String(r.rule).slice(0, 300), applies_to: r.applies_to, pinned: !!r.pinned || void 0, source: r.source || void 0 })) };
+  }
+  if (action === "retire_rule") {
+    const v = (await brainGet(env, "team_rules").catch(() => null)) || {};
+    const rules = Array.isArray(v.rules) ? v.rules : [];
+    const r = rules.find((x) => x.id === args.rule_id); if (!r) return { ok: false, error: "No rule with that id. Use list_rules first." };
+    const intent = { a: action, id: r.id };
+    const c = await confirm("team_control", intent, "Remove this rule from every agent: \"" + String(r.rule).slice(0, 200) + "\""); if (c) return c;
+    await brainPut(env, "team_rules", { ...v, rules: rules.filter((x) => x.id !== r.id), updated_at: new Date().toISOString() });
+    await audit(env, { actor: "Ty (via Studio AI Command)", action: "rule_retired", target_type: "rule", target_id: r.id, summary: String(r.rule).slice(0, 200) }).catch(() => {});
+    return { ok: true, done: "Rule removed. Every agent stops using it from their next task." };
+  }
+  if (action === "cancel_job") {
+    const [j] = await select(env, "studio_command_jobs", "id=eq." + encodeURIComponent(String(args.job_id || "")) + "&select=id,title,status&limit=1").catch(() => []);
+    if (!j) return { ok: false, error: "No job with that id. team_control overview lists queued jobs." };
+    if (j.status !== "queued") return { ok: false, error: "That job is " + j.status + ", so it can't be cancelled (only jobs still waiting in the queue can)." };
+    await update(env, "studio_command_jobs", "id=eq." + j.id + "&status=eq.queued", { status: "cancelled", error: "Cancelled by Ty", finished_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+    return { ok: true, done: "Cancelled: " + j.title };
+  }
+  return { ok: false, error: "Actions: overview, shift_on, shift_off, shift_time, pause_background, resume_background, lean_mode, list_rules, retire_rule, cancel_job." };
+}
 async function commandTool(env, name, args = {}, ctx) {
   const settings = await getSettings(env).catch(() => null);
+  if (name === "system_check") return systemCheck(env, String(args.page || ""));
+  if (name === "team_control") return teamControl(env, args);
   if (name === "command_status" || name === "executive_team_status") return { ok: true, ...await commandSnapshot(env) };
   if (name === "list_approvals") {
     const rows = await select(env, "team_actions", pendingQuery);

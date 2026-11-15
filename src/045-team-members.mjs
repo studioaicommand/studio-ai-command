@@ -154,8 +154,8 @@ var MEM_MONEY_TOOL = /stripe|revenue|invoice|money|profit|cost|price|billing|pay
 var MEM_STAFF_TOOLS = new Set(["ghl_search_contacts", "ghl_get_contact", "ghl_create_contact", "ghl_update_contact", "ghl_list_calendars", "ghl_free_slots", "ghl_list_appointments", "propose_ghl_appointment_book", "phone_calls", "team_jobs", "list_approvals", "recent_conversations", "conversation_messages", "show_on_screen", "send_telegram_to_ty", "find_website_leads", "build_website_demo", "adjust_website_demo", "query_prospects", "analyse_website", "leak_scan", "build_demo", "call_list", "list_saved_conversations", "read_saved_conversation"]);
 function memToolOk(role, name) {
   if (!role || role === "owner") return true;
-  if (role === "manager") return !MEM_MONEY_TOOL.test(String(name || ""));
-  if (role === "support") return !MEM_MONEY_TOOL.test(String(name || "")) && !/decide_approval|clear_approvals|update_client|propose_|send_|set_autopilot|remember_for_team|ghl_create|ghl_update|ghl_move/.test(String(name || ""));
+  if (role === "manager") return !MEM_MONEY_TOOL.test(String(name || "")) && name !== "team_control";
+  if (role === "support") return !MEM_MONEY_TOOL.test(String(name || "")) && !/decide_approval|clear_approvals|update_client|propose_|send_|set_autopilot|team_control|remember_for_team|ghl_create|ghl_update|ghl_move/.test(String(name || ""));
   return MEM_STAFF_TOOLS.has(String(name || ""));
 }
 function memRoleNote(who) {
