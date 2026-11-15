@@ -22,3 +22,6 @@ Manual fallback: paste `worker.mjs` (from the run's download) into the Cloudflar
 
 ## Client copies
 `kit/` holds the white-label client tools (new client, update all clients).
+
+## Teaching the team about changes
+Every patch that changes how the AI team should behave adds an entry to `RELEASE_NOTES` (patch-v106.py onward): the rules to teach, an optional `retire` regex for old rules/strategy memories it replaces, and `studio_only` when it does not apply to client Commands. After deploy, the Update Announcer pins those rules into the shared rulebook and tells Ty on Telegram.
