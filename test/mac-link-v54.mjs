@@ -10,7 +10,7 @@ globalThis.fetch = async (u, init = {}) => { u = String(u); const m = (init.meth
     if (m === "POST") { const rows = [].concat(body).map((r) => ({ id: "id" + (++seq), created_at: new Date().toISOString(), ...r })); if (path === "team_settings") { for (const r of rows) { const i = t.findIndex((x) => x.key === r.key); if (i >= 0) t[i] = r; else t.push(r); } } else t.push(...rows); return Response.json(rows); }
     if (m === "PATCH") { const rows = t.filter((r) => match(r, decodeURIComponent(qs))); rows.forEach((r) => Object.assign(r, body)); return Response.json(rows); } return Response.json([]); }
   if (u.includes("api.anthropic.com")) { asks.push(body); const last = body.messages.at(-1);
-    if (wantOpen && typeof last.content === "string") return Response.json({ content: [{ type: "tool_use", id: "t" + (++seq), name: "show_on_screen", input: { url: wantOpen, open_in_chrome: true } }], stop_reason: "tool_use", usage: { input_tokens: 10, output_tokens: 10 } });
+    if (wantOpen && (typeof last.content === "string" || (Array.isArray(last.content) && last.content[0]?.type === "text"))) return Response.json({ content: [{ type: "tool_use", id: "t" + (++seq), name: "show_on_screen", input: { url: wantOpen, open_in_chrome: true } }], stop_reason: "tool_use", usage: { input_tokens: 10, output_tokens: 10 } });
     return Response.json({ content: [{ type: "text", text: "Opened it in Chrome for you, Ty." }], stop_reason: "end_turn", usage: { input_tokens: 10, output_tokens: 10 } }); }
   if (u.includes("api.telegram.org")) return Response.json({ ok: true, result: { message_id: 1 } });
   if (u.includes("moonmane.test")) return new Response("<html><head><title>Moonmane</title></head><body>Hair</body></html>", { headers: { "content-type": "text/html" } });

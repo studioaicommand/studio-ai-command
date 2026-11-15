@@ -241,7 +241,7 @@ async function commandSnapshot(env) {
 function cmdCtx(env, settings) {
   return { env, dept: { id: "command", name: "Studio AI Command" }, run: { actions: [], deliverables: [], consulted: [], settings: settings || { autopilot: {} } }, settings: settings || { autopilot: {} }, threadId: null, depth: 0, runAgent, maxSteps: 6 };
 }
-function commandInstructions(snapshot2, mode = "voice") {
+function commandInstructions(snapshot2, mode = "voice", { withSnapshot = true } = {}) {
   return [
     "You are Studio AI Command: Ty Brazel's chief AI and the head of his AI executive team at Studio Flow & Systems (Brisbane). Think of yourself as Ty's JARVIS: calm, sharp, warm, a step ahead, and genuinely useful. Australian English. You are an AI, never pretend otherwise.",
     "You run the team: Chief of Staff, and heads of Marketing, Sales, Finance, Operations, Client Success, and Content & Brand. You know what they're doing through your tools, you give them work with ask_department_head, and you carry out Ty's decisions.",
@@ -277,7 +277,7 @@ function commandInstructions(snapshot2, mode = "voice") {
     mode === "voice" ? "VOICE: keep replies to two or three short sentences unless Ty asks for detail. No lists or markdown out loud. Numbers in words a person would say." : "TEXT: short paragraphs or tight bullets. Markdown is fine.",
     "THE STUDIO AI CHARTER (your rulebook: you act on Ty's behalf inside it, and ask him on Telegram for anything outside it):\n" + String(snapshot2?.charter || "").slice(0, 6e3),
     "BUSINESS BRIEF:\n" + BUSINESS_BRIEF.slice(0, 3500),
-    "LIVE SNAPSHOT (at session start; call command_status for fresh data):\n" + JSON.stringify({ ...snapshot2, charter: void 0 }).slice(0, 6e3)
+    withSnapshot ? commandSnapshotText(snapshot2) : ""
   ].join("\n\n");
 }
 // ── v112 system_check: Command opens its own status pages instead of guessing ──
@@ -596,14 +596,39 @@ async function commandTool(env, name, args = {}, ctx) {
   throw new Error("Unknown command tool");
 }
 var toClaude = (t) => ({ name: t.name, description: t.description, input_schema: { type: "object", properties: t.parameters?.properties || {}, required: t.parameters?.required || [] } });
+// ── v114 Cheaper Command, same answers: the fixed part (tools + instructions) is cached for an hour and reused at a
+// tenth of the price; the live snapshot moved after it so it no longer breaks the cache on every message. ──
+function commandSnapshotText(snapshot2) {
+  return "LIVE SNAPSHOT (at session start; call command_status for fresh data):\n" + JSON.stringify({ ...snapshot2 || {}, charter: void 0 }).slice(0, 6e3);
+}
+function cmdCacheCtl(long) {
+  return long && !globalThis.__sfNoLongCache ? { type: "ephemeral", ttl: "1h" } : { type: "ephemeral" };
+}
+// Mark the end of the conversation so the next tool round (and Ty's next message) reuse everything before it.
+function cmdCacheTail(messages) {
+  const out = messages.map((m) => ({ ...m }));
+  const m = out[out.length - 1];
+  if (!m) return out;
+  const blocks = typeof m.content === "string" ? [{ type: "text", text: m.content }] : Array.isArray(m.content) ? m.content.map((b) => ({ ...b })) : null;
+  if (!blocks || !blocks.length) return out;
+  const k = blocks.length - 1;
+  if (["text", "tool_result", "image", "document"].includes(blocks[k].type)) blocks[k] = { ...blocks[k], cache_control: { type: "ephemeral" } };
+  m.content = blocks;
+  return out;
+}
+function cmdStripLong(body) {
+  return JSON.parse(JSON.stringify(body).replace(/,"ttl":"1h"/g, ""));
+}
 async function commandChat(env, { message, history = [], allTools, runAny, snapshot: snapshot2, learn = true }) {
   const system = [
-    { type: "text", text: await instText(env, commandInstructions(snapshot2, "text")), cache_control: { type: "ephemeral" } },
-    { type: "text", text: ((await missionBlock(env).catch(() => "")) || "(no weekly mission set)") + await perfBlock(env, "chief_of_staff").catch(() => "") + personaBlock(await voiceCfg(env).catch(() => VOICE_DEFAULT)) + "\n\n" + await memoryBlock(env, "command", message).catch(() => "") + "\n\nLEARNING: The owner hates repeating themselves. Follow the rulebook above in everything. If something you need isn't in the rulebook or memory and a wrong guess could matter, ask ONE short question; the answer is saved for the whole team." }
+    { type: "text", text: await instText(env, commandInstructions(snapshot2, "text", { withSnapshot: false })), cache_control: cmdCacheCtl(true) },
+    { type: "text", text: commandSnapshotText(snapshot2) + "\n\n" + ((await missionBlock(env).catch(() => "")) || "(no weekly mission set)") + await perfBlock(env, "chief_of_staff").catch(() => "") + personaBlock(await voiceCfg(env).catch(() => VOICE_DEFAULT)) + "\n\n" + await memoryBlock(env, "command", message).catch(() => "") + "\n\nLEARNING: The owner hates repeating themselves. Follow the rulebook above in everything. If something you need isn't in the rulebook or memory and a wrong guess could matter, ask ONE short question; the answer is saved for the whole team." }
   ];
   const lastQ = [...history].reverse().find((m) => m.role === "assistant" && typeof m.content === "string");
   const learnP = !learn ? Promise.resolve(null) : learnFromTy(env, message, { source: "studio_ai", asked: lastQ && /\?\s*$/.test(lastQ.content.trim()) ? "The assistant had just asked: " + lastQ.content.slice(-300) : "" }).catch(() => null);
-  const tools = [...allTools.map(toClaude), { type: "web_search_20250305", name: "web_search", max_uses: 3, user_location: { type: "approximate", country: "AU", city: "Brisbane", timezone: "Australia/Brisbane" } }];
+  const fnTools = allTools.map(toClaude);
+  if (fnTools.length) fnTools[fnTools.length - 1] = { ...fnTools[fnTools.length - 1], cache_control: cmdCacheCtl(true) };
+  const tools = [...fnTools, { type: "web_search_20250305", name: "web_search", max_uses: 3, user_location: { type: "approximate", country: "AU", city: "Brisbane", timezone: "Australia/Brisbane" } }];
   const messages = [];
   for (const m of history.slice(-20)) {
     if (!["user", "assistant"].includes(m.role) || typeof m.content !== "string" || !m.content.trim()) continue;
@@ -616,13 +641,22 @@ async function commandChat(env, { message, history = [], allTools, runAny, snaps
   messages.push({ role: "user", content: message });
   const used = [], displays = [];
   for (let round2 = 0; round2 < 10; round2++) {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
+    const reqBody = { model: env.TEAM_MODEL || "claude-sonnet-5-5", max_tokens: 1800, system, tools, messages: cmdCacheTail(messages) };
+    const send = (b) => fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: env.TEAM_MODEL || "claude-sonnet-5-5", max_tokens: 1800, system, tools, messages }),
+      body: JSON.stringify(b),
       signal: AbortSignal.timeout(12e4)
     });
-    const d = await r.json().catch(() => ({}));
+    let r = await send(globalThis.__sfNoLongCache ? cmdStripLong(reqBody) : reqBody);
+    let d = await r.json().catch(() => ({}));
+    // If the API ever refuses the 1-hour cache setting, fall back to the normal 5-minute cache and keep going.
+    if (r.status === 400 && /ttl|cache_control|cache/i.test(d.error?.message || "") && !globalThis.__sfNoLongCache) {
+      globalThis.__sfNoLongCache = true;
+      console.error("Command: 1-hour cache refused, using 5-minute cache:", String(d.error?.message || "").slice(0, 200));
+      r = await send(cmdStripLong(reqBody));
+      d = await r.json().catch(() => ({}));
+    }
     if (!r.ok) throw new Error(r.status < 500 && AI_CAP_RE.test(d.error?.message || "") ? await aiCapped(env, d.error.message) : d.error?.message || `Claude returned HTTP ${r.status}`);
     messages.push({ role: "assistant", content: d.content });
     if (d.stop_reason === "pause_turn") continue;
