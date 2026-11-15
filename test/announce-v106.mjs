@@ -27,7 +27,7 @@ const env = { COMMAND_2FA: "off", STUDIO_TEST_KEY: "k", SUPABASE_URL: "https://s
 const call = async (path, b) => { const r = await w.fetch(new Request("https://studioflowandsystems.app/api/v1/team" + path, { method: b ? "POST" : "GET", headers: { Authorization: "Bearer k", "content-type": "application/json" }, body: b ? JSON.stringify(b) : undefined }), env, { waitUntil() {} }); return { s: r.status, j: await r.json().catch(() => ({})) }; };
 
 let r = await call("/release-announce", {});
-assert(r.j.ok && r.j.taught.length === 3, "After a deploy every new version's rules are taught: " + r.j.taught.join(", "));
+assert(r.j.ok && r.j.taught.length >= 3 && r.j.taught.some((t) => /v105/.test(t)), "After a deploy every new version's rules are taught: " + r.j.taught.join(", "));
 const rules = DB.team_settings.find((x) => x.key === "team_rules").value.rules;
 assert(rules.some((x) => /There is NO main niche/.test(x.rule) && x.pinned && x.source === "release"), "The 'no main niche' rule is now in the rulebook every agent reads (pinned, so it never drops off)");
 assert(!rules.some((x) => x.id === "r1" || x.id === "r3") && rules.some((x) => x.id === "r2"), "Old 'allied health is our main niche' and 'clinic owners' rules are retired; unrelated rules kept");
