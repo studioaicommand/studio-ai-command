@@ -889,6 +889,36 @@ function tyStrip(body) {
   return JSON.parse(j.replace(/\?ty=[a-f0-9]{1,16}(?![a-f0-9])(?:&amp;|&)/g, "?").replace(/(?:&amp;|[?&])ty=[a-f0-9]{1,16}(?![a-f0-9])/g, ""));
 }
 
+// ── v110 AI Gateway: every Claude call can run through Cloudflare AI Gateway (cost per call, logs, retries) ──
+// Switched on by the AI_GATEWAY variable ("<account id>/<gateway name>"). Off or broken: calls go straight to Anthropic.
+function aigTarget(env) {
+  const g = String(env && env.AI_GATEWAY || "").trim().replace(/^https?:\/\/gateway\.ai\.cloudflare\.com\/v1\//i, "").replace(/\/+$/, "").replace(/\/anthropic$/i, "");
+  return /^[a-f0-9]{32}\/[a-z0-9][a-z0-9_-]{0,63}$/i.test(g) ? "https://gateway.ai.cloudflare.com/v1/" + g + "/anthropic" : "";
+}
+var AIG_DIRECT = "https://api.anthropic.com/v1/messages";
+function aigInstall(env) {
+  const base = aigTarget(env);
+  globalThis.__sfAig = base ? { base, token: String(env.AI_GATEWAY_TOKEN || ""), app: env.SF_INSTANCE || env.INSTANCE_ID || "studio" } : null;
+  if (!base || globalThis.__sfAigWrapped === globalThis.fetch) return;
+  const orig = globalThis.fetch;
+  const wrapped = async function (input, init) {
+    const cfg = globalThis.__sfAig;
+    if (!cfg || typeof input !== "string" || !input.startsWith(AIG_DIRECT) || Date.now() < (globalThis.__sfAigDown || 0)) return orig(input, init);
+    const h = new Headers((init && init.headers) || {});
+    if (cfg.token) h.set("cf-aig-authorization", "Bearer " + cfg.token);
+    h.set("cf-aig-metadata", JSON.stringify({ app: String(cfg.app).slice(0, 60) }));
+    let r = null;
+    try { r = await orig(cfg.base + input.slice("https://api.anthropic.com".length), { ...(init || {}), headers: h }); } catch { r = null; }
+    // The gateway itself failed (down, misconfigured, auth): use Anthropic directly and skip the gateway for 10 minutes.
+    const gwFail = !r || ((r.status === 401 || r.status === 403 || r.status >= 500) && !/anthropic|overloaded|api_error|authentication_error/i.test(await r.clone().text().catch(() => "")));
+    if (!gwFail) return r;
+    globalThis.__sfAigDown = Date.now() + 6e5;
+    console.error("AI Gateway unavailable, going direct for 10 minutes" + (r ? " (HTTP " + r.status + ")" : ""));
+    return orig(input, init);
+  };
+  globalThis.fetch = wrapped;
+  globalThis.__sfAigWrapped = wrapped;
+}
 // ── v71 security layer: runs around every request ──
 function sfKeyEq(a, b) {
   a = String(a || ""); b = String(b || "");
@@ -937,7 +967,10 @@ function sfHarden(res, request) {
 }
 export default {
   ...SF_APP,
+  async scheduled(event, env, ctx) { aigInstall(env); return SF_APP.scheduled(event, env, ctx); },
+  async queue(batch, env, ctx) { aigInstall(env); return SF_APP.queue(batch, env, ctx); },
   async fetch(request, env, ctx) {
+    aigInstall(env);
     globalThis.__SF_TRANSCRIBE = env.TRANSCRIBE_MODEL || "";
     if (!globalThis.__sfTyMark) await tyMark(env).catch(() => {});
     if (await sfRateLimited(request).catch(() => false)) return sfHarden(new Response(JSON.stringify({ ok: false, error: "Too many requests. Please wait a few minutes and try again." }), { status: 429, headers: { "Content-Type": "application/json", "Retry-After": "600" } }), request);

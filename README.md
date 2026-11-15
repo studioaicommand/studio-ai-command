@@ -4,7 +4,7 @@ The source for Studio AI Command, the Cloudflare Worker at https://studioflowand
 
 ## How a version is made (from v109)
 - `src/` is the source of truth: 46 organised files, joined in the order listed in `src/ORDER`. Edit the file you need directly.
-- `python3 build.py` joins them into `worker.mjs` (the file Cloudflare runs).
+- `python3 build.py` joins them into `worker.mjs` (the file Cloudflare runs) and stamps a new app version from a hash of the source, so the deploy can confirm the new code is live.
 - Every change gets a test in `test/`. `bash scripts/test-all.sh` builds and runs every test.
 - Add a `RELEASE_NOTES` entry for anything the agents should learn, so the Update Announcer teaches every bot after the deploy.
 - `legacy/` keeps the old patch chain (`worker-original-backup.mjs` + `patch-v01..v108.py` + `build-worker.py`) as history only. It is no longer built.
@@ -27,3 +27,9 @@ Manual fallback: paste `worker.mjs` (from the run's download) into the Cloudflar
 
 ## Teaching the team about changes
 Every patch that changes how the AI team should behave adds an entry to `RELEASE_NOTES` (patch-v106.py onward): the rules to teach, an optional `retire` regex for old rules/strategy memories it replaces, and `studio_only` when it does not apply to client Commands. After deploy, the Update Announcer pins those rules into the shared rulebook and tells Ty on Telegram.
+
+## Optional settings (Cloudflare > Workers > Settings > Variables)
+- `AI_GATEWAY` = `<account id>/<gateway name>`: sends every Claude call through Cloudflare AI Gateway (cost and logs per call). Falls back to Anthropic directly if the gateway fails. `AI_GATEWAY_TOKEN` (secret) if the gateway is authenticated.
+
+## Background health
+- `GET /api/v1/team/cron-health`: last hourly run, each job's result and time, anything skipped, jobs failing several runs in a row (Telegram alert at 3).

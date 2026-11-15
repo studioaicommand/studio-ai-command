@@ -37,7 +37,7 @@ assert(M.stale_deals === 1 && M.stale_value === 2500 && F.includes("stale_deals"
 assert(M.overdue_invoices === 1 && M.overdue_amount === 1200 && F.includes("overdue"), "Totals overdue invoices only (not ones still in date)");
 assert(M.score < 60 && DB.team_reports.some((x) => x.subkind === "leak_scan" && /Leak scan for Studio Flow/.test(x.body)), "Scores it out of 100 and saves a report (" + M.score + "/100)");
 const src = (await import("node:fs")).readFileSync(W.split("?")[0], "utf8");
-assert(/bn\.date\.endsWith\("-01"\)/.test(src) && /await leakWatch\(e\)/.test(src) && /leak_inside_scan/.test(src), "Leak Watch re-scans on the 1st of every month; the whole team can run the scan");
+assert(/bn\.date\.endsWith\("-01"\)/.test(src) && /\(\) => leakWatch\(e\)/.test(src) && /leak_inside_scan/.test(src), "Leak Watch re-scans on the 1st of every month; the whole team can run the scan");
 const app = await (await w.fetch(new Request("https://studioflowandsystems.app/app/app.js"), env, { waitUntil() {} })).text(); new Function(app);
 assert(/Run a leak scan/.test(app) && /Not checked: /.test(app), "Performance has a Run a leak scan button, and says what it couldn't check");
 console.log("leakscan-v76 OK");

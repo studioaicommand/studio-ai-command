@@ -160,6 +160,7 @@ async function leakTestReply(env, contactId) {
 async function leakTestExpire(env) {
   const idx = await secGet(env, "leaktests").catch(() => null) || {};
   for (const [contactId, x] of Object.entries(idx)) {
+    if (!x || !x.sent_at) continue;
     if (Date.now() - Date.parse(x.sent_at) < LEAK_TEST_HOURS * 36e5) continue;
     const lt = await secGet(env, "leaktest:" + contactId).catch(() => null);
     if (!lt || lt.result !== "waiting") { delete idx[contactId]; await secPut(env, "leaktests", idx); continue; }

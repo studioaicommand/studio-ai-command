@@ -43,7 +43,7 @@ assert(r.j.ok && r.j.latest && r.j.history.length === 1 && r.j.history[0].score 
 // a bad night: score drops well below the usual -> Ty is told
 const st = DB.team_settings.find((x) => x.key === "arena") || null;
 const src = (await import("node:fs")).readFileSync(W, "utf8");
-assert(/brisbaneNow\(\)\.hour === 2 && !\(await bgHeld\(e\)/.test(src), "Runs nightly at 2am, only within the daily AI budget");
+assert(/\["Arena", \(\) => \(key && brisbaneNow\(\)\.hour === 2 && !bg102\.held/.test(src), "Runs nightly at 2am, only within the daily AI budget");
 assert(/Arena: the team scored/.test(src) && /new best score/.test(src), "Ty hears only when the team gets worse or sets a new best");
 assert(/v: 107, title: "The Arena/.test(src), "The Update Announcer teaches every agent about the Arena");
 console.log("arena-v107 OK");

@@ -57,6 +57,7 @@ async function route2(request, env, url, ctx) {
     const st = (await secGet(env, "arena").catch(() => null)) || { runs: [] };
     return json({ ok: true, latest: st.runs[0] || null, history: st.runs.map((r) => ({ day: r.day, score: r.score, baseline: r.baseline, n: r.n, version: r.version })), golden: ARENA_GOLDEN.length });
   }
+  if (seg[0] === "cron-health" && m === "GET") { const ch = (await secGet(env, "cron_health").catch(() => null)) || {}; return json({ ok: true, last_run: ch.at || null, took_seconds: ch.took_ms ? Math.round(ch.took_ms / 1000) : null, failing: Object.entries(ch.streaks || {}).map(([job, runs]) => ({ job, runs_in_a_row: runs, last_error: ch.steps?.[job]?.err || "" })), skipped: ch.skipped || [], steps: ch.steps || {}, history: (ch.history || []).slice(0, 24), ai_gateway: Boolean(aigTarget(env)) }); }
   if (seg[0] === "release-announce" && m === "POST") return json(await releaseAnnounce(env, { force: true }));
   if (seg[0] === "lean") {
     if (m === "GET") { const b = await bgHeld(env); return json({ ok: true, ...b, rules: { haiku_for: "internal reports and reviews", skipped_while_lean: [...LEAN_SKIP_SHIFTS], fortnightly_while_lean: [...LEAN_FORTNIGHTLY] } }); }
@@ -762,6 +763,7 @@ async function health(env) {
     out.error = "Team tables missing: run supabase/002_team.sql";
   }
   out.departments = DEPARTMENT_IDS.length;
+  out.ai_gateway = Boolean(aigTarget(env)) && Date.now() >= (globalThis.__sfAigDown || 0);
   return out;
 }
 var slim = ({ candidates, ...j }) => ({ ...j, candidates: (candidates || []).map((c) => ({ name: c.business_name, state: c.state })) });

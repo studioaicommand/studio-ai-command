@@ -29,7 +29,7 @@ assert(/Won: Glow Lab/.test(t) && /Replied: Bright Dental/.test(t) && /leak test
 assert(/AI cost: \$3\.50/.test(t), "Your copy shows AI cost");
 assert(tg.length === 1 && DB.team_reports.some((x) => x.subkind === "monday_report"), "Sent on Telegram and saved in Reports");
 const src = (await import("node:fs")).readFileSync(W.split("?")[0], "utf8");
-assert(/bn\.dow !== 1 \|\| bn\.hour < 8/.test(src) && /sent\.date === bn\.date/.test(src) && /await mondayReport\(e\)/.test(src), "It runs by itself on Mondays from 8am Brisbane, once a week");
+assert(/bn\.dow !== 1 \|\| bn\.hour < 8/.test(src) && /sent\.date === bn\.date/.test(src) && /\(\) => mondayReport\(e\)/.test(src), "It runs by itself on Mondays from 8am Brisbane, once a week");
 DB.team_settings.push({ key: "instance", value: { business_name: "Glow Lab Skin Clinic", product_name: "Glow Lab Command", owner_first: "Sarah", modules: {} } });
 const w2 = (await import(W + "?client")).default;
 const r2 = await w2.fetch(new Request("https://glow.studioflowandsystems.app/api/v1/team/monday-report", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer k" }, body: "{}" }), env, { waitUntil() {} }).then((x) => x.json());

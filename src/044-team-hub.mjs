@@ -65,47 +65,89 @@ async function retryDemoShots(env) {
     else await update(env, "agent_demos", `token=eq.${d.token}`, { kb: { ...(d.kb || {}), shot_tries: tries + 1 } }).catch(() => {});
   }
 }
+// ── v111 Reliable hourly run: client-facing jobs first, each job has a time limit so one slow job can't starve
+// the rest, a 13-minute budget for the whole run, and a Telegram alert when a job fails 3 runs in a row. ──
+var CRON_STEP_MS = 150000;
+var CRON_BUDGET_MS = 13 * 60000;
+var CRON_ALERT_STREAK = 3;
+async function cronRun(e, steps, { budget = CRON_BUDGET_MS, now = () => Date.now() } = {}) {
+  const t0 = now(), out = {};
+  for (const [name, fn, o = {}] of steps) {
+    if (now() - t0 > budget && !o.always) { out[name] = { s: "skipped" }; continue; }
+    const s0 = now(), ms = o.ms || CRON_STEP_MS; let timer;
+    try {
+      const r = await Promise.race([Promise.resolve().then(fn), new Promise((_, rej) => { timer = setTimeout(() => rej(new Error("still running after " + Math.round(ms / 1000) + "s, moved on")), ms); })]);
+      out[name] = r === CRON_NOT_DUE ? { s: "idle" } : { s: "ok", ms: now() - s0 };
+    } catch (x) {
+      out[name] = { s: "fail", ms: now() - s0, err: String(x && x.message || x).slice(0, 200) };
+      console.error(name + ":", out[name].err);
+    } finally { clearTimeout(timer); }
+  }
+  const prev = (await secGet(e, "cron_health").catch(() => null)) || {};
+  const streaks = { ...(prev.streaks || {}) }, alerts = [];
+  for (const [k, v] of Object.entries(out)) {
+    if (v.s === "fail") { streaks[k] = (streaks[k] || 0) + 1; if (streaks[k] === CRON_ALERT_STREAK) alerts.push(k + ": " + v.err); }
+    else if (v.s === "ok") delete streaks[k];
+  }
+  const skipped = Object.keys(out).filter((k) => out[k].s === "skipped");
+  const rec = { at: new Date(t0).toISOString(), took_ms: now() - t0, steps: out, streaks, skipped, history: [{ at: new Date(t0).toISOString(), took_ms: now() - t0, failed: Object.keys(out).filter((k) => out[k].s === "fail"), skipped }, ...(prev.history || [])].slice(0, 48) };
+  await secPut(e, "cron_health", rec).catch(() => {});
+  if (alerts.length) await notify(e, "⚠️ Command's hourly run: " + (alerts.length === 1 ? "a job has" : alerts.length + " jobs have") + " failed " + CRON_ALERT_STREAK + " runs in a row.\n\n" + alerts.map((a) => "• " + a).join("\n") + "\n\nEverything else is still running. Ask Command \"what's failing in the hourly run?\" for details.", { urgent: true }).catch(() => {});
+  return rec;
+}
+var CRON_NOT_DUE = Symbol("not due");
 async function teamScheduled(event, env) {
   const e = teamEnv(env);
-  const instMods = (await instGet(e).catch(() => null))?.modules || { outreach: true, receptionist_product: true };
-  if ((await instGet(e).catch(() => ({}))).custom) instSpecSwap();
-  await backfillExistingArchive(e).catch(x=>console.error('Archive indexing:',x.message));
-  await recoverCommandJobs(e).catch(x=>console.error('AI job recovery:',x.message));
-  if (instMods.outreach) await runDemoFollowups(e).catch(x => console.error("demo follow-ups:", x.message));
-  await phoneSync(e).catch((x) => console.error("phone calls:", x.message));
-  await aiBudgetCheck(e).catch((x) => console.error("ai budget:", x.message));
-  await mondayReport(e).catch((x) => console.error("monday report:", x.message));
-  await leakWatch(e).catch((x) => console.error("leak watch:", x.message));
-  if (instMods.outreach) await leakTestExpire(e).catch((x) => console.error("leak tests:", x.message));
-  if (instMods.outreach) await dmDaily(e).catch((x) => console.error("dm desk:", x.message));
-  await fairUseCheck(e).catch((x) => console.error("fair use:", x.message));
-  if (instMods.outreach) await fleetFairUseWatch(e).catch((x) => console.error("fleet fair use:", x.message));
-  await releaseAnnounce(e).catch((x) => console.error("release announce:", x.message));
-  if (brisbaneNow().hour === 2 && !(await bgHeld(e).catch(() => ({ held: false }))).held) await arenaRun(e, { n: (await leanState(e).catch(() => ({}))).lean ? 6 : 10 }).catch((x) => console.error("arena:", x.message));
+  const inst = (await instGet(e).catch(() => null)) || {};
+  const instMods = inst.modules || { outreach: true, receptionist_product: true };
+  if (inst.custom) instSpecSwap();
+  const key = Boolean(e.ANTHROPIC_API_KEY);
   const bg102 = await bgHeld(e).catch(() => ({ held: false }));
   const aiHold = (await aiBackgroundPaused(e).catch(() => false)) || bg102.held;
-  if (!e.ANTHROPIC_API_KEY) return;
-  if (!aiHold) await runDueShifts(e, new Date(event.scheduledTime || Date.now())).catch((x) => console.error("team shifts:", x.message));
-  if (instMods.outreach && !aiHold) await continueHunts(e, 2).catch((x) => console.error("hunts:", x.message));
-  if (instMods.outreach && !aiHold) await outreachAutopilot(e, await getSettings(e).catch(() => null)).catch((x) => console.error("outreach autopilot:", x.message));
-  if (instMods.outreach && !aiHold) await scoutDaily(e).catch((x) => console.error("scout:", x.message));
-  if (!aiHold) await coachDaily(e).catch((x) => console.error("team leader:", x.message));
-  if (!aiHold) await noShowWatch(e).catch((x) => console.error("no-show rebooker:", x.message));
-  await heldApprovedTick(e).catch((x) => console.error("held approvals:", x.message));
-  await awayTick(e).catch((x) => console.error("away:", x.message));
-  if (instMods.outreach && !aiHold && brisbaneNow().hour === 8 && new Date().getUTCDay() === 0) await wsdRetro(e).catch((x) => console.error("design retro:", x.message));
-  if (instMods.outreach && !aiHold) await continueDemos(e, 2).catch((x) => console.error("demos:", x.message));
-  if (instMods.outreach && !aiHold) await retryDemoShots(e).catch((x) => console.error("demo screenshots:", x.message));
-  if (instMods.receptionist_product) await clientsCron(e).catch((x) => console.error("clients:", x.message));
-  if (instMods.outreach && !aiHold) await checkReplies(e, runAgent).catch((x) => console.error("reply watch:", x.message));
-  await inboxSweep(e).catch((x) => console.error("inbox sweep:", x.message));
-  await inboxFollowups(e).catch((x) => console.error("follow-ups:", x.message));
-  await reviewDesk(e).catch((x) => console.error("review desk:", x.message));
-  await billingDesk(e).catch((x) => console.error("billing desk:", x.message));
-  if (!aiHold) await brainTick(e).catch((x) => console.error("team brain:", x.message));
-  await memBackfill(e).catch((x) => console.error("memory index:", x.message));
-  await moneyMonthly(e).catch((x) => console.error("monthly invoices:", x.message));
-  await cronNotify(e).catch((x) => console.error("notify:", x.message));
+  const when = new Date(event.scheduledTime || Date.now());
+  const ai = (fn) => (key && !aiHold ? fn : () => CRON_NOT_DUE);
+  const out = (fn) => (instMods.outreach ? fn : () => CRON_NOT_DUE);
+  const k = (fn) => (key ? fn : () => CRON_NOT_DUE);
+  return cronRun(e, [
+    // 1. Keep promises to clients and leads (fast, mostly no AI cost).
+    ["AI job recovery", () => recoverCommandJobs(e)],
+    ["Update announcer", () => releaseAnnounce(e)],
+    ["Inbox sweep", k(() => inboxSweep(e))],
+    ["Inbox follow-ups", k(() => inboxFollowups(e))],
+    ["Approved messages", k(() => heldApprovedTick(e))],
+    ["Away mode", k(() => awayTick(e))],
+    ["Client receptionists", k(() => (instMods.receptionist_product ? clientsCron(e) : CRON_NOT_DUE))],
+    ["Billing desk", k(() => billingDesk(e))],
+    ["Monthly invoices", k(() => moneyMonthly(e))],
+    ["Review desk", k(() => reviewDesk(e))],
+    ["Phone calls", () => phoneSync(e)],
+    ["Demo follow-ups", out(() => runDemoFollowups(e))],
+    ["Reply watch", out(ai(() => checkReplies(e, runAgent)))],
+    // 2. Guards and reports.
+    ["AI budget", () => aiBudgetCheck(e)],
+    ["Fair use", () => fairUseCheck(e)],
+    ["Fleet fair use", out(() => fleetFairUseWatch(e))],
+    ["Leak tests", out(() => leakTestExpire(e))],
+    ["Leak watch", () => leakWatch(e)],
+    ["Monday report", () => mondayReport(e)],
+    ["DM desk", out(() => dmDaily(e))],
+    // 3. The team's AI work (each job is also queued and retried on its own).
+    ["Team shifts", ai(() => runDueShifts(e, when)), { ms: 360000 }],
+    ["Arena", () => (key && brisbaneNow().hour === 2 && !bg102.held ? leanState(e).catch(() => ({})).then((ls) => arenaRun(e, { n: ls.lean ? 6 : 10 })) : CRON_NOT_DUE), { ms: 300000 }],
+    ["No-show rebooker", ai(() => noShowWatch(e))],
+    ["Prospect hunts", out(ai(() => continueHunts(e, 2))), { ms: 240000 }],
+    ["Outreach autopilot", out(ai(async () => outreachAutopilot(e, await getSettings(e).catch(() => null))))],
+    ["Scout", out(ai(() => scoutDaily(e)))],
+    ["Team leader", ai(() => coachDaily(e))],
+    ["Design retro", out(ai(() => (brisbaneNow().hour === 8 && new Date().getUTCDay() === 0 ? wsdRetro(e) : CRON_NOT_DUE)))],
+    ["Website demos", out(ai(() => continueDemos(e, 2))), { ms: 240000 }],
+    ["Demo screenshots", out(ai(() => retryDemoShots(e)))],
+    ["Team brain", ai(() => brainTick(e))],
+    // 4. Housekeeping, then the Telegram digest always gets its turn.
+    ["Memory index", k(() => memBackfill(e))],
+    ["Archive index", () => backfillExistingArchive(e)],
+    ["Telegram digest", k(() => cronNotify(e)), { always: true, ms: 60000 }]
+  ]);
 }
 async function leakReport(request, env, url) {
   const token = url.pathname.split("/")[2] || "";
@@ -669,6 +711,8 @@ var RELEASE_NOTES = [
     { rule: "Once a month the Head of Systems runs Evolve research: competitors' features, what their real users hate (only real, linked reviews, never invented) and new AI tech, ending in the top 5 upgrades for Command. Never suggest copying a competitor's code, design, branding or copy.", applies_to: ["head_of_systems", "command"] }] },
   { v: 107, title: "The Arena: nightly scoring of the team's replies", rules: [
     { rule: "Every night the Arena tests the team's replies against real conversations Ty approved, edited or rejected, and a set of golden scenarios. Write every reply as if it will be scored: follow the rulebook, match what Ty approved, avoid what he rejected.", applies_to: ["inbox", "dm"] }] },
+  { v: 111, title: "Reliable hourly run", rules: [
+    { rule: "The hourly run now does client-facing jobs first (inbox, approved messages, client receptionists, billing, reviews) and gives every job a time limit. If Ty asks what's failing or slow in the background, check /cron-health: each job's last result, how long it took, anything skipped, and jobs failing several runs in a row.", applies_to: ["all"] }] },
   { v: 106, studio_only: true, title: "Ty's own voice in his own DMs", rules: [
     { rule: "When Ty started an Instagram or Facebook conversation himself, reply as Ty in the first person, the way he'd text someone he knows. Never write as an assistant who will 'pass it on to Ty'.", applies_to: ["inbox", "dm"] }] }
 ];
