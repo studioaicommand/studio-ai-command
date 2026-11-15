@@ -68,7 +68,7 @@ assert(x.s === 400 && /already working/.test(x.j.error), "Only one browser task 
 const pend = await until(() => DB.team_actions.find((a) => a.type === "browser_step" && a.status === "pending"), 60000);
 assert(pend && /Send enquiry/i.test(pend.title) && /Filled in on this page: .Message.: Hi, do you take new patients/.test(pend.params.details), "Clicking Send waits for Ty's Approve (searching and typing didn't)");
 assert(hits.some((h) => h.startsWith("/site/results?q=dentist")) && hits.includes("/site/sunny") && !hits.some((h) => h.startsWith("/site/sent")), "It searched and opened the listing, but hasn't sent anything yet");
-assert(tgs.some((t) => /Browser: /.test(t)), "Ty gets an Approve card on Telegram");
+assert(await until(() => tgs.some((t) => /Browser: /.test(t)), 15000), "Ty gets an Approve card on Telegram");
 await new Promise((r) => setTimeout(r, 6000));
 assert(!hits.some((h) => h.startsWith("/site/sent")) && st("browser_task").status === "waiting", "Still waiting while Ty hasn't answered");
 x = await call("/actions/" + pend.id + "/approve", {});
