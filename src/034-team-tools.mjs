@@ -2150,7 +2150,7 @@ Rules:
 - FRIENDS SCAN (only when the goal says so): first read the inbox and use save_contacted with the names in the chat list (never open a chat). Then read the list and use save_people with everyone on screen whose name, title or bio shows they are a coach, practitioner, clinic or service-business owner. Copy their profile link exactly. Scroll for more and repeat. Never message anyone during a scan.`;
 // ── v88 Command Chrome: friends scan + sending approved DMs ──
 var DM_BATCH_MAX = 15;
-var WARM_HUNTS = { facebook: "https://www.facebook.com/search/people/?q=", instagram: "https://www.instagram.com/", linkedin: "https://www.linkedin.com/mynetwork/invite-connect/connections/" };
+var WARM_HUNTS = { facebook: "https://www.facebook.com/search/people/?q=", instagram: "https://www.instagram.com/", linkedin: "https://www.linkedin.com/mynetwork/invite-connect/connections/", tiktok: "https://www.tiktok.com/" };
 async function dmBrowserTask(env, t) {
   const cfg = await linkGet(env, "mac_link");
   if (!cfg?.token_hash) return { ok: false, error: "Command Link isn't set up on your Mac yet (Settings › Brand & features › Command Link)." };
@@ -2169,7 +2169,7 @@ function dmSendGoal(t) {
 }
 async function warmSave(env, people, platform, scan) {
   let added = 0;
-  const known = new Set((await select(env, "agent_prospects", "source=in.(warm_facebook,warm_instagram,warm_linkedin)&select=leak_report&limit=8000").catch(() => [])).map((p) => p.leak_report?.socials?.[platform]).filter(Boolean));
+  const known = new Set((await select(env, "agent_prospects", "source=in.(warm_facebook,warm_instagram,warm_linkedin,warm_tiktok)&select=leak_report&limit=8000").catch(() => [])).map((p) => p.leak_report?.socials?.[platform]).filter(Boolean));
   // v123 skip anyone already messaged: names seen in the inbox during this scan, and anyone already in the DM Desk
   const q = await dmLoad(env).catch(() => ({ items: [] }));
   const talked = new Set([...(scan?.contacted || []), ...q.items.map((x) => dmNameKey(x.business_name))].filter((k) => k && k.length > 2));
@@ -2177,7 +2177,7 @@ async function warmSave(env, people, platform, scan) {
   for (const p of (Array.isArray(people) ? people : []).slice(0, 40)) {
     const url = String(p.profile_url || "").trim().replace(/[?#].*$/, "").replace(/\/+$/, "");
     const name = String(p.name || "").trim().slice(0, 80);
-    if (!name || !/^https:\/\/([a-z]{2,3}\.|m\.)?(facebook|instagram|linkedin)\.com\//.test(url) || known.has(url)) continue;
+    if (!name || !/^https:\/\/([a-z]{2,3}\.|m\.)?(facebook|instagram|linkedin|tiktok)\.com\//.test(url) || known.has(url)) continue;
     if (talked.has(dmNameKey(name))) { if (scan) scan.skipped = (scan.skipped || 0) + 1; known.add(url); continue; }
     known.add(url);
     const head = String(p.headline || "").trim().slice(0, 200);
@@ -2333,7 +2333,7 @@ function apRules(m, step) {
 }
 function apItem(x) {
   const ch = x.channel;
-  return { id: x.id, ch, name: x.person_name || x.business_name, biz: x.business_name || "", handle: ch === "instagram" ? (String(x.profile_url || "").match(/instagram\.com\/([A-Za-z0-9._]+)/) || [])[1] || "" : "", url: x.profile_url, message: x.message, step: x.step };
+  return { id: x.id, ch, name: x.person_name || x.business_name, biz: x.business_name || "", handle: ch === "instagram" ? (String(x.profile_url || "").match(/instagram\.com\/([A-Za-z0-9._]+)/) || [])[1] || "" : ch === "tiktok" ? (String(x.profile_url || "").match(/tiktok\.com\/@([A-Za-z0-9._]+)/) || [])[1] || "" : "", url: x.profile_url, message: x.message, step: x.step };
 }
 function apNew(queue, mode, sweep) { return { mode, queue, i: 0, n: 0, cur: null, next_at: null, extra: [], ei: 0, sent: 0, held: 0, failed: 0, read: 0, cards: 0, notes: [], sweep: sweep || null, started: new Date().toISOString() }; }
 var apNames = (it) => [it.name, it.handle].filter(Boolean);

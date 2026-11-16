@@ -708,6 +708,8 @@ async function inboxVoiceSet(env, contactId, on, name) {
 
 // ── v106 Update Announcer: every release teaches the whole team ──
 var RELEASE_NOTES = [
+  { v: 124, title: "TikTok in the DM Desk", rules: [
+    { rule: "The DM Desk now covers TikTok too: a TikTok handle in Your profiles, Scan my friends on TikTok (your Following list), and Find people in an industry also searches TikTok. TikTok messages are sent by hand with Copy & open profile (TikTok only allows messages to people who follow back), with a gentle 10 a day limit.", applies_to: ["all"] }] },
   { v: 123, title: "Two DM Desk scans, and no double hellos", rules: [
     { rule: "The DM Desk has two scans: Scan my friends (the owner's own Facebook friends, Instagram following or LinkedIn connections, using the profile links saved in DM Desk settings, Your profiles) and Find people in an industry (new businesses researched on the web, for exactly who the owner types, like trauma coaches in Brisbane). A friends scan reads the inbox first and skips anyone already messaged. If asked to find leads in a niche, point the owner to these, and never message someone who was messaged in the last two months.", applies_to: ["all"] }] },
   { v: 104, title: "Health safety net for clinic clients", rules: [

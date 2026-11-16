@@ -75,3 +75,20 @@ assert(r.s === 400, "An industry search needs to say who to look for");
 const ui = (await w.fetch(new Request(O + "/app/app.js"), env, { waitUntil() {} }).then((x) => x.text()).catch(() => ""));
 assert((/Find people in an industry/.test(ui) && /Your profiles/.test(ui)), "The DM Desk has both scans and a Your profiles section");
 console.log("scan-v123 OK");
+// v124 TikTok
+r = await call("/dm-queue/settings", { handles: { tiktok: "https://www.tiktok.com/@soulfulcoach?lang=en" } });
+assert(cfg().handles.tiktok === "soulfulcoach" && cfg().daily.tiktok === 10, "TikTok handle saves (from a link or @handle) with a gentle 10 a day limit");
+r = await call("/dm-queue/scan", { mode: "friends", platform: "tiktok", preset: "trauma", target: 5 });
+assert(r.j.ok && /tiktok\.com\/@soulfulcoach/.test(task().goal) && /tiktok\.com\/messages/.test(task().start_url), "A TikTok friends scan reads your TikTok inbox, then your own Following list");
+await call("/browser/stop", {});
+DB.team_settings = DB.team_settings.filter((x) => x.key !== "browser_task");
+hunter = [{ businesses: [{ business_name: "Calm Body Somatics", location: "Brisbane", tiktok: "https://www.tiktok.com/@calmbodysomatics", signal: "Bio says DM for sessions, no booking link" }] }];
+writer = [{ found: true, channel: "tiktok", profile_url: "https://www.tiktok.com/@calmbodysomatics", person_name: "", hook: "bio says DM for sessions", message: "Hi! Loved finding a somatic coach on TikTok. Your bio says DM for sessions, so new people have to wait on you before they can book in. I'm Ty from Studio Flow & Systems, happy to show you a simple fix in a quick video if useful? No worries if not.", why: "somatic coach on TikTok" }];
+r = await call("/dm-queue/scan", { mode: "industry", niche: "somatic coaches", area: "Brisbane", target: 1 });
+const tt = (await call("/dm-queue")).j.ready.find((x) => x.business_name === "Calm Body Somatics");
+assert(r.j.written === 1 && tt && tt.channel === "tiktok", "The industry search finds people on TikTok too and writes a TikTok message");
+assert((await call("/dm-queue")).j.channels.tiktok, "TikTok shows in the DM Desk with its own daily count");
+r = await call("/dm-queue/send-batch", { ids: [tt.id] });
+assert(r.s === 400 && /Copy & open profile/.test(r.j.error) && DB.team_settings.find((x) => x.key === "dm_queue").value.items.find((x) => x.id === tt.id).status === "ready", "TikTok messages aren't sent by Command Chrome: they stay ready for Copy & open profile");
+console.log("tiktok-v124 OK");
+
