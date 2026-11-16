@@ -196,7 +196,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     connections: ["Connections", "Every system Studio AI and the team can see"],
     autopilot: ["Settings", "What runs on its own, when, and what always waits for you"],
     chrome: ["Do it for me", "Ask Command to do something in the Command Chrome window on your Mac, and watch it work"],
-    dms: ["DM Desk", "Instagram, Facebook and LinkedIn messages, one unique message per business. You send, the team does the rest"],
+    dms: ["DM Desk", "Instagram, Facebook, LinkedIn and TikTok messages, one unique message per person. You approve, the team does the rest"],
     outreach: ["Outreach today", "Researched, scored and ready: approve today\u2019s batch in one go"],
     calls: ["Phone calls", "Every call your AI receptionist answers, and the phone script builder"],
     fleet: ["Client Commands", "Every client\u2019s own Command: health, version, AI cost and support access"],
@@ -259,7 +259,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
   // White-label (v43): this copy's brand and switched-on features. Studio Flow's own Command has no profile and is unchanged.
   let INST = null, INST_HOME = 'today';
   const INST_OFF = new Set();
-  const INST_VIEWS = { outreach: ['today', 'growth', 'demos', 'business', 'outreach', 'dms'], receptionist_product: ['clients'], offers_page: ['offers'] };
+  const INST_VIEWS = { outreach: ['today', 'growth', 'demos', 'business', 'outreach'], social_outreach: ['dms'], receptionist_product: ['clients'], offers_page: ['offers'] };
   function instWalk(root) {
     if (!INST || !INST.custom || !root) return;
     const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -2405,6 +2405,16 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     const c = $('#v55c', box); if (c) c.onclick = async () => { try { await team('/browser/continue', { method: 'POST', body: {} }); toast('Carrying on', 'ok'); redo(); } catch (e) { toast(e.message, 'bad'); } };
     const r = $('#v55r', box); if (r) r.onclick = redo;
   };
+  // v128 Privacy and AI notice: the public page each business links from its privacy policy
+  const aiNoticeCard = (el) => {
+    if (el.querySelector('#aiNoticeCard')) return;
+    const u = location.origin + '/ai-notice', c = document.createElement('section');
+    c.className = 'wf-glass'; c.id = 'aiNoticeCard'; c.style.marginTop = '16px';
+    c.innerHTML = '<h3>Privacy and AI notice</h3><p class="mu sm">A plain-English page that explains how your business uses AI: what it does, what it never decides, what information it uses and how people reach a person. From 10 December 2026, Australian privacy policies have to explain automated decisions, so link this page from yours. It’s general information, not legal advice.</p><div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px"><a class="btn sm pri" href="' + u + '" target="_blank" rel="noopener">Open the page</a><button class="btn sm ghost" id="aiNoticeCopy">Copy the link</button></div>';
+    el.append(c);
+    c.querySelector('#aiNoticeCopy').onclick = () => { try { navigator.clipboard.writeText(u); toast('Link copied', 'ok'); } catch { toast(u); } };
+  };
+  queueMicrotask(() => { const B128 = VIEWS.brand; if (B128) VIEWS.brand = async (el) => { await B128(el); if (still('brand', el)) aiNoticeCard(el); }; });
   queueMicrotask(() => { const B55 = VIEWS.brand; if (B55) VIEWS.brand = async (el) => { await B55(el); if (still('brand', el)) setTimeout(() => browserCard(el), 400); }; });
   VIEWS.brain = async (el) => {
     el.innerHTML = sk(260);

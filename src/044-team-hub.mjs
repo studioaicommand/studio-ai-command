@@ -127,11 +127,12 @@ async function teamScheduled(event, env) {
     // 2. Guards and reports.
     ["AI budget", () => aiBudgetCheck(e)],
     ["Fair use", () => fairUseCheck(e)],
+    ["Agent watch", () => agentWatch(e)],
     ["Fleet fair use", out(() => fleetFairUseWatch(e))],
     ["Leak tests", out(() => leakTestExpire(e))],
     ["Leak watch", () => leakWatch(e)],
     ["Monday report", () => mondayReport(e)],
-    ["DM desk", out(() => dmDaily(e))],
+    ["DM desk", () => (instMods.outreach || instMods.social_outreach ? dmDaily(e) : CRON_NOT_DUE)],
     // 3. The team's AI work (each job is also queued and retried on its own).
     ["Team shifts", ai(() => runDueShifts(e, when)), { ms: 360000 }],
     ["Arena", () => (key && brisbaneNow().hour === 2 && !bg102.held ? leanState(e).catch(() => ({})).then((ls) => arenaRun(e, { n: ls.lean ? 6 : 10 })) : CRON_NOT_DUE), { ms: 300000 }],
@@ -727,6 +728,8 @@ async function inboxVoiceSet(env, contactId, on, name) {
 
 // ── v106 Update Announcer: every release teaches the whole team ──
 var RELEASE_NOTES = [
+  { v: 128, title: "Ready to sell: client copies, AI notice, front desk numbers, agent watch", rules: [
+    { rule: "On a client's copy, everything sent (Telegram, emails, texts, DMs) uses the client's own name and business, never Studio Flow's. The DM Desk is its own module a client can switch on, and writes as the client. There is a public Privacy and AI notice at /ai-notice (Settings, Brand) to link from privacy policies. The Monday report shows enquiries answered, the after-hours share, typical reply time and handovers. If the team suddenly does far more than usual in an hour, the owner gets an alert and can say pause the team.", applies_to: ["all"] }] },
   { v: 127, title: "Opt-outs honoured automatically", rules: [
     { rule: "When someone replies no thanks, not interested, unsubscribe, stop or remove me, Command records it straight away: the contact is tagged opted out in GHL, the business is marked do not contact, anything waiting for them is cancelled, and it's logged. Never draft outreach, follow-ups or DMs to anyone marked do not contact or opted out.", applies_to: ["all"] }] },
   { v: 126, title: "Command Link on Windows, socials login in tabs", rules: [

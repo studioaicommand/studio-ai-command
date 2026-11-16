@@ -27,6 +27,7 @@ async function tg(env, method, payload) {
   if (!env.TELEGRAM_BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN isn't set in Cloudflare.");
   if (!globalThis.__sfTyMark) await tyMark(env).catch(() => {});
   payload = tyPayload(payload);
+  { const i128 = await instGet(env).catch(() => null); if (i128 && i128.custom && payload && typeof payload === "object") { payload = { ...payload }; for (const k of ["text", "caption"]) if (typeof payload[k] === "string") payload[k] = instRewrite(payload[k], i128); } }
   const receipt=await prepareTelegramDelivery(env,method,payload);
   const r = await fetch(API2(env, method), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload || {}), signal: AbortSignal.timeout(15e3) });
   const j = await r.json().catch(() => ({}));
@@ -203,12 +204,14 @@ async function handleUpdate(env, u, deps) {
   const username = String(from.username || "").toLowerCase();
   if (u.message && !t.chat_id) {
     const code = (String(u.message.text || "").match(/\d{6}/) || [])[0];
-    if (username === OWNER_USERNAME && code && code === t.pair_code && Date.now() < (t.pair_expires || 0)) {
+    const inst128 = await instGet(env).catch(() => ({ custom: false })), ownerOk = inst128.custom || username === OWNER_USERNAME;
+    if (ownerOk && code && t.pair_code && (t.pair_tries || 0) < 5 && sfKeyEq(code, String(t.pair_code)) && Date.now() < (t.pair_expires || 0)) {
       await saveSetting(env, "telegram", { bot: t.bot, chat_id: chatId, username, linked_at: (/* @__PURE__ */ new Date()).toISOString() });
       await audit(env, { actor: "Ty", action: "telegram_linked", summary: `Telegram linked to @${username}` });
       await tg(env, "sendMessage", { chat_id: chatId, text: "\u2705 Studio AI is connected. I'll message you here when money is close (replies, bookings, payments) and send a 7am digest. Type anything to talk to Studio AI Command.\n\nTry /today" });
     } else {
-      await tg(env, "sendMessage", { chat_id: chatId, text: username === OWNER_USERNAME ? "Open Studio AI \u2192 Connections \u2192 Telegram, tap Connect, then send me the 6-digit code." : "This is a private assistant." }).catch(() => {
+      if (ownerOk && code && t.pair_code) await saveSetting(env, "telegram", { ...t, pair_tries: (t.pair_tries || 0) + 1, ...((t.pair_tries || 0) + 1 >= 5 ? { pair_code: null } : {}) }).catch(() => {});
+      await tg(env, "sendMessage", { chat_id: chatId, text: ownerOk ? "Open Studio AI \u2192 Connections \u2192 Telegram, tap Connect, then send me the 6-digit code." : "This is a private assistant." }).catch(() => {
       });
     }
     return;

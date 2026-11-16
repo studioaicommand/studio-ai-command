@@ -1234,6 +1234,14 @@ async function mondayReport(env, { force = false } = {}) {
   L.push("✉️ Messages sent with your OK: <b>" + sends(acts) + "</b>" + arrow(sends(acts), sends(prev)));
   const autoN = acts.filter((x) => x.auto).length;
   if (autoN) L.push("⚙️ Handled on autopilot: " + autoN);
+  // v128 the front desk's week in numbers: what clients judge it by
+  const fd = await frontDeskWeek(env, d7).catch(() => null);
+  if (fd && fd.enquiries) {
+    L.push("📥 Enquiries answered: <b>" + fd.enquiries + "</b>" + (fd.after ? " (" + fd.after + " after hours or on the weekend, " + Math.round(fd.after / fd.enquiries * 100) + "%)" : ""));
+    if (fd.median_min != null) L.push("⚡ Typical reply time: <b>" + leakTestWords2(fd.median_min) + "</b>");
+    if (fd.handed) L.push("🙋 Handed to you with the full story: " + fd.handed);
+    if (fd.sent) L.push("🕒 Time saved on replies: about " + Math.max(1, Math.round(fd.sent * 6 / 60)) + " hour" + (Math.round(fd.sent * 6 / 60) > 1 ? "s" : ""));
+  }
   if (!custom) {
     L.push("🔎 New prospects researched: " + pros.length);
     L.push("👀 Demos opened by businesses: " + demos.length);
@@ -1253,6 +1261,40 @@ async function mondayReport(env, { force = false } = {}) {
   await notify(env, text).catch(() => {});
   await saveSetting(env, "monday_report", { date: bn.date, report_id: row?.id || null });
   return { ok: true, report_id: row?.id || null, text };
+}
+// v128 front desk numbers for the Monday report: enquiries, after-hours share, typical reply time, handovers
+// v128 Agent watch: if the team suddenly does far more than usual in an hour (actions, messages sent, AI spend),
+// the owner hears about it straight away, with how to pause everything. Once per 6 hours per kind.
+async function agentWatch(env) {
+  const now = Date.now(), h1 = new Date(now - 36e5).toISOString(), d14 = new Date(now - 14 * 864e5).toISOString();
+  const [acts, use] = await Promise.all([
+    select(env, "team_actions", "created_at=gte." + d14 + "&select=created_at,decided_at,status,type,department&limit=20000").catch(() => []),
+    select(env, "team_usage", "created_at=gte." + d14 + "&select=created_at,cost_aud&limit=20000").catch(() => [])]);
+  const recent = (iso) => iso && Date.parse(iso) >= now - 36e5, base = (n) => n / (14 * 24);
+  const m = {
+    actions: { label: "actions created", now: acts.filter((a) => recent(a.created_at)).length, avg: base(acts.filter((a) => !recent(a.created_at)).length), floor: 25 },
+    sends: { label: "messages sent", now: acts.filter((a) => a.status === "done" && recent(a.decided_at)).length, avg: base(acts.filter((a) => a.status === "done" && a.decided_at && !recent(a.decided_at)).length), floor: 15 },
+    cost: { label: "of AI spend", now: use.filter((u) => recent(u.created_at)).reduce((x, u) => x + (+u.cost_aud || 0), 0), avg: base(use.filter((u) => !recent(u.created_at)).reduce((x, u) => x + (+u.cost_aud || 0), 0)), floor: 3, money: true } };
+  const st = (await select(env, "team_settings", "key=eq.agent_watch&select=value&limit=1").catch(() => []))?.[0]?.value || {};
+  const hits = Object.entries(m).filter(([k, v]) => v.now > Math.max(v.floor, v.avg * 4) && !(st[k] && now - Date.parse(st[k]) < 6 * 36e5));
+  if (!hits.length) return { ok: true, quiet: true };
+  const fmt = (v, x) => v.money ? "$" + x.toFixed(2) : String(Math.round(x * 10) / 10);
+  const top = Object.entries(acts.filter((a) => recent(a.created_at)).reduce((o, a) => { const k = (a.department || "team") + " " + String(a.type || "").replace(/_/g, " "); o[k] = (o[k] || 0) + 1; return o; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => k + " (" + n + ")").join(", ");
+  const text = "\u26A0\uFE0F <b>Unusual activity in the last hour</b>\n" + hits.map(([, v]) => "\u2022 " + fmt(v, v.now) + " " + v.label + " (normally about " + fmt(v, v.avg) + ")").join("\n") + (top ? "\nBusiest: " + top : "") + "\n\nIf that's expected, ignore this. If not, tell Command <b>pause the team</b> and nothing else runs until you say so.";
+  await notify(env, text, { urgent: true }).catch(() => {});
+  await audit(env, { actor: "system", action: "agent_watch_alert", summary: hits.map(([k, v]) => k + " " + fmt(v, v.now)).join(", ") }).catch(() => {});
+  for (const [k] of hits) st[k] = new Date(now).toISOString();
+  await saveSetting(env, "agent_watch", st).catch(() => {});
+  return { ok: true, alerted: hits.map(([k]) => k) };
+}
+async function frontDeskWeek(env, since) {
+  const rows = await select(env, "team_actions", "type=eq.ghl_reply&created_at=gte." + since + "&select=status,created_at,decided_at,title&limit=5000").catch(() => []);
+  if (!rows.length) return { enquiries: 0 };
+  const hourOf = (iso) => { const d = new Date(Date.parse(iso) + 10 * 36e5); return { h: d.getUTCHours(), dow: d.getUTCDay() }; };
+  const after = rows.filter((r) => { const t = hourOf(r.created_at); return t.dow === 0 || t.dow === 6 || t.h < 8 || t.h >= 18; }).length;
+  const done = rows.filter((r) => r.status === "done" && r.decided_at);
+  const mins = done.map((r) => Math.max(0, Math.round((Date.parse(r.decided_at) - Date.parse(r.created_at)) / 6e4))).sort((a, b) => a - b);
+  return { enquiries: rows.length, after, sent: done.length, median_min: mins.length ? mins[Math.floor(mins.length / 2)] : null, handed: rows.filter((r) => /^Needs you/.test(r.title || "")).length };
 }
 function leakTestWords2(mins) { mins = +mins || 0; return mins < 60 ? mins + " min" : mins < 1440 ? Math.round(mins / 6) / 10 + " hours" : Math.round(mins / 144) / 10 + " days"; }
 async function missionBlock(env) {

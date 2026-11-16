@@ -31,6 +31,7 @@ var fmtBne = (iso) => { const t = Date.parse(iso || ""); return t ? new Date(t).
 var GHL = "https://services.leadconnectorhq.com";
 async function req(env, method, path, body, version = "2021-07-28") {
   body = tyStrip(body);
+  if (path === "/conversations/messages" && body && typeof body === "object" && typeof instGet === "function") { const i128 = await instGet(env).catch(() => null); if (i128 && i128.custom) { body = { ...body }; for (const k of ["subject", "html", "message"]) if (typeof body[k] === "string") body[k] = instRewriteOut(body[k], i128); } }
   const res = await fetch(`${GHL}${path}`, {
     method,
     headers: {

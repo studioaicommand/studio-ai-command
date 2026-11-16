@@ -452,6 +452,7 @@ async function secSecretsRemove(env, key) {
 // No profile saved = Studio Flow's own Command, exactly as before.
 var INST_MODULES = {
   outreach: { label: "Lead finding and outreach (Studio only, never on client copies)", desc: "Prospect hunts, call lists, cold email campaign, receptionist and website demos, leak reports" },
+  social_outreach: { label: "DM Desk (social outreach)", desc: "Scan your own friends and followers, find new people in your industry, and get personal messages written for your approval" },
   receptionist_product: { label: "Sell AI receptionists", desc: "Receptionist clients, website widgets, client book" },
   offers_page: { label: "Public offers page", desc: "A shareable page of your products and prices" },
   site_assistant: { label: "Website assistant", desc: "The Studio AI chat on your public website" }
@@ -486,6 +487,11 @@ async function instPublic(env) {
   return { ok: true, custom: i.custom, business_name: i.business_name, product_name: i.product_name, owner_first: i.owner_first, colours: i.colours, login_headline: i.login_headline, assets_v: i.assets_v, modules: i.modules };
 }
 // Every AI prompt in a client's copy is told whose business it is, and Studio's own names are swapped for theirs.
+// v128 for messages going OUT to customers: swap Studio's names and Ty's sign-offs, but never touch a customer who happens to be called Ty
+function instRewriteOut(t, i) {
+  return String(t).replace(/Studio Flow (&|&amp;|and) Systems/g, i.business_name).replace(/Studio AI Command/g, i.product_name).replace(/Studio AI/g, i.product_name).replace(/Ty Brazel/g, i.owner_name || i.owner_first)
+    .replace(/\b(I'm|I am|from|it's|It's|Cheers,?|Thanks,?|Regards,?|— |<br>|\n)(\s*)Ty\b(?!['’]s)/g, (m, a, sp) => a + sp + i.owner_first);
+}
 function instRewrite(t, i) {
   return String(t).replace(/Studio Flow (&|&amp;|and) Systems/g, i.business_name).replace(/Studio AI Command/g, i.product_name).replace(/Studio AI/g, i.product_name).replace(/Ty Brazel/g, i.owner_name || i.owner_first).replace(/\bTy's\b/g, i.owner_first + "'s").replace(/\bTy\b/g, i.owner_first);
 }
@@ -508,6 +514,7 @@ async function instText(env, text) {
 // Features that are switched off for this copy answer "not found", on the API and in public.
 var INST_RULES = [
   ["outreach", /^\/api\/v1\/team\/(prospects|hunt|campaign|calls|demos|demo-followups|website-demos|imports|replies|rescan|business|workday)(\/|$)|^\/(demo|demo-assets|leak-report)\/|^\/api\/v1\/demo\//],
+  ["social_outreach", /^\/api\/v1\/team\/dm-queue(\/|$)/],
   ["receptionist_product", /^\/api\/v1\/team\/(clients|book)(\/|$)|^\/w\/|^\/api\/v1\/w\//],
   ["offers_page", /^\/offers\/?$|^\/api\/v1\/team\/offers(\/|$)/],
   ["site_assistant", /^\/api\/v1\/site\/|^\/experience|^\/api\/v1\/public\//]
@@ -516,6 +523,7 @@ async function instGate(request, env, ctx) {
   const url = new URL(request.url), p = url.pathname;
   if (p === "/api/v1/setup" && request.method === "POST") return instSetup(request, env, ctx);
   if (p === "/api/v1/instance/brand" && request.method === "GET") return secJson(await instPublic(env));
+  if (p === "/ai-notice" && request.method === "GET") return aiNoticePage(teamEnv(env));
   if (/^\/app\/(logo\.webp|mark\.webp|icon\.png|manifest\.webmanifest)$/.test(p) && request.method === "GET") {
     const i = await instGet(env);
     if (!i.custom) return null;
@@ -540,6 +548,30 @@ async function instGate(request, env, ctx) {
     if (!i.modules[mod]) return secJson({ ok: false, error: "This feature isn't switched on for this Command.", module: mod }, 404);
   }
   return null;
+}
+// v128 Privacy and AI notice: a plain-English page each business links from its privacy policy
+// (Australian Privacy Act, APP 1.7 to 1.9, automated decisions, from 10 December 2026). Written from the business profile.
+async function aiNoticeText(env) {
+  const i = await instGet(env);
+  const n = (await secGet(env, "ai_notice").catch(() => null)) || {}, biz = i.business_name, owner = i.owner_first || "the owner";
+  const contact = n.contact || i.website || i.booking_link || "";
+  const voice = i.custom ? !!i.modules?.receptionist_product || !!n.voice : true;
+  return { title: "How " + biz + " uses AI", updated: n.updated || new Date().toISOString().slice(0, 10), sections: [
+    ["What the AI does", biz + " uses AI software to answer enquiries quickly (including after hours), suggest and confirm appointment times, draft replies and follow-ups, send reminders, and keep our records tidy." + (voice ? " If you call or use the chat on our website, you may be talking to an AI assistant. It will always tell you it's an AI if you ask." : "")],
+    ["Decisions the AI does not make", "The AI does not make decisions that significantly affect your rights or interests. It never decides on prices, refunds, discounts, credit, " + (/(health|clinic|physio|chiro|dental|psych|naturo|allied)/i.test(i.industry || i.template || "") ? "treatment, clinical or health matters, " : "") + "or whether we will provide a service to you. A person at " + biz + " makes those decisions. Anything about money, deleting information or changing settings needs " + owner + "'s approval."],
+    ["Tasks the AI helps with", "The AI helps with tasks related to decisions a person then makes: summarising your enquiry, suggesting a reply or an appointment time, flagging urgent messages, and reminding our team to follow up."],
+    ["Information it uses", "Your name and contact details, the messages you send us (email, text, social media and website chat), call recordings or transcripts if you call our AI phone line, your booking history with us, and notes our team adds."],
+    ["Who can see it", "Our team, and the service providers that run our systems (for example our customer database, phone and email providers, and AI model providers). These providers may store or process information outside Australia, and use it only to provide their service to us."],
+    ["Talking to a person", "You can ask to speak with a person at any time: just say so in your message or on the call. You can also ask what information we hold about you, ask us to correct it, or ask us to stop contacting you" + (contact ? " (" + contact + ")" : "") + ". If you reply \u201Cstop\u201D or \u201Cno thanks\u201D to a marketing message, we record it straight away."],
+    ["Questions or complaints", "Contact " + biz + (contact ? " via " + contact : "") + ". If you're not happy with our answer, you can contact the Office of the Australian Information Commissioner (oaic.gov.au)."]
+  ], note: "This notice explains our use of AI and should be read with our privacy policy. It is general information, not legal advice." };
+}
+async function aiNoticePage(env) {
+  const t = await aiNoticeText(env), i = await instGet(env);
+  const e = (x) => String(x || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const col = i.colours?.primary || "#3ab6ff";
+  const html = '<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + e(t.title) + '</title><style>:root{--c:' + col + '}body{margin:0;font:16px/1.65 Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#1d2533;background:#f7f8fa}main{max-width:720px;margin:0 auto;padding:40px 20px 64px}h1{font-size:28px;line-height:1.2;margin:0 0 6px}h2{font-size:17px;margin:28px 0 6px;color:#0e1726}.u{color:#667085;font-size:14px;margin:0 0 24px}p{margin:0}.n{margin-top:32px;padding-top:16px;border-top:1px solid #e3e7ee;color:#667085;font-size:13px}.b{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--c);margin-right:8px}@media (prefers-color-scheme:dark){body{background:#0b111b;color:#d8dee9}h2{color:#f1f5fb}.n{border-color:#243044}}</style></head><body><main><h1><span class="b"></span>' + e(t.title) + '</h1><p class="u">' + e(i.business_name) + ' · updated ' + e(t.updated) + '</p>' + t.sections.map(([h, b]) => '<h2>' + e(h) + '</h2><p>' + e(b) + '</p>').join("") + '<p class="n">' + e(t.note) + '</p></main></body></html>';
+  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" } });
 }
 async function instKb(env) {
   const i = await instGet(env).catch(() => null);
