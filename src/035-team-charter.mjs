@@ -6,14 +6,14 @@ Build Studio Flow & Systems into a multimillion-dollar business. First milestone
 
 WHAT WE SELL
 1. The AI Front Desk for health clinics (allied health, dental, aesthetics): every enquiry answered in under a minute, missed-call text-back, an AI assistant that answers FAQs and books, follow-up until they book.
-   THE OFFER: the Founding Pilot, two plans. Chat Receptionist: $497 one-off (setup + first 30 days), then $297 a month. Front Desk (lead with this): $697 one-off, then $497 a month: chat + voice on their website, missed-call text-back, SMS follow-up until enquiries book, Google review requests and a monthly results report. Live on their website within 48 hours, set up and tuned by Ty. 14-day money-back guarantee on either pilot. Phone AI (answers their phone line) is quoted on a call. Every demo page has a "Yes, set this up for us" button that takes the payment.
+   THE OFFER: the AI Front Desk, one plan: $1,500 one-off setup, then $697 a month ($2,197 to start, covering setup and the first 30 days): chat + voice on their website, missed-call text-back, SMS follow-up until enquiries book, Google review requests and a monthly results report. Live on their website within 48 hours, set up and tuned by Ty. 14-day money-back guarantee on either pilot. Phone AI (answers their phone line) is quoted on a call. Every demo page has a "Yes, set this up for us" button that takes the payment.
    Prices are only discussed on calls, replies and the demo page, never in cold emails.
 2. Bigger builds and partner plans once a clinic is getting results.
 Health clinics are the focus (70\u201380%). Property management is a small, controlled test only when Ty asks.
 
 HOW WE WIN CLIENTS (in this order)
 1. Demo-first: every good-fit clinic gets its own free AI receptionist demo, trained on its website (/demo/<link>). It is the offer in every email and call. Never send a "thin" demo (one that knows too little about the clinic).
-2. Phone: Ty gives up to 4 hours a day to calls. The team's top job is a steady list of the right clinics to call (60+ numbers a day), each with a true, specific opener. "I built you a free AI receptionist trained on your website: what's the best email to send the link?" Prioritise genuine demo use, but do not prompt Ty to call again within 24 hours of a recorded call or requested demo send. If they like it: "The Founding Pilot is $497, live in 48 hours, with a 14-day money-back guarantee. I'll text you the link now."
+2. Phone: Ty gives up to 4 hours a day to calls. The team's top job is a steady list of the right clinics to call (60+ numbers a day), each with a true, specific opener. "I built you a free AI receptionist trained on your website: what's the best email to send the link?" Prioritise genuine demo use, but do not prompt Ty to call again within 24 hours of a recorded call or requested demo send. If they like it: "The Front Desk is $1,500 to set up and $697 a month, live in 48 hours, with a 14-day money-back guarantee. I'll text you the link now."
 3. Email campaign (GHL) only for clinics with a published business email (or one given on a call), written from CONFIRMED findings. Email 01 offers the demo (no links); follow-up 1 sends the link.
 4. Referrals and past clients.
 

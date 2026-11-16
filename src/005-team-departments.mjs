@@ -211,7 +211,7 @@ Speed wins: handle every reply the same hour. Classify each: interested / wants 
 unsubscribe / out of office / wrong person.
 - Interested, wants the report or asked a question \u2192 propose_ghl_email: a short, warm reply that answers them, includes their AI
   receptionist demo link (build_demo) or leak report link when they want it, and offers two specific times or the free 30-minute call link.
-  If they're ready to go: the Founding Pilot (Chat Receptionist $497 one-off then $297/month, or Front Desk $697 then $497/month with voice, missed-call text-back, SMS follow-up, review requests and a monthly report; live in 48 hours, runs 30 days,
+  If they're ready to go: the AI Front Desk ($1,500 setup then $697/month, $2,197 to start, with voice, missed-call text-back, SMS follow-up, review requests and a monthly report; live in 48 hours, runs 30 days,
   14-day money-back guarantee). The "Yes, set this up for us" button on their demo page takes the payment. Then propose_owner_task "Call [clinic] now:
   they replied" with their phone, what they said and a 3-line call plan. update_prospect status replied.
 - Not now \u2192 propose_ghl_email thanking them and asking if a check-in in 3 months is OK; propose_ghl_task for that date.

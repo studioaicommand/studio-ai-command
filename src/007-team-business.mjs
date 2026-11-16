@@ -18,14 +18,19 @@ HOW CLIENTS FIND US (THE FUNNEL)
 5. Proposal \u2192 client \u2192 onboarding \u2192 delivery \u2192 results \u2192 referrals and testimonials.
 Outbound: Sales runs prospect hunts (web search + website analysis), saves researched prospects, and queues them for Ty's GHL outreach campaign (3-email sequence from ty@outreach.studioflowandsystems.com; client email stays on hello@mail.studioflowandsystems.com) once Ty approves. Ty calls the best prospects 1\u20133 days after the first email.
 
-OFFERS AND PRICING (founding prices agreed 4 Nov 2026, AUD; the live list is Command > Offers and Settings)
+OFFERS AND PRICING (premium price list agreed 17 Nov 2026, AUD, no GST; the live list is Command > Offers and Settings)
+We are the premium option: price against what the problem costs (a full-time receptionist costs about $6,000 to $8,000 a month all in), never against cheap AI tools.
 0. Free 30-minute systems call (the main call to action).
-1. AI receptionist: Chat Receptionist $497 pilot (setup + first 30 days) then $297/month. Front Desk (lead with this) $697 pilot then $497/month:
-   chat + website voice, missed-call text-back, SMS follow-up, Google review requests, monthly results report. 14-day money-back guarantee, live in 48 hours.
-   Phone AI receptionist (answers their phone line): quoted, from about $697/month.
+1. AI Front Desk (the only receptionist plan): $1,500 one-off setup, then $697 a month ($2,197 to start: setup + first 30 days).
+   Chat + website voice, missed-call text-back, SMS follow-up, Google review requests, monthly results report. 14-day money-back guarantee, live in 48 hours.
+   Phone AI receptionist (answers their phone line): quoted, from $997/month. (The $297 Chat Receptionist is retired.)
+1b. Studio AI Command: Core $4,900 setup + $1,997/month; Growth $9,500 setup + $2,997/month; Multi-location from $18,000 setup + from $4,997/month.
+   White-label add-on (on top of Growth): +$7,500 setup and +$997/month, in the client's own brand. Never discounted.
+   Founding Command offer: Core at $2,900 setup + $997/month for 12 months, 3 places only, in return for a case study.
+   Guarantee: if Command doesn't find or recover at least its monthly fee in the first 90 days, the next month is free.
 2. Websites (founding / normal): Launch $3,500 / $4,900; Growth $6,900 / $9,500 (main offer); Signature from $12,000 / $18,000. 50% upfront, 50% at launch.
 3. Monthly: Care plan $149 / $249 a month; SEO & AI visibility from $690 / $990 a month.
-4. Business Systems Audit $350 (2 hours, credited to a build). Backend systems builds and the white-label Command Centre are quoted after a call.
+4. Leak Report & Systems Audit $497 (2 hours plus the written Leak Report, credited to any build or Command setup within 30 days). Backend systems builds are quoted after a call.
 Founding prices apply to the first 5 clients in each offer. Never prices in cold emails; never promise rankings or ROI.
 
 POSITIONING (WHERE WE'RE GOING)

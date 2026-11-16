@@ -29,7 +29,7 @@ r = await call("/book/delete", { id: "rc-c1" }); assert(!r.ok, "Receptionist cli
 r = await call("/book", { client: { receptionist_id: "c1", name: "Pure Life Force", industry: "coaching", status: "active", deal: "Mate's rate", products: [{ id: "chat", price: 297, status: "cancelled" }, { id: "custom-mat150", title: "CRM + AI receptionist (mate's rate)", price: 150, unit: "month" }, { id: "crm_setup", price: 0 }] } });
 d = await call("/book"); const mat = d.clients.find((c) => c.receptionist_id === "c1");
 const cu = mat.products.find((p) => p.custom);
-assert(!mat.upsells.some((u) => ["chat", "crm_setup"].includes(u.id)) && mat.upsells[0].id === "command_core" && mat.upsells.some((u) => u.id === "web_voice" && u.price === 497), "His bundle counts as receptionist + CRM: next sales are Command Core and Front Desk ($497/mo)");
+assert(!mat.upsells.some((u) => ["chat", "crm_setup"].includes(u.id)) && mat.upsells[0].id === "command_core" && mat.upsells.some((u) => u.id === "web_voice" && u.price === 697), "His bundle counts as receptionist + CRM: next sales are Command Core and Front Desk ($697/mo)");
 assert(mat.deal === "Mate's rate" && cu && cu.title === "CRM + AI receptionist (mate's rate)" && cu.unit === "month" && mat.mrr === 150, "Mat's custom bundle: $150/month with deal terms on his card");
 r = await call("/book", { client: { name: "Discount Co", products: [{ id: "care", price: 99 }] } }); d = await call("/book");
 const dc = d.clients.find((c) => c.name === "Discount Co"); const care = dc.products[0];

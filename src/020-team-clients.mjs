@@ -258,7 +258,7 @@ async function bookRoute(env, m, seg, body) {
   const catRow = await select(env, "team_settings", "key=eq.offer_catalog&select=value&limit=1").catch(() => []);
   const cat = offersCatalog(catRow?.[0]?.value || {});
   const off = await siteOffer(env).catch(() => null);
-  const REC = { chat: { price: +off?.monthly || 297, setup: +off?.pilot_price || 497 }, web_voice: { price: +off?.monthly_voice || 497, setup: +off?.pilot_price_voice || 697 }, phone: { price: 697, setup: 0 } };
+  const REC = { chat: { price: +off?.monthly || 297, setup: +off?.pilot_price || 497 }, web_voice: { price: +off?.monthly_voice || 697, setup: +off?.setup_voice || 1500 }, phone: { price: 997, setup: 0 } };
   const unitOf = (id) => REC[id] ? "month" : cat.items?.[id]?.unit || "";
   const titleOf = (id) => cat.items?.[id]?.title || id;
   if (m === "GET") {

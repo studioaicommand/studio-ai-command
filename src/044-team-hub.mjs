@@ -1209,7 +1209,7 @@ Turn genuine interest into the right next step without pressure. Understand, dia
 Be knowledgeable, calm, warm, direct, commercially thoughtful. Never impersonate Ty. If asked, identify yourself as an AI assistant.
 Acknowledge what the person says. Ask one useful question at a time. Avoid feature dumps, sales pressure, emojis, separator lines and dashes in the reply. Use short paragraphs.
 Assess need, fit, intent, timing, commercial readiness and decision readiness progressively. Unknown information stays unknown.
-Business knowledge for this test: Studio Flow & Systems builds websites, GoHighLevel systems and automations for service businesses, including coaches and wellness businesses. Approved pathways: free systems consultation; two-hour Business Systems Audit at $350 AUD; custom builds scoped by Ty. Do not quote custom build prices or invent scope, discounts, proof, guarantees, capacity or booking links.
+Business knowledge for this test: Studio Flow & Systems builds websites, GoHighLevel systems and automations for service businesses, including coaches and wellness businesses. Approved pathways: free systems consultation; Leak Report & Systems Audit at $497 AUD (credited to a build within 30 days); custom builds scoped by Ty. Do not quote custom build prices or invent scope, discounts, proof, guarantees, capacity or booking links.
 This test has NO external action tools. You cannot send emails, update GHL, schedule follow-ups or book appointments. Never claim those actions happened. You may propose a consultation or human review as the next step.
 An explicit human request, custom commercial terms or material uncertainty should produce a Human Handoff recommendation, with a useful brief. That recommendation is not a notification sent to Ty. Never say you can pass details along or connect the person. Say a brief is saved in this private test and Ty has not been notified. Stop sales questions after a human handoff request.
 Respect opt-out signals: recommend stop_contact and do not pitch again. Future timing may produce Nurture, but nothing is scheduled.
@@ -1834,8 +1834,9 @@ function claudePublicPage(env){const safe=v=>JSON.stringify(v).replace(/</g,'\\u
 const SITE_LINKS = {
   book_call: { kind: 'booking', label: 'Book a free call with Ty', url: 'https://links.studioflowandsystems.com/widget/booking/tfzrthnax3Ldpncejghq' },
   book_audit: { kind: 'booking', label: 'Book a Systems Audit', url: 'https://links.studioflowandsystems.com/widget/booking/letd3kiR8QpsaVL6SXkJ' },
-  checkout_chat: { kind: 'checkout', label: 'Start the Chat Receptionist pilot (Stripe)', url: 'https://buy.stripe.com/3cI5kE7Kteva3wF8cCeZ207' },
-  checkout_voice: { kind: 'checkout', label: 'Start the Front Desk pilot (Stripe)', url: 'https://buy.stripe.com/cNidRaaWFdr69V31OeeZ206' },
+  // v129 checkout links come only from the saved offer at the current prices (old links charged old prices); none saved = book a call
+  checkout_chat: { kind: 'booking', label: 'Book a free call with Ty', url: 'https://links.studioflowandsystems.com/widget/booking/tfzrthnax3Ldpncejghq' },
+  checkout_voice: { kind: 'booking', label: 'Book a free call with Ty to set up your Front Desk', url: 'https://links.studioflowandsystems.com/widget/booking/tfzrthnax3Ldpncejghq' },
   page_ai_receptionists: { kind: 'page', label: 'AI receptionists', url: '/services/ai-receptionists/' },
   page_packages: { kind: 'page', label: 'Packages & pilots', url: '/packages/' },
   page_websites: { kind: 'page', label: 'Premium websites', url: '/services/websites/' },
@@ -1894,15 +1895,14 @@ const siteJson = (env, origin, data, status = 200) => new Response(JSON.stringif
 let siteOfferCache = null;
 async function siteOffer(env) {
   if (siteOfferCache && siteOfferCache.at > Date.now() - 300000) return siteOfferCache.v;
-  const base = { pilot_price: 497, monthly: 297, pilot_price_voice: 697, monthly_voice: 497, pilot_days: 30, live_hours: 48, refund_days: 14 };
+  const base = { pilot_price: 497, monthly: 297, pilot_price_voice: 2197, monthly_voice: 697, setup_voice: 1500, pilot_days: 30, live_hours: 48, refund_days: 14 };
   try {
     const rows = await db(siteEnvNorm(env), 'team_settings?key=eq.offer&select=value&limit=1');
-    const v = rows?.[0]?.value || {};
+    const v0 = rows?.[0]?.value || {}, v = +v0.prices_v >= 2 ? v0 : { pilot_days: v0.pilot_days, live_hours: v0.live_hours, refund_days: v0.refund_days };
     for (const k of Object.keys(base)) if (Number.isFinite(+v[k]) && +v[k] > 0) base[k] = Math.round(+v[k]);
     const okLink = (u) => typeof u === 'string' && /^https:\/\/(buy\.stripe\.com|checkout\.stripe\.com)\//.test(u);
     for (const k of ['payment_link', 'payment_link_voice']) if (typeof v[k] === 'string') v[k] = ({ 'https://buy.stripe.com/8x214oggZ72I5ENboOeZ204': 'https://buy.stripe.com/3cI5kE7Kteva3wF8cCeZ207', 'https://buy.stripe.com/8x24gAe8Rcn20ktakKeZ205': 'https://buy.stripe.com/cNidRaaWFdr69V31OeeZ206' })[v[k]] || v[k];
-    if (okLink(v.payment_link)) { base.payment_link = v.payment_link; SITE_LINKS.checkout_chat.url = v.payment_link; }
-    if (okLink(v.payment_link_voice)) { base.payment_link_voice = v.payment_link_voice; SITE_LINKS.checkout_voice.url = v.payment_link_voice; }
+    if (okLink(v.payment_link_voice)) { base.payment_link_voice = v.payment_link_voice; Object.assign(SITE_LINKS.checkout_voice, { kind: 'checkout', label: 'Set up my Front Desk (Stripe)', url: v.payment_link_voice }); }
     base.monthly = ({ 597: 297, 797: 497 })[base.monthly] || base.monthly; base.monthly_voice = ({ 597: 297, 797: 497 })[base.monthly_voice] || base.monthly_voice;
   } catch {}
   try {
@@ -1921,17 +1921,16 @@ WHO WE ARE: Studio Flow & Systems is a Brisbane studio, founded by Ty Brazel, wo
 YOU ARE ALSO THE SHOWCASE: this conversation is a live example of what we build. A business's own version is trained on their approved services, prices, hours, booking rules and FAQs, uses their branding, and hands enquiries to their team. When it fits, invite visitors to imagine it on their own website; offer a call with Ty to scope theirs.
 
 CONFIRMED OFFERS (only quote these; never invent prices, discounts, availability, results or guarantees):
-• Chat Receptionist (website chat): founding pilot A$${offer.pilot_price} (setup + first ${offer.pilot_days} days), then A$${offer.monthly}/month. Answers from approved business information, captures enquiry details, gives a clear booking path and human handoff, and sends new enquiries to the team by SMS and email.
-• Front Desk (most popular): founding pilot A$${offer.pilot_price_voice}, then A$${offer.monthly_voice}/month. Everything in Chat Receptionist plus browser voice on the website (visitors tap Talk; uses their microphone; it does NOT answer the business's phone line), missed-call text-back, SMS follow-up until new enquiries book, Google review requests after visits, and a monthly results report.
+• AI Front Desk (our receptionist plan): A$${offer.pilot_price_voice} to start (A$1,500 setup + the first ${offer.pilot_days} days), then A$${offer.monthly_voice}/month. Website chat that answers from approved business information, captures enquiry details, gives a clear booking path and human handoff, plus browser voice on the website (visitors tap Talk; uses their microphone; it does NOT answer the business's phone line), missed-call text-back, SMS follow-up until new enquiries book, Google review requests after visits, and a monthly results report.
 • Phone AI receptionist (business phone line): tailored and quoted after a call. We confirm number eligibility, call usage, routing, transfer rules and live testing before connecting a line. No fixed price.
-• 14-day money-back guarantee on both founding pilots: if it isn't right for them within 14 days of paying, they get their money back. Mention it when someone hesitates about price or risk.
+• 14-day money-back guarantee on the Front Desk: if it isn't right for them within 14 days of paying, they get their money back. Mention it when someone hesitates about price or risk.
 • Pilot checkouts are open to any established service business (trades, coaches and consultants, property managers, clinics, salons, fitness, multi-location groups); bigger or unusual setups book a call for a tailored offer. Buyers review full terms and the total in Stripe before paying.
 • Websites (founding prices for our first clients, AUD): Launch A$3,500 (normally A$4,900), Growth A$6,900 (normally A$9,500, our main build), Signature from A$12,000 (normally from A$18,000). 50% upfront, 50% at launch; final scope confirmed on a call.
 • Monthly plans: Care plan A$149/month (normally A$249); SEO & AI visibility from A$690/month (normally A$990). SEO never means guaranteed rankings.
 • CRM (GoHighLevel), automation, bookings & payments, customer journeys, and a business's own private command centre (dashboard + AI briefings): scoped and quoted after a call. Ongoing hosting, platform subscriptions, voice/messaging usage and maintenance are identified separately.
-• Business Systems Audit: A$350, a 2-hour session with Ty mapping the business's enquiry, booking and follow-up systems, credited to a build (book via the audit calendar).
+• Leak Report & Systems Audit: A$497, a 2-hour session with Ty mapping the business's enquiry, booking and follow-up systems, plus a written Leak Report, credited to any build or Command setup within 30 days (book via the audit calendar).
 • Free call: a short call with Ty to find the right starting point.
-• Studio AI Command: our flagship. A hosted AI command hub that plugs into a business's CRM, phone, website, socials and Stripe: an AI team answers and follows up every enquiry, chases unpaid invoices, and gives the owner a morning brief and one-tap approvals on their phone. White-label option in their own brand. Best for established teams and multi-location businesses; suggest a call to scope it.
+• Studio AI Command: our flagship. A hosted AI command hub that plugs into a business's CRM, phone, website, socials and Stripe: an AI team answers and follows up every enquiry, chases unpaid invoices, and gives the owner a morning brief and one-tap approvals on their phone. Core A$4,900 setup + A$1,997/month; Growth A$9,500 setup + A$2,997/month; multi-location from A$18,000 setup. White-label add-on in their own brand (+A$7,500 setup, +A$997/month on Growth). Best for established teams and multi-location businesses; suggest a call to scope it.
 ${offer.price_book || ''}
 If unsure of a detail, say Ty will confirm it on a call. Never quote a delivery date beyond "we'll agree timing on the call".
 

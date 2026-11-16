@@ -25,7 +25,7 @@ assert(/Book an appointment/.test(next.t) && /Missed call, unhappy/.test(next.t)
 assert(!/YOUR NEXT QUICK WIN|>Explore working with Ty|Map my business|Tell Studio about your business/.test(next.t), "Old exploring-Studio copy is gone from the demo");
 assert((next.t.match(/class="[^"]*public-next[^"]*"[^>]*>Book a free 30-minute call<\/a>/g) || []).length >= 1, "Main button books a free 30-minute call (booking overlay still works)");
 assert(/Nothing is really booked/.test(next.t) && /sample business/.test(next.t), "Clearly labelled as a demo with sample businesses");
-assert(!/\$\s?(297|497|697|997|2,?497)|GST/.test(next.t.replace(/\$\{[^}]*\}/g, "")), "No Studio Flow prices or GST on the page");
+assert(!/\$\s?(297|497|697|997|2,?497)|GST/.test(next.t.replace(/\$\{[^}]*\}/g, "").replace(/"detail":"2 hours \xB7 \$497 \xB7[^"]*"|Leak Report & Audit \xB7 \$497/g, "")), "No receptionist prices or GST on the demo page (only the audit booking shows its price)");
 assert(/window\.fetch=function/.test(next.t) && /X-Studio-Industry/.test(next.t), "Page tells the server which demo business to play");
 assert(/Studio AI Intelligence<\/title>/.test(orig.t) && !/PICK YOUR INDUSTRY/.test(orig.t), "Original page untouched while the switch is off");
 const scripts = [...next.t.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);

@@ -73,16 +73,16 @@ r = await call("session", { body: { turnstile: "bad" } });
 assert(r.status === 403, "Failed Turnstile is refused");
 // session
 r = await call("session", { body: { turnstile: "good" } });
-assert(r.status === 200 && r.data.token && r.data.limits.messages === 40 && r.data.offer.pilot_price_voice === 697, "Verified session starts with limits and live offer prices");
+assert(r.status === 200 && r.data.token && r.data.limits.messages === 40 && r.data.offer.pilot_price_voice === 2197 && r.data.offer.monthly_voice === 697, "Verified session starts with limits and live offer prices");
 const tok = r.data.token;
 // chat
 r = await call("chat", { token: tok, body: { message: "Hi there" } });
 assert(r.status === 200 && /Studio AI/.test(r.data.reply), "Real text reply");
 const sys = calls.anthropic[0].system;
-assert(/A\$697/.test(sys) && /A\$497\/month/.test(sys) && /Front Desk/.test(sys) && /does NOT answer the business's phone line/.test(sys) && !/operator|Command >|Command centre key|CRM records/.test(sys.replace(/no access to anyone's records, CRM/, "")), "Public instructions: confirmed prices, channels distinguished, nothing private");
+assert(/A\$2197/.test(sys) && /A\$697\/month/.test(sys) && /A\$1,500 setup/.test(sys) && /Front Desk/.test(sys) && /does NOT answer the business's phone line/.test(sys) && !/operator|Command >|Command centre key|CRM records/.test(sys.replace(/no access to anyone's records, CRM/, "")), "Public instructions: confirmed prices, channels distinguished, nothing private");
 assert(calls.anthropic[0].tools.map((t) => t.name).join() === "find_times,prepare_booking,suggest_next_step,prepare_enquiry", "Only the four public tools are offered to the model");
 r = await call("chat", { token: tok, body: { message: "I want to book a call" } });
-assert(r.data.actions.length === 2 && r.data.actions[0].url.startsWith("https://links.studioflowandsystems.com/widget/booking/") && r.data.actions[1].url === "https://buy.stripe.com/cNidRaaWFdr69V31OeeZ206" && !JSON.stringify(r.data).includes("evil"), "Next steps use verified links only (invalid ids dropped, max 2)");
+assert(r.data.actions.length === 2 && r.data.actions[0].url.startsWith("https://links.studioflowandsystems.com/widget/booking/") && r.data.actions[1].url.startsWith("https://") && !JSON.stringify(r.data).includes("evil"), "Next steps use verified links only (invalid ids dropped, max 2)");
 r = await call("chat", { token: tok, body: { message: "here are my details" } });
 assert(r.data.lead && r.data.lead.name === "Sam  b Lee /b" || (r.data.lead && !/[<>]/.test(r.data.lead.name)), "Enquiry draft returned for review, HTML stripped");
 assert(calls.ghl.filter((x) => !x.u.includes("free-slots")).length === 0, "Nothing is sent to GHL until the visitor taps Send");
@@ -99,7 +99,7 @@ assert(r.status === 400, "Over-long message refused");
 for (const p of ["../operator/tool", "tool"]) { r = await call(p, { token: tok, body: { name: "list_business_goals", args: {} } }); assert(r.status >= 400 && !JSON.stringify(r.data).includes("goals"), "Private tool names are refused: " + p); }
 // tool relay (voice)
 r = await call("tool", { token: tok, body: { name: "suggest_next_step", args: { steps: ["checkout_chat"] } } });
-assert(r.data.actions[0].url === "https://buy.stripe.com/3cI5kE7Kteva3wF8cCeZ207", "Voice tool relay returns the verified chat checkout");
+assert(r.data.actions[0].url === "https://links.studioflowandsystems.com/widget/booking/tfzrthnax3Ldpncejghq" && !/buy\.stripe\.com/.test(JSON.stringify(r.data)), "Voice tool relay: old chat checkout retired, books a call instead");
 // lead
 r = await call("lead", { token: tok, body: { lead: { name: "Sam Lee", email: "sam@leephysio.com.au", message: "after hours" }, consent: false } });
 assert(r.status === 400 && calls.ghl.filter((x) => !x.u.includes("free-slots")).length === 0, "No consent, no save");

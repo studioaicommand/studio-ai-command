@@ -241,8 +241,11 @@ async function route2(request, env, url, ctx) {
           o[k] = link2.trim();
         }
       }
-      for (const k of ["pilot_price", "monthly", "pilot_price_voice", "monthly_voice", "pilot_days", "live_hours", "refund_days"]) if (Number.isFinite(+body.offer[k]) && +body.offer[k] >= 0 && body.offer[k] !== "" && body.offer[k] != null) o[k] = Math.round(+body.offer[k]);
-      await saveSetting(env, "offer", { ...cur.offer || {}, ...o });
+      for (const k of ["pilot_price", "monthly", "pilot_price_voice", "monthly_voice", "setup_voice", "pilot_days", "live_hours", "refund_days"]) if (Number.isFinite(+body.offer[k]) && +body.offer[k] >= 0 && body.offer[k] !== "" && body.offer[k] != null) o[k] = Math.round(+body.offer[k]);
+      if (body.offer.chat_enabled != null) o.chat_enabled = !!body.offer.chat_enabled;
+      // v129 saving the offer confirms the new price list (and any new Stripe links are for the new prices)
+      const was = cur.offer || {}, migrated = !(+was.prices_v >= 2);
+      await saveSetting(env, "offer", { ...(migrated ? { ...was, pilot_price_voice: 2197, monthly_voice: 697, setup_voice: 1500, chat_enabled: false, payment_link: "", payment_link_voice: "" } : was), ...o, prices_v: 2 });
       await audit(env, { actor: "Ty", action: "offer_updated", summary: `Offer updated: ${Object.keys(o).join(", ")}` }).catch(() => {
       });
     }
