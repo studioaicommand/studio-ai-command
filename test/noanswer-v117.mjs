@@ -38,6 +38,7 @@ assert(a && a.type === "outreach_email" && a.status === "pending" && a.params.em
 assert(/found on their website/.test(a.reason) && /mail server checks out/.test(a.reason) && /no answer/.test(a.reason), "The card says where the email came from, that it won't bounce, and why it's being sent");
 assert(a.params.body.includes(O + "/demo/demoTok1") && !/\?ty=/.test(a.params.body), "It links their own AI front desk demo (the normal link, so their opens are tracked)");
 assert(/When Ty called: \w+day (morning|afternoon|evening)/.test(drafts[0].msg) && /No prices/.test(drafts[0].sys) && /No dashes/.test(drafts[0].sys) && /No made-up numbers/.test(drafts[0].sys), "Written from the real call (day and time of day), with no prices, dashes or made-up numbers");
+assert(/Their customers are called: patients/.test(drafts[0].msg) && /The business is a: clinic/.test(drafts[0].msg) && /What a missed call usually costs in this industry: new-patient enquiries/.test(drafts[0].msg) && /THEIR industry/.test(drafts[0].sys) && /never a generic line/.test(drafts[0].sys), "Written for their industry: their customers' word, kind of place and what a missed call costs there");
 assert(tg.some((t) => /No answer/.test(t) && /Midway/.test(t)), "Ty gets the card on Telegram to approve");
 r = await call("/prospects/p1", { call_status: "voicemail" });
 assert(acts().length === 1, "Only one email per business, even after another missed call");
