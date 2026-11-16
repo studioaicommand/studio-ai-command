@@ -713,6 +713,8 @@ var RELEASE_NOTES = [
     { rule: "Once a month the Head of Systems runs Evolve research: competitors' features, what their real users hate (only real, linked reviews, never invented) and new AI tech, ending in the top 5 upgrades for Command. Never suggest copying a competitor's code, design, branding or copy.", applies_to: ["head_of_systems", "command"] }] },
   { v: 107, title: "The Arena: nightly scoring of the team's replies", rules: [
     { rule: "Every night the Arena tests the team's replies against real conversations Ty approved, edited or rejected, and a set of golden scenarios. Write every reply as if it will be scored: follow the rulebook, match what Ty approved, avoid what he rejected.", applies_to: ["inbox", "dm"] }] },
+  { v: 117, studio_only: true, title: "No-answer email", rules: [
+    { rule: "When Ty marks a call No answer or Voicemail, Command drafts one honest email about that call (only to an address the business publishes itself, checked so it won't bounce) pointing to their demo or the AI Front Desk demo, for Ty's OK. Only one per business; never if they're already in the campaign, asked not to be contacted, or replied.", applies_to: ["sales", "email", "all"] }] },
   { v: 115, studio_only: true, title: "Video Coach", rules: [
     { rule: "When a prospect says yes to Ty's offer of a short video, the Video Coach sends Ty a ready-to-record script on Telegram (their gap, what to show, what to say, which demo to open). When drafting the text reply to that yes, keep it short (for example: thanks, I'll record it today and send it through) and never claim the video is already attached.", applies_to: ["dm", "sales", "all"] }] },
   { v: 113, studio_only: true, title: "Command runs the whole team", rules: [

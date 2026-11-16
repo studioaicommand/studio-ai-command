@@ -527,6 +527,57 @@ function callDemoEmail(value) {
   if (email.length > 254 || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)) throw new Error("Enter a valid email address.");
   return email;
 }
+// ── v117 No-answer email: when Ty rings a business and nobody picks up (or it goes to voicemail), Command confirms
+// the email address they publish on their own website, checks it won't bounce, and drafts one honest email about
+// the call (with their demo or the AI Front Desk demo) for Ty's OK on Telegram. One per business, never auto-sent. ──
+var NA_TOOL = { name: "save_email", description: "Save the email.", input_schema: { type: "object", properties: { subject: { type: "string" }, body: { type: "string" } }, required: ["subject", "body"] } };
+function naWhen(d) {
+  const b = brisbaneNow(new Date(d)), day = new Date(d).toLocaleDateString("en-AU", { weekday: "long", timeZone: "Australia/Brisbane" });
+  return day + " " + (b.hour < 12 ? "morning" : b.hour < 17 ? "afternoon" : "evening");
+}
+async function noAnswerEmail(env, prospectId, outcome = "no_answer", { at = Date.now() } = {}) {
+  if (!["no_answer", "voicemail"].includes(outcome)) return { skipped: "not a missed call" };
+  const settings = await getSettings(env).catch(() => ({}));
+  if (settings.no_answer_email === false) return { skipped: "switched off" };
+  const [p] = await select(env, "agent_prospects", "id=eq." + encodeURIComponent(prospectId) + "&select=id,business_name,website,email,email_source_url,consent_basis,status,campaign,enrolled_at,vertical,niche,location,leak,decision_maker,demo_token,leak_report,ghl_contact_id&limit=1").catch(() => []);
+  if (!p) return { skipped: "prospect not found" };
+  const lr = p.leak_report && typeof p.leak_report === "object" ? p.leak_report : {};
+  if (lr.no_answer_email) return { skipped: "already emailed after a missed call" };
+  if (["do_not_contact", "skipped", "won", "lost", "replied"].includes(p.status)) return { skipped: "status " + p.status };
+  if (p.enrolled_at || (p.campaign && p.campaign !== "")) return { skipped: "already getting your outreach emails" };
+  const mark = async (extra) => update(env, "agent_prospects", "id=eq." + encodeURIComponent(p.id), { leak_report: { ...lr, no_answer_email: { at: new Date().toISOString(), outcome, ...extra } }, updated_at: new Date().toISOString() }).catch(() => {});
+  // 1. Confirm the email is one they publish themselves (re-check their website if we have to).
+  let pub = p.email ? publishedEmail({ email: p.email, website: p.website, sourceUrl: p.email_source_url }) : null;
+  if (!pub && p.email && /^Given by|^Requested demo/i.test(p.consent_basis || "")) pub = { email: p.email, source: "given to you on a call", url: "" };
+  if (!pub && p.website) { const rep = await analyseWebsite(p.website, { pages: 3 }).catch(() => null); pub = publishedEmail({ email: p.email, website: p.website, scanEmails: (rep && rep.home && rep.home.emails) || [], sourceUrl: p.email_source_url }); }
+  if (!pub) { await mark({ result: "no published email" }); await notify(env, "\u{1F4DE} <b>No answer: " + vcEsc(p.business_name) + "</b>\nI couldn't find an email address they publish on their own website, so no email was drafted. Try them again later, or a DM.").catch(() => {}); return { skipped: "no published email" }; }
+  const bad = await bounceGate(env, pub.email).catch(() => null);
+  if (bad) { await mark({ result: "would bounce" }); await notify(env, "\u{1F4DE} <b>No answer: " + vcEsc(p.business_name) + "</b>\n" + vcEsc(bad.replace(/^Not enrolled: /, "No email drafted: "))).catch(() => {}); return { skipped: "would bounce" }; }
+  // 2. Which demo to point them to.
+  const origin = String(env.PUBLIC_ORIGIN || DEFAULT_ORIGIN).replace(/\/+$/, "");
+  let token = p.demo_token;
+  if (!token) { const [d] = await select(env, "agent_demos", "prospect_id=eq." + encodeURIComponent(p.id) + "&select=token&order=created_at.desc&limit=1").catch(() => []); token = d && d.token; }
+  const demoUrl = token ? origin + "/demo/" + token : origin + "/experience-next";
+  // 3. Draft it.
+  const u = wsdUsage();
+  let out;
+  try {
+    out = await wsdAsk(env, u, "smart", { max_tokens: 700, system: "You write one short cold email from Ty Brazel (Studio Flow & Systems, Brisbane) to a business he just rang that didn't pick up" + (outcome === "voicemail" ? " (it went to voicemail)" : "") + ". It's honest and kind, never a gotcha: they're busy serving customers, which is exactly when calls get missed. Say plainly that Ty called (use the day and time of day given, no exact clock time), that it rang out" + (outcome === "voicemail" ? " to voicemail" : "") + ", and what that can mean in general for a business like theirs (a new customer who can't get through often rings the next business). Then offer the fix: " + (token ? "a demo AI front desk Ty already built for them from their public website, at the link given, to try themselves." : "the AI Front Desk demo at the link given, where they can pick their industry and talk to it as a customer would.") + " End with one easy question (for example, worth a quick look?) and sign off as Ty.\n\nRULES: under 120 words in the body. Australian English. No prices. No dashes. No made-up numbers, stats, results or clients. Don't claim to know their call volumes. Don't mention AI cost. Include the link exactly once on its own line. Greeting: 'Hi " + (p.decision_maker ? String(p.decision_maker).split(/\s+/)[0] : "there") + ",' Subject: short, plain and specific to the call (no clickbait, no ALL CAPS)." + brainRulesText(await brainRules(env).catch(() => []), "email"),
+      tools: [NA_TOOL], messages: [{ role: "user", content: "Business: " + p.business_name + " (" + [((OUTREACH[p.vertical] || {}).name || p.niche), p.location].filter(Boolean).join(", ") + ")\nWhen Ty called: " + naWhen(at) + "\nOutcome: " + (outcome === "voicemail" ? "went to voicemail" : "no answer") + (p.leak ? "\nWhat the team noticed about them: " + String(p.leak).slice(0, 400) : "") + "\nLink: " + demoUrl + "\n\nCall save_email." }] }, "save_email");
+  } finally { await wsdLog(env, u, "no_answer_email").catch(() => {}); }
+  const subject = String(out && out.subject || "").replace(/[\r\n]/g, " ").slice(0, 150).trim();
+  let body = String(out && out.body || "").trim();
+  if (!subject || body.length < 40) return { skipped: "draft failed" };
+  if (!body.includes(demoUrl)) body += "\n\n" + demoUrl;
+  const [row] = await insert(env, "team_actions", [{ department: "head_of_sales", type: "outreach_email", status: "pending",
+    title: ("\u{1F4DE} No answer → email " + p.business_name).slice(0, 200),
+    reason: ("You rang them (" + naWhen(at).toLowerCase() + ", " + (outcome === "voicemail" ? "voicemail" : "no answer") + "). Email " + pub.email + " is " + pub.source + (pub.url ? " (" + pub.url + ")" : "") + " and its mail server checks out. One email, then it's up to them.").slice(0, 600),
+    params: { email: pub.email, subject, body, business_name: p.business_name, prospect_id: p.id, contact_name: p.decision_maker || void 0, source: "no_answer", demo_url: demoUrl } }]);
+  if (!row) return { error: "could not save" };
+  await mark({ result: "drafted", action_id: row.id, email: pub.email });
+  await askTy(env, row, { settings }).catch(() => null);
+  return { drafted: true, action_id: row.id, email: pub.email, source: pub.source };
+}
 async function callDemoEmailAction(env, id, body) {
   if (!["draft", "send"].includes(body.mode)) throw new Error("Choose draft or send.");
   if (body.consent !== true) throw new Error("Confirm that the clinic asked for this demo email.");

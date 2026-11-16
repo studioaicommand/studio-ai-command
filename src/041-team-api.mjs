@@ -464,7 +464,9 @@ async function route2(request, env, url, ctx) {
     }
     // Saving a call or email never silently enrols a clinic in a cold-outreach campaign.
     if (rows[0]) await audit(env, { actor: "Ty", action: "prospect_status", target_type: "prospect", target_id: seg[1], summary: `${rows[0].business_name}: ${[patch.status, patch.call_outcome && "call " + patch.call_outcome].filter(Boolean).join(", ")}`, details:{note:patch.call_notes||"",call_outcome:patch.call_outcome||null} });
-    return json({ ok: rows.length > 0, prospect: rows[0] || null });
+    // v117: nobody picked up → Command drafts one email about the call (published address only, Ty approves)
+    if (rows[0] && ["no_answer", "voicemail"].includes(body.call_status)) { const job = noAnswerEmail(env, seg[1], body.call_status).catch((e) => console.error("no-answer email:", e.message)); if (ctx && ctx.waitUntil) ctx.waitUntil(job); else await job; }
+    return json({ ok: rows.length > 0, prospect: rows[0] || null, ...(rows[0] && ["no_answer", "voicemail"].includes(body.call_status) ? { no_answer_email: "Command is checking their published email and drafting one for your OK on Telegram." } : {}) });
   }
   if (p === "/email-preview" && m === "POST") {
     if (typeof body.body !== "string" || !body.body.trim()) return json({ ok: false, error: "Nothing to preview." }, 400);
