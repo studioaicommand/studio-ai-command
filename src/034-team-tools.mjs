@@ -2117,12 +2117,13 @@ async function browserNeedsTy(env, t, why) {
   return { kind: "wait", ms: 6000 };
 }
 var BROWSER_TOOL = { name: "browser_action", description: "Choose the single next step in the browser.", input_schema: { type: "object", properties: {
-  kind: { type: "string", enum: ["goto", "click", "type", "select", "key", "scroll", "back", "wait", "ask_ty", "finish", "type_dm", "dm_done", "save_people", "click_xy", "type_focused", "new_tab", "switch_tab", "close_tab"] },
+  kind: { type: "string", enum: ["goto", "click", "type", "select", "key", "scroll", "back", "wait", "ask_ty", "finish", "type_dm", "dm_done", "save_people", "save_contacted", "click_xy", "type_focused", "new_tab", "switch_tab", "close_tab"] },
   x: { type: "number", description: "For click_xy: left position in the screenshot, in pixels." },
   y: { type: "number", description: "For click_xy: top position in the screenshot, in pixels." },
   target: { type: "string", description: "For click_xy: exactly what is at that spot (the visible words or icon), e.g. 'Add element +' or 'Save'." },
   tab: { type: "integer", description: "For switch_tab and close_tab: the tab number from TABS." },
   result: { type: "string", enum: ["sent", "failed"], description: "For dm_done: whether the current approved message was sent." },
+  names: { type: "array", description: "For save_contacted: the names in the chat list on THIS page (people already messaged).", items: { type: "string" } },
   people: { type: "array", description: "For save_people: people seen on THIS page who look like coaches, practitioners or service-business owners.", items: { type: "object", properties: { name: { type: "string" }, profile_url: { type: "string" }, headline: { type: "string", description: "What the page shows they do (job title, bio line, business). Never guess." } }, required: ["name", "profile_url"] } },
   ref: { type: "integer", description: "Element number from INTERACTIVE ELEMENTS (click, type, select)." },
   text: { type: "string", description: "Text to type, or the option to select." },
@@ -2146,7 +2147,7 @@ Rules:
 - SENDING TY'S APPROVED DMs (only when the goal says so): open the person's profile, open the message box (Message button), then use type_dm on the message box (it types Ty's approved words exactly; never type your own message), then press Enter or click Send, then dm_done with result sent. For a LinkedIn connection request, click Connect then Send without a note, then dm_done. If you can't reach their message box, dm_done with result failed and say why in why.
 - If what you need isn't in the element list (page builders like GoHighLevel, drag-and-drop editors, canvas or odd menus), use click_xy with x and y read off the screenshot and name the target. Then type_focused types where the cursor now is. Prefer numbered elements when they exist.
 - Tabs: new_tab opens a page in a new tab, switch_tab and close_tab use the numbers in TABS. Keep it to a few tabs.
-- FRIENDS SCAN (only when the goal says so): read the list and use save_people with everyone on screen whose name, title or bio shows they are a coach, practitioner, clinic or service-business owner. Copy their profile link exactly. Scroll for more and repeat. Never message anyone during a scan.`;
+- FRIENDS SCAN (only when the goal says so): first read the inbox and use save_contacted with the names in the chat list (never open a chat). Then read the list and use save_people with everyone on screen whose name, title or bio shows they are a coach, practitioner, clinic or service-business owner. Copy their profile link exactly. Scroll for more and repeat. Never message anyone during a scan.`;
 // ── v88 Command Chrome: friends scan + sending approved DMs ──
 var DM_BATCH_MAX = 15;
 var WARM_HUNTS = { facebook: "https://www.facebook.com/search/people/?q=", instagram: "https://www.instagram.com/", linkedin: "https://www.linkedin.com/mynetwork/invite-connect/connections/" };
@@ -2166,13 +2167,18 @@ function dmSendGoal(t) {
   if (!it) return "All approved messages are sent: finish with a short summary.";
   return "Send Ty's approved DMs one at a time (" + (t.dm.i + 1) + " of " + t.dm.queue.length + "). Now: " + it.name + " on " + it.platform + " at " + it.profile_url + (it.step === "connect" ? ". This is a LinkedIn connection request without a note: click Connect, then Send without a note, then dm_done." : ". Open their profile, click Message, use type_dm on the message box, press Enter or click Send, then dm_done.") + " Don't message anyone else.";
 }
-async function warmSave(env, people, platform) {
+async function warmSave(env, people, platform, scan) {
   let added = 0;
   const known = new Set((await select(env, "agent_prospects", "source=in.(warm_facebook,warm_instagram,warm_linkedin)&select=leak_report&limit=8000").catch(() => [])).map((p) => p.leak_report?.socials?.[platform]).filter(Boolean));
+  // v123 skip anyone already messaged: names seen in the inbox during this scan, and anyone already in the DM Desk
+  const q = await dmLoad(env).catch(() => ({ items: [] }));
+  const talked = new Set([...(scan?.contacted || []), ...q.items.map((x) => dmNameKey(x.business_name))].filter((k) => k && k.length > 2));
+  for (const x of q.items) if (x.profile_url) known.add(String(x.profile_url).replace(/[?#].*$/, "").replace(/\/+$/, ""));
   for (const p of (Array.isArray(people) ? people : []).slice(0, 40)) {
     const url = String(p.profile_url || "").trim().replace(/[?#].*$/, "").replace(/\/+$/, "");
     const name = String(p.name || "").trim().slice(0, 80);
     if (!name || !/^https:\/\/([a-z]{2,3}\.|m\.)?(facebook|instagram|linkedin)\.com\//.test(url) || known.has(url)) continue;
+    if (talked.has(dmNameKey(name))) { if (scan) scan.skipped = (scan.skipped || 0) + 1; known.add(url); continue; }
     known.add(url);
     const head = String(p.headline || "").trim().slice(0, 200);
     await insert(env, "agent_prospects", [{ business_name: name, decision_maker: name, niche: "warm", vertical: "warm", leak: head || "Ty's " + platform + " connection", evidence: head, source_url: url, score: 9, status: "to_send", source: "warm_" + platform, leak_report: { warm: true, socials: { [platform]: url }, headline: head } }]).then(() => added++).catch(() => {});
@@ -2219,7 +2225,7 @@ async function browserStep(env, body) {
     t.goal = dmSendGoal(t);
   }
   const actions = t.steps.filter((s) => s.kind).length;
-  const maxSteps = t.kind === "dm_send" ? 10 * t.dm.queue.length + 10 : t.kind === "friends_scan" ? 80 : BROWSER_MAX_STEPS;
+  const maxSteps = t.kind === "dm_send" ? 10 * t.dm.queue.length + 10 : t.kind === "friends_scan" ? 120 : BROWSER_MAX_STEPS;
   if (actions >= maxSteps) return browserFinish(env, t, "stopped", "Hit the " + maxSteps + "-step limit. Last page: " + (body.page?.url || "") + ". " + (t.steps.slice(-3).map((s) => s.desc).join("; ")));
   const pg = body.page || {}, els = Array.isArray(pg.elements) ? pg.elements.slice(0, 160) : [];
   if (pg.shot && globalThis.caches?.default) { try { await caches.default.put(new Request("https://sf-live.internal/" + t.id), new Response(JSON.stringify({ shot: pg.shot, url: String(pg.url || "").slice(0, 200), at: new Date().toISOString() }), { headers: { "content-type": "application/json", "cache-control": "max-age=600" } })); } catch (e) {} }
@@ -2235,13 +2241,22 @@ async function browserStep(env, body) {
   const el = a.ref ? els.find((e) => e.r === Number(a.ref)) : null;
   const label = el ? (el.label || el.tag) : a.kind === "click_xy" ? String(a.target || "a spot on the page").slice(0, 80) : "";
   const desc = a.kind === "goto" ? "Open " + a.url : a.kind === "click" ? "Click “" + label + "”" : a.kind === "type" ? "Type into “" + label + "”" : a.kind === "select" ? "Choose “" + a.text + "” in “" + label + "”" : a.kind === "key" ? "Press " + a.key : a.kind === "click_xy" ? "Click “" + label + "”" : a.kind === "type_focused" ? "Type “" + String(a.text || "").slice(0, 60) + "”" : a.kind === "new_tab" ? "Open a new tab: " + a.url : a.kind === "switch_tab" ? "Switch to tab " + a.tab : a.kind === "close_tab" ? "Close tab " + a.tab : a.kind;
+  if (a.kind === "save_contacted") {
+    if (t.kind !== "friends_scan") { t.steps.push({ n: t.steps.length + 1, desc: "save_contacted is only for a friends scan", result: "skipped" }); await browserSave(env, t); return { kind: "wait", ms: 300 }; }
+    const before = (t.scan.contacted || []).length, set = new Set(t.scan.contacted || []);
+    for (const n of (Array.isArray(a.names) ? a.names : []).slice(0, 80)) { const k = dmNameKey(n); if (k.length > 2) set.add(k); }
+    t.scan.contacted = [...set].slice(-600);
+    t.steps.push({ n: t.steps.length + 1, kind: "save", desc: "Noted " + (t.scan.contacted.length - before) + " people you've already messaged (" + t.scan.contacted.length + " so far), so they're skipped" });
+    await browserSave(env, t);
+    return { kind: "wait", ms: 300 };
+  }
   if (a.kind === "save_people") {
     if (t.kind !== "friends_scan") { t.steps.push({ n: t.steps.length + 1, desc: "save_people is only for a friends scan", result: "skipped" }); await browserSave(env, t); return { kind: "wait", ms: 300 }; }
-    const added = await warmSave(env, a.people, t.scan.platform);
+    const added = await warmSave(env, a.people, t.scan.platform, t.scan);
     t.scan.found = (t.scan.found || 0) + added;
-    t.steps.push({ n: t.steps.length + 1, kind: "save", desc: "Saved " + added + " people to your warm list (" + t.scan.found + " so far)" });
+    t.steps.push({ n: t.steps.length + 1, kind: "save", desc: "Saved " + added + " people to your warm list (" + t.scan.found + " so far" + (t.scan.skipped ? ", " + t.scan.skipped + " skipped because you've already messaged them" : "") + ")" });
     await browserSave(env, t);
-    if (t.scan.found >= t.scan.target) return browserFinish(env, t, "done", "Found " + t.scan.found + " coaches and practitioners on " + t.scan.platform + ". They're in Growth › DM Desk › Warm list, and messages are being written for you to approve.");
+    if (t.scan.found >= t.scan.target) return browserFinish(env, t, "done", "Found " + t.scan.found + " coaches and practitioners on " + t.scan.platform + (t.scan.skipped ? " (skipped " + t.scan.skipped + " you've already messaged)" : "") + ". They're in Growth › DM Desk › Warm list, and messages are being written for you to approve.");
     return { kind: "wait", ms: 300 };
   }
   if (a.kind === "type_dm") {

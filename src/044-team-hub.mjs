@@ -708,6 +708,8 @@ async function inboxVoiceSet(env, contactId, on, name) {
 
 // ── v106 Update Announcer: every release teaches the whole team ──
 var RELEASE_NOTES = [
+  { v: 123, title: "Two DM Desk scans, and no double hellos", rules: [
+    { rule: "The DM Desk has two scans: Scan my friends (the owner's own Facebook friends, Instagram following or LinkedIn connections, using the profile links saved in DM Desk settings, Your profiles) and Find people in an industry (new businesses researched on the web, for exactly who the owner types, like trauma coaches in Brisbane). A friends scan reads the inbox first and skips anyone already messaged. If asked to find leads in a niche, point the owner to these, and never message someone who was messaged in the last two months.", applies_to: ["all"] }] },
   { v: 104, title: "Health safety net for clinic clients", rules: [
     { rule: "For health clinic clients: never give clinical advice, diagnoses, medication or doses, never promise results, never use patient testimonials or 'best clinic' claims (AHPRA), and never ask for health details by message. Book them in or hand over to the practitioner.", applies_to: ["all"] }] },
   { v: 105, studio_only: true, title: "No main niche", rules: [

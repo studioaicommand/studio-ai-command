@@ -34,7 +34,7 @@ const page = (url, els = []) => ({ url, title: "page", text: "page", elements: e
 let r = await call("/dm-queue/scan", { platform: "facebook", target: 3 });
 assert(r.j.ok && task().kind === "friends_scan", "\"Scan my friends\" starts a scan in Command Chrome on Ty's Mac");
 let n = await agent("next");
-assert(n.task && /FRIENDS SCAN/.test(n.task.goal) && /facebook\.com\/search\/people/.test(n.task.start_url), "Command Link picks it up and opens Facebook's friend search");
+assert(n.task && /FRIENDS SCAN/.test(n.task.goal) && /facebook\.com\/messages/.test(n.task.start_url) && /facebook\.com\/search\/people/.test(n.task.goal), "Command Link picks it up: it reads the inbox first, then searches Facebook friends");
 nextAct = { kind: "save_people", why: "fits", people: [{ name: "Sarah Lane", profile_url: "https://www.facebook.com/sarah.lane.kinesiology?ref=x", headline: "Kinesiologist at Body Balance Brisbane" }, { name: "Not A Link", profile_url: "https://evil.example/x" }, { name: "Mark Chen", profile_url: "https://www.facebook.com/markchenchiro", headline: "Chiropractor, Spine Align" }] };
 let a = await agent("step", { task_id: n.task.id, page: page("https://www.facebook.com/search/people/?q=coach") });
 assert(DB.agent_prospects.length === 2 && DB.agent_prospects[0].leak_report.warm && DB.agent_prospects[0].leak_report.socials.facebook === "https://www.facebook.com/sarah.lane.kinesiology", "Coaches and practitioners from Ty's friends go onto the warm list (bad links ignored)");

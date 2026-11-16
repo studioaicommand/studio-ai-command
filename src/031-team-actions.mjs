@@ -169,7 +169,7 @@ async function leakTestExpire(env) {
 }
 // ── v81 DM Desk ──
 var DM_CHANNELS = { instagram: { name: "Instagram", max: 450, daily: 20, re: /^https:\/\/(www\.)?instagram\.com\/[A-Za-z0-9._]{2,40}\/?$/ }, facebook: { name: "Facebook", max: 450, daily: 15, re: /^https:\/\/(www\.|m\.|web\.)?facebook\.com\/[^\s?#]{2,120}$/ }, linkedin: { name: "LinkedIn", max: 300, daily: 20, re: /^https:\/\/([a-z]{2,3}\.)?linkedin\.com\/(in|company)\/[^\s?#]{2,120}$/ } };
-var DM_DEFAULT = { autofill: true, li_notes: false, li_weekly: 100, daily: { instagram: 15, facebook: 50, linkedin: 25 }, ap_skip: [], verticals: [], areas: ["Brisbane", "Gold Coast", "Sunshine Coast", "Sydney", "Melbourne"], last_fill: "", rot: 0 };
+var DM_DEFAULT = { handles: { facebook: "", instagram: "", linkedin: "" }, autofill: true, li_notes: false, li_weekly: 100, daily: { instagram: 15, facebook: 50, linkedin: 25 }, ap_skip: [], verticals: [], areas: ["Brisbane", "Gold Coast", "Sunshine Coast", "Sydney", "Melbourne"], last_fill: "", rot: 0 };
 var DM_PLAYBOOK = `DM DESK PLAYBOOK (Instagram, Facebook, LinkedIn)
 WHO YOU WRITE AS: Ty Brazel, founder of Studio Flow & Systems in Australia. We build websites, front desks that answer every enquiry day and night, and the follow-up systems behind them, so service businesses stop losing enquiries and bookings. In cold messages never lead with "AI", "AI receptionist" or "chatbot" (many owners are wary of AI): say what it does. If they ask how it works, be honest that it runs on AI and hands anything tricky to their team. Ty sends every message himself. He is friendly, plain and Australian: first names, short sentences, no corporate words.
 
@@ -252,9 +252,27 @@ function dmCheck(item, items) {
   if (item.profile_url && !ch.re.test(String(item.profile_url))) return "That isn't a " + ch.name + " profile link.";
   return null;
 }
+// v123 the owner's own profiles (each business enters theirs), so a friends scan starts from THEIR friends list
+function dmHandle(k, v) {
+  let x = String(v || "").trim().replace(/[?#].*$/, "").replace(/\/+$/, "");
+  if (!x) return "";
+  if (k === "instagram") { x = x.replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").split("/")[0]; return /^[A-Za-z0-9._]{2,30}$/.test(x) ? x : ""; }
+  if (k === "facebook") { if (!/^https?:\/\//i.test(x)) x = "https://www.facebook.com/" + x.replace(/^@/, ""); x = x.replace(/^http:/i, "https:").replace(/\/\/(m|web)\.facebook/i, "//www.facebook"); return /^https:\/\/(www\.)?facebook\.com\/[^\s]{2,120}$/i.test(x) ? x : ""; }
+  if (k === "linkedin") { if (!/^https?:\/\//i.test(x)) x = "https://www.linkedin.com/in/" + x.replace(/^@/, ""); x = x.replace(/^http:/i, "https:"); return /^https:\/\/([a-z]{2,3}\.)?linkedin\.com\/in\/[^\s]{2,100}$/i.test(x) ? x : ""; }
+  return "";
+}
+function dmNameKey(n) { return String(n || "").toLowerCase().replace(/\(.*?\)/g, " ").normalize("NFKD").replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim(); }
+var DM_SCAN_PRESETS = {
+  coaches: "coach, mentor, consultant, facilitator, practitioner, healer",
+  trauma: "trauma, trauma informed, somatic, nervous system, PTSD, inner child, attachment, RTT, EFT, hypnotherapist, breathwork, counsellor",
+  health: "naturopath, chiropractor, physio, kinesiologist, nutritionist, osteopath, massage, acupuncture, psychologist, clinic",
+  movement: "yoga, pilates, personal trainer, fitness, studio, dance, retreat",
+  beauty: "salon, hair, beauty, skin, aesthetics, lashes, brows, nails",
+  trades: "plumber, electrician, builder, landscaper, cleaner, painter, carpenter, roofing"
+};
 async function dmLoad(env) {
   const v = await secGet(env, "dm_queue").catch(() => null) || {};
-  return { cfg: { ...DM_DEFAULT, ...(v.cfg || {}), daily: { ...DM_DEFAULT.daily, ...(v.cfg?.daily || {}) } }, items: Array.isArray(v.items) ? v.items : [] };
+  return { cfg: { ...DM_DEFAULT, ...(v.cfg || {}), daily: { ...DM_DEFAULT.daily, ...(v.cfg?.daily || {}) }, handles: { ...DM_DEFAULT.handles, ...(v.cfg?.handles || {}) } }, items: Array.isArray(v.items) ? v.items : [] };
 }
 async function dmSave(env, q) {
   const keep = q.items.filter((x) => x.status === "ready" || x.status === "sent" || Date.now() - Date.parse(x.updated_at || x.created_at) < 120 * 864e5).slice(-350);
@@ -278,11 +296,11 @@ var DM_REVIEW_TOOL = { name: "review_dm", description: "Your verdict.", input_sc
 var DM_HUNT_TOOL = { name: "save_businesses", description: "Save the businesses you found.", input_schema: { type: "object", properties: { businesses: { type: "array", items: { type: "object", properties: {
   business_name: { type: "string" }, location: { type: "string" }, instagram: { type: "string" }, facebook: { type: "string" }, linkedin: { type: "string" }, website: { type: "string" },
   signal: { type: "string", description: "The real gap you saw (e.g. 'Bio says DM to book, no booking link'). Never guess." } }, required: ["business_name", "signal"] } } }, required: ["businesses"] } };
-async function dmHunt(env, cfg, u) {
+async function dmHunt(env, cfg, u, niche = "", areaPick = "") {
   const verts = cfg.verticals.length ? cfg.verticals : Object.keys(OUTREACH);
-  const vert = verts[(cfg.rot || 0) % verts.length], area = cfg.areas[(cfg.rot || 0) % Math.max(1, cfg.areas.length)] || "Brisbane";
+  const vert = niche ? "custom" : verts[(cfg.rot || 0) % verts.length], area = areaPick || cfg.areas[(cfg.rot || 0) % Math.max(1, cfg.areas.length)] || "Brisbane";
   cfg.rot = (cfg.rot || 0) + 1;
-  const what = (OUTREACH[vert] || {}).label || vert;
+  const what = niche || (OUTREACH[vert] || {}).label || vert;
   const out = await wsdAsk(env, u, "fast", {
     max_tokens: 2500,
     system: "You are the Social Prospect Finder in Studio Flow & Systems' marketing team. Find real, established " + what + " in " + area + ", Australia that are active on Instagram, Facebook or LinkedIn and show a visible gap in how people enquire or book (no booking link, 'DM to book', a broken or generic link in bio, slow or no replies mentioned in reviews, after-hours gaps). Only report what the search results show; copy profile links exactly; never invent a business, a handle or a gap.",
@@ -300,7 +318,7 @@ async function dmHunt(env, cfg, u) {
     if (dup.length) continue;
     const web = /^https?:\/\//.test(String(b.website || "")) ? String(b.website).slice(0, 300) : null;
     if (web && (await select(env, "agent_prospects", "website=eq." + encodeURIComponent(web) + "&select=id&limit=1").catch(() => [])).length) continue;
-    await insert(env, "agent_prospects", [{ business_name: name, website: web, instagram: ig, location: String(b.location || area).slice(0, 120), niche: vert, vertical: vert, leak: String(b.signal).slice(0, 400), evidence: String(b.signal).slice(0, 400), source_url: ig || fb || li, score: 6, status: "to_send", source: "dm_hunt", leak_report: { socials: { instagram: ig, facebook: fb, linkedin: li } } }]).then(() => added++).catch(() => {});
+    await insert(env, "agent_prospects", [{ business_name: name, website: web, instagram: ig, location: String(b.location || area).slice(0, 120), niche: niche || vert, vertical: vert, leak: String(b.signal).slice(0, 400), evidence: String(b.signal).slice(0, 400), source_url: ig || fb || li, score: 6, status: "to_send", source: "dm_hunt", leak_report: { socials: { instagram: ig, facebook: fb, linkedin: li } } }]).then(() => added++).catch(() => {});
   }
   return { vertical: vert, area, added };
 }
@@ -340,7 +358,7 @@ async function dmWrite(env, pr, items, u, { channel = "", step = "first", parent
   if (item.review.score < 6) return { skip: "The reviewer scored it " + item.review.score + "/10: " + (item.review.problems[0] || "not specific enough") };
   return { item };
 }
-async function dmFill(env, { count = 10, manual = false } = {}) {
+async function dmFill(env, { count = 10, manual = false, niche = "", area = "" } = {}) {
   const q = await dmLoad(env), u = wsdUsage(), res = { written: 0, skipped: [], hunted: [] };
   const ready = q.items.filter((x) => x.status === "ready").length;
   const capTotal = Object.values(q.cfg.daily).reduce((a, b) => a + (+b || 0), 0);
@@ -348,10 +366,10 @@ async function dmFill(env, { count = 10, manual = false } = {}) {
   if (!want) return { ...res, note: "The queue is already full for today." };
   const touched = new Set(q.items.filter((x) => Date.now() - Date.parse(x.created_at) < 60 * 864e5 || ["sent", "ready"].includes(x.status)).map((x) => x.prospect_id));
   const verts = q.cfg.verticals.length ? q.cfg.verticals : null;
-  const pick = async () => (await select(env, "agent_prospects", "status=in.(to_send,sent)&order=score.desc.nullslast,created_at.desc&limit=120&select=id,business_name,decision_maker,website,instagram,email,phone,location,niche,vertical,leak,evidence,leak_report,status,source").catch(() => []))
-    .filter((p) => !touched.has(p.id) && (p.leak_report?.warm || !verts || verts.includes(p.vertical || p.niche)) && !(p.leak_report && p.leak_report.dm_skip && Date.now() - Date.parse(p.leak_report.dm_skip.at) < 14 * 864e5));
+  const pick = async () => (await select(env, "agent_prospects", "status=in.(to_send,sent)" + (niche ? "&niche=eq." + encodeURIComponent(niche) : "") + "&order=score.desc.nullslast,created_at.desc&limit=120&select=id,business_name,decision_maker,website,instagram,email,phone,location,niche,vertical,leak,evidence,leak_report,status,source").catch(() => []))
+    .filter((p) => !touched.has(p.id) && (niche ? p.niche === niche && !p.leak_report?.warm : (p.leak_report?.warm || !verts || verts.includes(p.vertical || p.niche))) && !(p.leak_report && p.leak_report.dm_skip && Date.now() - Date.parse(p.leak_report.dm_skip.at) < 14 * 864e5));
   let pool = await pick();
-  for (let h = 0; pool.length < want && h < 3; h++) { const r = await dmHunt(env, q.cfg, u).catch((e) => ({ error: e.message })); res.hunted.push(r); pool = await pick(); }
+  for (let h = 0; pool.length < want && h < 3; h++) { const r = await dmHunt(env, q.cfg, u, niche, area).catch((e) => ({ error: e.message })); res.hunted.push(r); pool = await pick(); }
   for (const pr of pool) {
     if (res.written >= want) break;
     try {
@@ -533,18 +551,20 @@ async function dmRoute(p, m, body, env) {
       browser: await (async () => { const bt = await browserGet(env).catch(() => null); const c = await linkGet(env, "mac_link").catch(() => null); return { online: linkOnline(c), agent: c?.agent || 0, task: bt && ["dm_send", "friends_scan", "social_login", "autopilot"].includes(bt.kind) ? { kind: bt.kind, sweep: !!(bt.ap && bt.ap.mode === "sweep"), status: bt.status, live: browserLive(bt), result: bt.result, last: (bt.steps || []).slice(-3).map((x) => x.desc), ask: bt.ask } : null }; })(),
       warm_count: (await select(env, "agent_prospects", "source=in.(warm_facebook,warm_instagram,warm_linkedin)&select=id&limit=8000").catch(() => [])).length,
       li_week: liWeek(q.items), ready: q.items.filter((x) => x.status === "ready").sort((a, b) => (b.review?.score || 0) - (a.review?.score || 0)), waiting: q.items.filter((x) => x.status === "sent").slice(-60).reverse(),
-      verticals: Object.entries(OUTREACH).map(([id, v]) => ({ id, name: v.name })), stats: { sent_7d: wk.length, replies_7d: wk.filter((x) => x.status === "replied").length } });
+      verticals: Object.entries(OUTREACH).map(([id, v]) => ({ id, name: v.name })), scan_presets: DM_SCAN_PRESETS, stats: { sent_7d: wk.length, replies_7d: wk.filter((x) => x.status === "replied").length } });
   }
   if (p === "/dm-queue/settings" && m === "POST") {
     const d = { ...q.cfg.daily };
     for (const k of Object.keys(DM_CHANNELS)) if (body.daily && body.daily[k] != null) d[k] = Math.max(0, Math.min(k === "facebook" ? 60 : 40, Math.round(+body.daily[k] || 0)));
-    q.cfg = { ...q.cfg, daily: d, autofill: body.autofill == null ? q.cfg.autofill : !!body.autofill, li_notes: body.li_notes == null ? q.cfg.li_notes : !!body.li_notes,
+    const hd = { ...q.cfg.handles }, badH = [];
+    if (body.handles && typeof body.handles === "object") for (const k of Object.keys(DM_CHANNELS)) if (body.handles[k] != null) { const v = dmHandle(k, body.handles[k]); if (String(body.handles[k]).trim() && !v) badH.push(DM_CHANNELS[k].name); hd[k] = v; }
+    q.cfg = { ...q.cfg, handles: hd, daily: d, autofill: body.autofill == null ? q.cfg.autofill : !!body.autofill, li_notes: body.li_notes == null ? q.cfg.li_notes : !!body.li_notes,
       verticals: Array.isArray(body.verticals) ? body.verticals.filter((v) => OUTREACH[v]) : q.cfg.verticals,
       areas: Array.isArray(body.areas) ? body.areas.map((a) => String(a).trim().slice(0, 60)).filter(Boolean).slice(0, 12) : q.cfg.areas,
       ap_skip: Array.isArray(body.ap_skip) ? body.ap_skip.map((a) => String(a).trim().slice(0, 80)).filter(Boolean).slice(0, 100) : (q.cfg.ap_skip || []) };
     if (!q.cfg.areas.length) q.cfg.areas = DM_DEFAULT.areas.slice();
     await dmSave(env, q);
-    return json({ ok: true, cfg: q.cfg });
+    return json({ ok: true, cfg: q.cfg, ...(badH.length ? { warn: "That doesn't look like a " + badH.join(" or ") + " profile link, so it wasn't saved. Paste the link from your profile page." } : {}) });
   }
   if (p === "/dm-queue/linkedin-fill" && m === "POST") return json({ ok: true, ...(await liFill(env, { count: Math.max(1, Math.min(25, +body.count || 10)), manual: true })) });
   if (p === "/dm-queue/login" && m === "POST") {
@@ -555,11 +575,24 @@ async function dmRoute(p, m, body, env) {
     return json(r, r.ok ? 200 : 400);
   }
   if (p === "/dm-queue/scan" && m === "POST") {
+    // v123 two kinds of scan: the owner's own friends (warm), or new people in an industry (cold, researched on the web)
+    if (body.mode === "industry") {
+      const niche = String(body.niche || "").replace(/[\r\n]+/g, " ").trim().slice(0, 80);
+      if (niche.length < 3) return json({ ok: false, error: "Say who to look for, like trauma coaches or yoga studios." }, 400);
+      const area = String(body.area || "").trim().slice(0, 60);
+      return json({ ok: true, mode: "industry", ...(await dmFill(env, { count: Math.max(1, Math.min(15, +body.target || 10)), manual: true, niche, area })) });
+    }
     const platform = ["facebook", "instagram", "linkedin"].includes(body.platform) ? body.platform : "facebook";
-    const words = String(body.keywords || "coach, practitioner, naturopath, chiropractor, physio, kinesiologist, nutritionist, dentist, psychologist, clinic, studio, salon").slice(0, 300);
+    const H = q.cfg.handles || {};
+    if (platform === "instagram" && !H.instagram) return json({ ok: false, error: "Add your Instagram handle in DM Desk settings (Your profiles) first, so the scan opens your own following list." }, 400);
+    const words = String(DM_SCAN_PRESETS[body.preset] || body.keywords || DM_SCAN_PRESETS.coaches + ", " + DM_SCAN_PRESETS.health).replace(/[\r\n]+/g, " ").slice(0, 300);
     const target = Math.max(3, Math.min(200, +body.target || 60));
-    const goal = "FRIENDS SCAN on " + platform + ": find Ty's own connections who are coaches, practitioners or service-business owners (look for words like: " + words + "). " + (platform === "facebook" ? "On Facebook, search people with each word (for example https://www.facebook.com/search/people/?q=coach), choose the Friends filter so only Ty's friends show, then save_people for everyone who fits." : platform === "instagram" ? "On Instagram, open Ty's profile, open Following, and save_people for every account whose name or bio shows they fit." : "On LinkedIn, open My Network › Connections and save_people for everyone whose headline fits.") + " Scroll and repeat until about " + target + " people are saved or the list ends. Never send a message or a request during a scan.";
-    const r = await dmBrowserTask(env, { kind: "friends_scan", goal, start_url: platform === "facebook" ? WARM_HUNTS.facebook + "coach" : WARM_HUNTS[platform], scan: { platform, target, found: 0 } });
+    const inbox = { facebook: "https://www.facebook.com/messages/", instagram: "https://www.instagram.com/direct/inbox/", linkedin: "https://www.linkedin.com/messaging/" }[platform];
+    const list = platform === "facebook" ? "search people with each word (for example https://www.facebook.com/search/people/?q=" + encodeURIComponent(words.split(",")[0].trim()) + "), open the Friends filter and choose My friends so only the owner's friends show" + (H.facebook ? " (their own profile is " + H.facebook + ", whose Friends tab also lists everyone)" : "")
+      : platform === "instagram" ? "open https://www.instagram.com/" + H.instagram + "/following/ (then /followers/) and read the list"
+      : "open My Network, Connections (https://www.linkedin.com/mynetwork/invite-connect/connections/) and read the headlines";
+    const goal = "FRIENDS SCAN on " + platform + ". STEP 1: open " + inbox + " and read the chat list. Use save_contacted with every person's name you can see there, scroll down and repeat 4 or 5 times (about the last two months of chats). These people have already been messaged and must be skipped. STEP 2: " + list + ". Use save_people for everyone who is a coach, practitioner or service-business owner, looking for words like: " + words + ". Copy each profile link exactly. Scroll and repeat until about " + target + " people are saved or the list ends. Never send a message, a like or a request during a scan.";
+    const r = await dmBrowserTask(env, { kind: "friends_scan", goal, start_url: inbox, scan: { platform, target, found: 0, contacted: [], skipped: 0, words } });
     return json(r, r.ok ? 200 : 400);
   }
   if (p === "/dm-queue/send-batch" && m === "POST") {
