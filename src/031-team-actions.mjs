@@ -570,10 +570,14 @@ async function dmRoute(p, m, body, env) {
   }
   if (p === "/dm-queue/linkedin-fill" && m === "POST") return json({ ok: true, ...(await liFill(env, { count: Math.max(1, Math.min(25, +body.count || 10)), manual: true })) });
   if (p === "/dm-queue/login" && m === "POST") {
-    const ALL = { facebook: { name: "Facebook", url: "https://www.facebook.com/" }, instagram: { name: "Instagram", url: "https://www.instagram.com/accounts/login/" }, linkedin: { name: "LinkedIn", url: "https://www.linkedin.com/login" } };
-    const which = (Array.isArray(body.sites) && body.sites.length ? body.sites : ["facebook", "instagram", "linkedin"]).filter((k) => ALL[k]);
+    const ALL = { facebook: { name: "Facebook", url: "https://www.facebook.com/" }, instagram: { name: "Instagram", url: "https://www.instagram.com/accounts/login/" }, linkedin: { name: "LinkedIn", url: "https://www.linkedin.com/login" }, tiktok: { name: "TikTok", url: "https://www.tiktok.com/login" } };
+    const which = (Array.isArray(body.sites) && body.sites.length ? body.sites : ["facebook", "instagram", "linkedin", ...(q.cfg.handles?.tiktok ? ["tiktok"] : [])]).filter((k) => ALL[k]);
     const sites = which.map((k) => ALL[k]);
-    const r = await dmBrowserTask(env, { kind: "social_login", goal: "Log in to " + sites.map((x) => x.name).join(", ") + " in Command Chrome", start_url: sites[0].url, login: { sites, i: 0, opened: true, asked: false } });
+    // v125: helpers v5+ open every site in its own tab and stay still while Ty logs in; older helpers keep the one-by-one flow
+    const ml = await linkGet(env, "mac_link").catch(() => null), tabs = ml?.agent >= 5;
+    const r = await dmBrowserTask(env, { kind: "social_login", goal: "Log in to " + sites.map((x) => x.name).join(", ") + " in Command Chrome", start_url: sites[0].url, login: tabs ? { sites, tabs: true, next: 1, home: false, asked: false } : { sites, i: 0, opened: true, asked: false } });
+    if (r.ok) r.sites = sites.map((x) => x.name);
+    if (r.ok && !tabs) r.note = "Update Command Link once (Settings › Brand & features › Command Link › Set up again) so each site opens in its own tab and it updates itself from then on.";
     return json(r, r.ok ? 200 : 400);
   }
   if (p === "/dm-queue/scan" && m === "POST") {

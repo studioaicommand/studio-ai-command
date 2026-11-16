@@ -5,10 +5,15 @@
 //    Every step is decided by Command in the cloud; anything that sends, submits, pays or deletes waits for Ty's approval there.
 //    This helper itself refuses to type into password or card fields and only opens http/https pages.
 // 3) Outreach Autopilot (v4): sends Ty's approved messages and replies with a fixed, checked routine, no AI per click.
+// 4) v5: stays still while Ty is doing something himself (logging in, a CAPTCHA): no window jumps, no screenshots, no page
+//    tagging until he presses Continue. Keeps itself up to date: when Command has a newer helper, it downloads it from
+//    Ty's own Command (same login token) between tasks and restarts.
 import { chromium } from 'playwright-core';
 import { execFile } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 const T = process.env.SF_T, O = process.env.SF_O, DIR = process.env.SF_DIR;
-const H = { Authorization: 'Bearer ' + T, 'X-SF-Agent': '4', 'Content-Type': 'application/json' };
+const H = { Authorization: 'Bearer ' + T, 'X-SF-Agent': '5', 'Content-Type': 'application/json' };
 const RISKY = /\b(send|submit|pay|purchase|buy|checkout|delete|remove|post|publish|confirm|approve|sign up|subscribe|transfer|place order)\b/i;
 const CURSOR = `(() => { if (window.__sfc) return; window.__sfc = 1; const add = () => { if (!document.body || document.getElementById('sf-cur')) return; const c = document.createElement('div'); c.id = 'sf-cur'; c.style.cssText = 'position:fixed;left:-40px;top:-40px;width:26px;height:26px;z-index:2147483647;pointer-events:none;transition:left .45s cubic-bezier(.2,.7,.2,1),top .45s cubic-bezier(.2,.7,.2,1);filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))'; c.innerHTML = '<svg width="26" height="26" viewBox="0 0 24 24"><path d="M4 2l15 10-6.5 1.4L16 21l-3 1.4-3.6-7.6L4 19z" fill="#22d3ee" stroke="#04131f" stroke-width="1.4" stroke-linejoin="round"/></svg>'; const b = document.createElement('div'); b.id = 'sf-say'; b.style.cssText = 'position:fixed;right:14px;bottom:14px;z-index:2147483647;pointer-events:none;max-width:360px;padding:9px 13px;border-radius:12px;background:rgba(4,19,31,.9);color:#e6f7ff;font:500 13px/1.35 -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35);border:1px solid rgba(34,211,238,.35);display:none'; document.body.append(c, b); }; if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add(); window.__sfMove = (x, y) => { add(); const c = document.getElementById('sf-cur'); if (c) { c.style.left = (x - 3) + 'px'; c.style.top = (y - 2) + 'px'; } }; window.__sfTap = (x, y) => { const r = document.createElement('div'); r.style.cssText = 'position:fixed;left:' + (x - 14) + 'px;top:' + (y - 14) + 'px;width:28px;height:28px;border-radius:50%;border:2px solid #22d3ee;z-index:2147483646;pointer-events:none;transition:transform .5s,opacity .5s'; document.body.append(r); requestAnimationFrame(() => { r.style.transform = 'scale(2)'; r.style.opacity = '0'; }); setTimeout(() => r.remove(), 600); }; window.__sfSay = (t) => { add(); const b = document.getElementById('sf-say'); if (b) { b.textContent = t ? 'Command: ' + t : ''; b.style.display = t ? 'block' : 'none'; } }; })();`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -109,18 +114,27 @@ async function runTask(task) {
   for (const p of old.slice(0, Math.max(0, old.length - 2))) await p.close().catch(() => {});
   await page.bringToFront().catch(() => {});
   if (task.start_url && /^https?:\/\//i.test(task.start_url)) await page.goto(task.start_url, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
-  let last = null, seen = c.pages().length;
+  let last = null, seen = c.pages().length, quiet = false;
   const until = Date.now() + 60 * 60000;
   while (Date.now() < until) {
     if (!ctx) return api('/api/v1/link/step', { task_id: task.id, fatal: 'The Command Chrome window was closed.' });
     const pages = c.pages();
-    if (!pages.includes(page) || pages.length > seen) page = pages[pages.length - 1] || await c.newPage();
-    seen = pages.length;
-    await page.bringToFront().catch(() => {});
-    const s = await snap(page).catch((e) => ({ url: page.url(), title: '', text: '', elements: [], shot: null, error: String(e.message).slice(0, 200) }));
+    let s;
+    if (quiet) {
+      // Ty is doing this bit himself: don't move the window, switch tabs, tag the page or take screenshots.
+      seen = pages.length;
+      if (!pages.includes(page)) page = pages[pages.length - 1] || await c.newPage();
+      s = { quiet: true, url: page.url(), title: '', text: '', elements: [], shot: null };
+    } else {
+      if (!pages.includes(page) || pages.length > seen) page = pages[pages.length - 1] || await c.newPage();
+      seen = pages.length;
+      await page.bringToFront().catch(() => {});
+      s = await snap(page).catch((e) => ({ url: page.url(), title: '', text: '', elements: [], shot: null, error: String(e.message).slice(0, 200) }));
+    }
     s.tabs = await tabs(c, page);
     const r = await api('/api/v1/link/step', { task_id: task.id, page: s, last });
     const a = (r && r.act) || { kind: 'finish' };
+    quiet = a.kind === 'wait' && !!a.quiet;
     if (a.kind === 'finish') { await page.evaluate(() => { try { window.__sfSay(''); } catch (e) {} }).catch(() => {}); return; }
     if (a.kind === 'wait') { await sleep(Math.min(Number(a.ms) || 4000, 15000)); last = null; continue; }
     if (a.kind === 'new_tab') { try { if (!/^https?:\/\//i.test(String(a.url || ''))) throw new Error('Only web pages can be opened.'); page = await c.newPage(); seen = c.pages().length; await page.goto(a.url, { waitUntil: 'domcontentloaded', timeout: 30000 }); last = { ok: true, kind: a.kind }; } catch (e) { last = { ok: false, kind: a.kind, error: String(e.message).slice(0, 200) }; } continue; }
@@ -358,6 +372,15 @@ for (;;) {
   try {
     const r = await api('/api/v1/link/next');
     if (r.unlinked) process.exit(0);
+    if (r.update) {
+      // A newer helper is ready: fetch it from Ty's own Command, check it looks right, swap it in and restart.
+      const res = await fetch(O + '/api/v1/link/agent', { headers: H, signal: AbortSignal.timeout(60000) });
+      const code = res.ok ? await res.text() : '';
+      if (code.startsWith('// Studio Command Link agent') && code.length > 5000 && /X-SF-Agent/.test(code)) {
+        writeFileSync(fileURLToPath(import.meta.url), code);
+        process.exit(3); // launchd starts the new version straight away (it only stays down after a clean exit)
+      }
+    }
     if (r.url && /^https?:\/\//i.test(r.url)) execFile('/usr/bin/open', ['-a', 'Google Chrome', r.url], (err) => { if (err) execFile('/usr/bin/open', [r.url], () => {}); });
     if (r.task) await runTask(r.task).catch((e) => api('/api/v1/link/step', { task_id: r.task.id, fatal: String(e.message).slice(0, 300) }).catch(() => {}));
   } catch (e) { /* offline: try again shortly */ }

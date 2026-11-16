@@ -99,12 +99,12 @@ const code = x.j.command.match(/install\/([a-f0-9]{24})/)[1];
 const script = await (await realFetch(O + "/link/install/" + code)).text();
 const token = script.match(/<key>SF_T<\/key><string>([a-f0-9]{64})<\/string>/)?.[1];
 const src = script.split("<<'SFAGENT'\n")[1].split("\nSFAGENT\n")[0];
-assert(/'X-SF-Agent': '4'/.test(src) && /runPlaybook/.test(src), "The installer ships Command Link 4 (Outreach Autopilot)");
+assert(+((/'X-SF-Agent': '(\d+)'/.exec(src) || [])[1]) >= 4 && /runPlaybook/.test(src), "The installer ships Command Link 4 or newer (Outreach Autopilot)");
 fs.mkdirSync("/tmp/claude-0/agent4", { recursive: true }); fs.mkdirSync("/tmp/claude-0/agent", { recursive: true }); fs.writeFileSync("/tmp/claude-0/agent/agent4.mjs", src);
 agent = spawn(process.execPath, ["/tmp/claude-0/agent/agent4.mjs"], { env: { ...process.env, SF_T: token, SF_O: O, SF_DIR: "/tmp/claude-0/agent4", SF_CHANNEL: "bundled", SF_HEADLESS: "1" }, stdio: ["ignore", "pipe", "pipe"] });
 agent.stderr.on("data", (d) => process.stderr.write(d));
-x = await until(async () => { const r = await call("/dm-queue"); return r.j.browser && r.j.browser.agent === 4 && r.j.browser.online ? r : null; }, 20000);
-assert(x, "Command Link 4 checks in and the DM Desk sees it");
+x = await until(async () => { const r = await call("/dm-queue"); return r.j.browser && r.j.browser.agent >= 4 && r.j.browser.online ? r : null; }, 20000);
+assert(x, "Command Link 4+ checks in and the DM Desk sees it");
 
 const asks0 = asks.length;
 x = await call("/dm-queue/send-batch", { ids: ["k1", "j1", "d1", "p1", "t1", "s1", "r1", "l1"] });
