@@ -350,6 +350,7 @@ async function memRoute(request, env, url) {
       if (p === "admin/support") return supportAdmin(env, request, who, body);
       if (p === "admin/log" && request.method === "GET") return secJson({ ok: true, ...await secLogVerify(env) });
       if (p === "admin/secrets" && request.method === "GET") return secJson({ ok: true, ...await secSecretsCheck(env) });
+      if (p === "admin/secrets/remove" && request.method === "POST") { const r = await secSecretsRemove(env, body.key); if (r.ok && r.removed) { await secLog(env, { actor: who.name, action: "secret_removed", summary: who.name + " removed " + r.removed + " stored key(s) from " + String(body.key).slice(0, 80) }); } return secJson(r, r.ok ? 200 : 400); }
       return err("Not found.", 404);
     }
     return err("Not found.", 404);
@@ -406,16 +407,45 @@ async function unseal(env, s) {
   return new TextDecoder().decode(pt);
 }
 var SEC_SECRET_PATTERNS = [["Stripe live key", /\b(sk|rk)_live_[A-Za-z0-9]{10,}/], ["Stripe test key", /\bsk_test_[A-Za-z0-9]{10,}/], ["Access token (JWT)", /\beyJ[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{10,}/], ["GitHub token", /\bgh[pousr]_[A-Za-z0-9]{20,}/], ["Slack token", /\bxox[abprs]-[A-Za-z0-9-]{10,}/], ["Google API key", /\bAIza[0-9A-Za-z_-]{30,}/], ["Private key", /-----BEGIN [A-Z ]*PRIVATE KEY-----/], ["OpenAI / Anthropic key", /\bsk-(ant-|proj-)?[A-Za-z0-9_-]{20,}/], ["GHL private token", /\bpit-[0-9a-f-]{20,}/]];
+// v116: each finding says whose key it is (yours or someone else's), where it sits, a masked preview, and can be removed.
+var SEC_OWN_KEYS = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY", "GHL_TOKEN", "GHL_PRIVATE_TOKEN", "STRIPE_SECRET_KEY", "STRIPE_READ_KEY", "TELEGRAM_BOT_TOKEN", "STUDIO_TEST_KEY", "SEAL_KEY", "AI_GATEWAY_TOKEN"];
+function secMask(v) { v = String(v || ""); return v.length > 14 ? v.slice(0, 7) + "…" + v.slice(-4) : v.slice(0, 3) + "…"; }
+function secWhere(key) {
+  key = String(key || "");
+  if (/^wsd:/.test(key)) return "Inside a website demo Command built for a prospect. It was most likely copied from that business's own website code when the demo was made, so it's their key, not yours.";
+  if (/^(dm_queue|prospect|agent_|hunt|leak)/.test(key)) return "Inside prospect or outreach data (copied from a business's public page).";
+  return "Inside Command's own settings.";
+}
 async function secSecretsCheck(env) {
   const rows = await secRest(env, "GET", "team_settings?select=key,value&key=not.like.wsdimg:*&limit=1000") || [];
   const found = [];
   for (const r of rows) {
     const t = JSON.stringify(r.value || "");
     if (/sealed:v1:/.test(t) && !SEC_SECRET_PATTERNS.some(([, re]) => re.test(t.replace(/sealed:v1:[A-Za-z0-9_.-]+/g, "")))) continue;
-    for (const [label, re] of SEC_SECRET_PATTERNS) if (re.test(t)) { found.push({ where: "settings: " + r.key, what: label }); break; }
+    for (const [label, re] of SEC_SECRET_PATTERNS) {
+      const m = t.match(re);
+      if (!m) continue;
+      const hit = m[0], own = SEC_OWN_KEYS.filter((n) => env[n] && String(env[n]) === hit);
+      const at = m.index || 0;
+      const around = (t.slice(Math.max(0, at - 50), at) + "[" + secMask(hit) + "]" + t.slice(at + hit.length, at + hit.length + 30)).replace(/\\[nrt]/g, " ").replace(/\\"/g, '"');
+      found.push({ where: "settings: " + r.key, key: r.key, what: label, preview: secMask(hit), yours: own.length ? own : false,
+        explain: own.length ? "This is YOUR " + own.join(" / ") + ". It must not sit in the database: remove it here, then rotate the key." : secWhere(r.key), context: around.slice(0, 160) });
+      break;
+    }
   }
-  const names = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY", "GHL_TOKEN", "GHL_PRIVATE_TOKEN", "STRIPE_SECRET_KEY", "STRIPE_READ_KEY", "TELEGRAM_BOT_TOKEN", "STUDIO_TEST_KEY", "SEAL_KEY"];
-  return { stored_in_database: found, checked: rows.length, cloudflare_secrets: names.filter((n) => env[n]).map((n) => n), own_seal_key: !!env.SEAL_KEY, note: found.length ? "Move these into Cloudflare secrets or seal them." : "No API keys or tokens are stored in the database. They live only in Cloudflare's encrypted secrets." };
+  return { stored_in_database: found, checked: rows.length, cloudflare_secrets: SEC_OWN_KEYS.filter((n) => env[n]), own_seal_key: !!env.SEAL_KEY, note: found.length ? "Remove each one below. If any is marked as yours, rotate that key afterwards." : "No API keys or tokens are stored in the database. They live only in Cloudflare's encrypted secrets." };
+}
+// Replace every key or token in one stored record with "[key removed]" (the rest of the record is kept).
+async function secSecretsRemove(env, key) {
+  key = String(key || "");
+  if (!key || /^(sec_|members|team_pause|telegram$)/.test(key)) return { ok: false, error: "That record can't be changed here." };
+  const [row] = await secRest(env, "GET", "team_settings?select=key,value&key=eq." + encodeURIComponent(key) + "&limit=1") || [];
+  if (!row) return { ok: false, error: "Not found." };
+  let t = JSON.stringify(row.value), n = 0;
+  for (const [, re] of SEC_SECRET_PATTERNS) t = t.replace(new RegExp(re.source, "g"), () => { n++; return "[key removed]"; });
+  if (!n) return { ok: true, removed: 0 };
+  await secPut(env, key, JSON.parse(t));
+  return { ok: true, removed: n };
 }
 
 // v43 instance profile: whose Command this is (Studio's own, or a client's white-label copy).

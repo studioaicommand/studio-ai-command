@@ -153,5 +153,22 @@ assert(x.j.stored_in_database.length === 0 && x.j.cloudflare_secrets.includes("A
 DB.team_settings.push({ key: "oops", value: { stripe: "sk_live_abcdefghijklmnopqrst" } });
 x = await call("/api/v1/members/admin/secrets", { auth: tyTok });
 assert(x.j.stored_in_database.length === 1 && /Stripe live key/.test(x.j.stored_in_database[0].what), "A leaked key in the database is flagged");
+// v116: each finding says whose key it is, where it sits, a masked preview, and can be removed
+DB.team_settings = DB.team_settings.filter((r) => r.key !== "oops");
+DB.team_settings.push({ key: "wsd:ebc8cd0c354f", value: { html: "<script>const k='sk-proj-ABCDEFGHIJKLMNOPQRSTUVWX1234';fetch(api)</script>", business: "Harbour Physio" } });
+x = await call("/api/v1/members/admin/secrets", { auth: tyTok });
+const f = x.j.stored_in_database[0];
+assert(f && f.yours === false && /website demo/.test(f.explain) && /their key, not yours/.test(f.explain) && f.preview.startsWith("sk-proj") && f.preview.endsWith("1234") && !/ABCDEFGHIJKLMNOP/.test(JSON.stringify(f)), "A key inside a website demo is explained (copied from the prospect's site, not yours) and only shown masked");
+x = await call("/api/v1/members/admin/secrets/remove", { method: "POST", auth: tyTok, body: { key: "wsd:ebc8cd0c354f" } });
+const rec = DB.team_settings.find((r) => r.key === "wsd:ebc8cd0c354f");
+assert(x.j.ok && x.j.removed === 1 && /\[key removed\]/.test(rec.value.html) && rec.value.business === "Harbour Physio", "Remove it: the key is swapped for [key removed], the rest of the demo is kept");
+x = await call("/api/v1/members/admin/secrets", { auth: tyTok });
+assert(x.j.stored_in_database.length === 0, "The check is clear afterwards");
+env.ANTHROPIC_API_KEY = "sk-ant-api03-OWNKEYOWNKEYOWNKEYOWNKEY99";
+DB.team_settings.push({ key: "oops2", value: { k: env.ANTHROPIC_API_KEY } });
+x = await call("/api/v1/members/admin/secrets", { auth: tyTok });
+assert(x.j.stored_in_database[0].yours.includes("ANTHROPIC_API_KEY") && /YOUR ANTHROPIC_API_KEY/.test(x.j.stored_in_database[0].explain) && /rotate/.test(x.j.stored_in_database[0].explain), "If it's Ty's own key, it says so loudly and says to rotate it");
+const srcW = (await import("node:fs")).readFileSync(W, "utf8");
+assert(/var wsdPut = \(env, token, rec\) => \{ let t = JSON\.stringify\(rec\), n = 0; for \(const \[, re\] of SEC_SECRET_PATTERNS\)/.test(srcW), "New website demos strip any key copied from a prospect's site before saving");
 console.log("v41 passkeys + roles + sealed log: all passed");
 process.exit(0);

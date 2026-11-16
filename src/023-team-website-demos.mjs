@@ -280,7 +280,8 @@ async function wsdIndexPut(env, token, patch) {
   return items;
 }
 var wsdGet = (env, token) => secGet(env, "wsd:" + token);
-var wsdPut = (env, token, rec) => secPut(env, "wsd:" + token, rec);
+// v116: never store an API key or token copied from a prospect's website code inside a demo.
+var wsdPut = (env, token, rec) => { let t = JSON.stringify(rec), n = 0; for (const [, re] of SEC_SECRET_PATTERNS) t = t.replace(new RegExp(re.source, "g"), () => { n++; return "[key removed]"; }); return secPut(env, "wsd:" + token, n ? JSON.parse(t) : rec); };
 function wsdLinks(env, token) {
   const o = String(env.PUBLIC_ORIGIN || DEFAULT_ORIGIN).replace(/\/+$/, "");
   const L = { site: `${o}/demo/${token}/site`, report: `${o}/demo/${token}/report`, receptionist: `${o}/demo/${token}` };
