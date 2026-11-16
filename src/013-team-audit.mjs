@@ -211,7 +211,7 @@ async function recoverCommandJobs(env) {
 async function teamQueue(batch,env,ctx) {
   const e=teamEnv(env);
   for(const msg of batch.messages) {
-    try {if(msg.body?.kind==='pack_concept'){await packConceptBuild(e,String(msg.body.token||''));msg.ack();continue;}await executeCommandJob(e,msg.body?.job_id,telegramCommandDeps(e,ctx));msg.ack();}
+    try {if(msg.body?.kind==='pack_concept'){await packConceptBuild(e,String(msg.body.token||''));msg.ack();continue;}if(msg.body?.kind==='photo_fill'){await wsdFillPhotos(e,String(msg.body.token||''),{why:'someone opened it'});msg.ack();continue;}await executeCommandJob(e,msg.body?.job_id,telegramCommandDeps(e,ctx));msg.ack();}
     catch(err) {console.error('AI job queue:',err.message);msg.retry({delaySeconds:60});}
   }
 }

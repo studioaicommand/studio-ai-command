@@ -583,6 +583,8 @@ async function wsdPublic(request, env, url, ctx, parts) {
   const html = kind === "report" ? wsdReport(pspec, opt) : wsdRender(pspec, opt);
   const ty = await tyView(request, env, url);
   const work = ty ? Promise.resolve() : wsdSeen(env, token, rec, kind, request, url).catch(() => {});
+  // v122: a concept with an empty photo spot gets fixed in the background when anyone opens it
+  if (kind === "site" && wsdMap(rec.spec).some((m) => m.missing)) { const pf = await secGet(env, "photofill:" + token).catch(() => null); if (!pf || Date.now() - Date.parse(pf.at || 0) > 6 * 36e5) { await secPut(env, "photofill:" + token, { at: new Date().toISOString(), queued: true }).catch(() => {}); if (env.COMMAND_QUEUE && env.COMMAND_QUEUE.send) await env.COMMAND_QUEUE.send({ kind: "photo_fill", token }).catch(() => {}); } }
   ctx?.waitUntil ? ctx.waitUntil(work) : await work;
   return new Response(tyDecorate(html, ty), { headers: { ...(await tyCookieHeader(env, url)), "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "strict-origin-when-cross-origin" } });
 }
@@ -676,6 +678,7 @@ async function wsdRoute(p, m, body, env, url, seg) {
       if (seg[3] === "build" && m === "POST") return J(await wsdBuildLead(env, seg[2]));
       if (!seg[3] && m === "POST") return J({ ok: true, lead: await wsdLeadSet(env, seg[2], { ...(body.status ? { status: String(body.status).slice(0, 20) } : {}), ...(body.note != null ? { note: String(body.note).slice(0, 500) } : {}) }) });
     }
+    if (p === "/website-demos/fix-photos" && m === "POST") return J({ ok: true, ...(await wsdPhotoFixAll(env, { force: true })) });
     if (seg[0] === "website-demos" && tokenOk(seg[1])) {
       const t = seg[1];
       if (!seg[2] && m === "GET") { const rec = await wsdGet(env, t); if (!rec) return J({ ok: false, error: "Demo not found." }, 404); return J({ ok: true, demo: { map: wsdMap(rec.spec), pending: rec.pending || null, critique: rec.critique || null, token: t, name: rec.name, website: rec.website, industry: rec.industry, style: rec.spec.style, why: rec.spec.why, status: rec.status, cost_aud: rec.cost_aud, chat: rec.chat || [], ideas: rec.ideas || [], versions: (rec.versions || []).length, reviews: rec.reviews, images: (rec.look?.images || []).length, created: rec.created }, ...wsdLinks(env, t) }); }

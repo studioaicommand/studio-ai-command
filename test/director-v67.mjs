@@ -40,7 +40,8 @@ director = { reply: "Got it: section 1, the hero. I'll swap the red block for a 
 const before = JSON.stringify(rec().spec);
 j = await api("/talk", { message: "the top hero red image needs to change to a real photo" });
 assert(j.ok && /section 1/i.test(j.reply) && j.ready && j.changes.length === 1 && !j.built, "Talk: the Director replies with its plan (which section, what) before building");
-assert(JSON.stringify(rec().spec) === before && rec().pending.changes.length === 1, "Talking changes nothing; the plan waits for Ty");
+const noImg = (x) => JSON.stringify(x, (k, v) => (k === "image" || k === "images" || k === "ai_images" ? undefined : v));
+assert(noImg(rec().spec) === noImg(JSON.parse(before)) && rec().pending.changes.length === 1, "Talking changes nothing except filling empty photo spots (v122); the plan waits for Ty");
 assert(/WHAT TY HAS ASKED BEFORE[\s\S]*change the red hero image/.test(JSON.stringify(asks.at(-1))) && /PAGE MAP/.test(JSON.stringify(asks.at(-1))) && /BRAND RULE/.test(JSON.stringify(asks.at(-1))), "It sees the page map, Ty's earlier requests (so repeats are caught) and the brand rule");
 
 editor = () => { const msg = JSON.stringify(asks.at(-1).messages); const url = (msg.match(/https:\/\/studioflowandsystems\.app\/demo\/img\/[0-9a-f]{16}\.webp/) || [""])[0]; return { sections: [{ n: 1, section: { ...spec0.sections[0], images: [url] } }, { n: 2, section: { ...spec0.sections[1], title: "SNEAKY CHANGE" } }], results: [{ change: "hero photo", done: true }] }; };

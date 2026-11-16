@@ -2593,7 +2593,7 @@ async function heldApprovedTick(env, { force = false } = {}) {
 // break them. (2) Missing, blocked or tiny photos are replaced with AI images made for the brand (OpenAI GPT Image),
 // stored once and served from /demo/img/<id>. Max 4 per demo, labelled as AI concept imagery. ──
 var WSD_IMG_MODELS = ["gpt-image-2.6-flare", "gpt-image-2.5-flare"];
-var WSD_IMG_MAX = 6; // v119: their own photos first, generated images only for the gaps (was 10)
+var WSD_IMG_MAX = 16; // v122: every photo spot in every section gets a photo (Ty: every section must have images)
 var wsdH8 = (s) => { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16).padStart(8, "0"); };
 var WSD_IMG_KEYS = new Set(["image", "images", "hero_images", "logo", "before", "after"]);
 // rewrite every outside image url in a spec (deep) to go through Command
@@ -3033,13 +3033,26 @@ async function onboardPublic(request, env, ctx) {
 // /talk: it replies with its plan for the exact sections (numbered page map) and asks if anything is unclear. Nothing changes yet.
 // /build-plan: it changes only those sections, makes new photos when asked (AI photo, or a stock photo if PEXELS_API_KEY is set),
 // re-checks every photo loads and fills any empty photo spot, then reports each change as done or not done, honestly. ──
-var WSD_PHOTO_TYPES = new Set(["hero", "split", "expand", "quote", "gallery"]);
-function wsdSecImgs(s) { return [...(Array.isArray(s.images) ? s.images : []), s.image, ...(Array.isArray(s.items) ? s.items.map((x) => x && x.image) : [])].filter(Boolean); }
+var WSD_PHOTO_TYPES = new Set(["hero", "split", "expand", "quote", "gallery", "features", "journey"]);
+// v122: photos inside steps (journey) and any other card list count too
+var WSD_CARD_LISTS = ["items", "steps", "cards", "members", "people", "slides"];
+function wsdSecImgs(s) { s = s || {}; return [...(Array.isArray(s.images) ? s.images : []), s.image, ...WSD_CARD_LISTS.flatMap((k) => Array.isArray(s[k]) ? s[k].map((x) => x && typeof x === "object" ? x.image : null) : [])].filter(Boolean); }
+// Photo spots a section shows but has no photo in (journey steps, image cards), so the filler and the checks can see them.
+function wsdEmptyCards(s) {
+  if (!s) return [];
+  if (s.type === "journey") return s.variant === "timeline" ? [] : (Array.isArray(s.steps) ? s.steps.slice(0, 6) : []).filter((x) => x && typeof x === "object" && !x.image);
+  if (s.type === "features") return (Array.isArray(s.items) ? s.items.slice(0, 6) : []).filter((x) => x && typeof x === "object" && !x.image);
+  const out = [];
+  for (const k of WSD_CARD_LISTS) if (Array.isArray(s[k]) && s[k].some((x) => x && x.image)) for (const x of s[k].slice(0, 6)) if (x && typeof x === "object" && !x.image) out.push(x);
+  return out;
+}
 function wsdMap(spec) {
   return (spec.sections || []).map((s, i) => {
     const imgs = wsdSecImgs(s);
-    const photo = imgs.length ? (imgs.some((u) => /\/demo\/img\/[0-9a-f]{16}\.webp/.test(u)) ? "AI or stock photo" : "photo from their site") : WSD_PHOTO_TYPES.has(s.type) ? "NO PHOTO (shows a plain colour block)" : "";
-    return { n: i + 1, type: s.type, variant: s.variant || "", title: String(s.title || "").replace(/\s+/g, " ").slice(0, 90), photo, missing: !imgs.length && WSD_PHOTO_TYPES.has(s.type) };
+    const empty = wsdEmptyCards(s).length;
+    let photo = imgs.length ? (imgs.some((u) => /\/demo\/img\/[0-9a-f]{16}\.webp/.test(u)) ? "AI or stock photo" : "photo from their site") : WSD_PHOTO_TYPES.has(s.type) ? "NO PHOTO (shows a plain colour block)" : "";
+    if (empty) photo = (photo ? photo + "; " : "") + empty + (s.type === "journey" ? " step" : " card") + (empty === 1 ? " has" : "s have") + " NO PHOTO";
+    return { n: i + 1, type: s.type, variant: s.variant || "", title: String(s.title || "").replace(/\s+/g, " ").slice(0, 90), photo, missing: (!imgs.length && WSD_PHOTO_TYPES.has(s.type)) || empty > 0 };
   });
 }
 var wsdMapText = (spec) => wsdMap(spec).map((m) => `${m.n}. ${m.type}${m.variant ? " (" + m.variant + ")" : ""}: "${m.title}"${m.photo ? " · " + m.photo : ""}`).join("\n");
@@ -3051,7 +3064,7 @@ var WSD_TALK_TOOL = {
     changes: { type: "array", description: "The plan. One entry per concrete change.", items: { type: "object", properties: {
       section: { type: "integer", description: "Section number from the PAGE MAP. Use 0 for page-wide brand changes (colours, fonts, corner roundness)." },
       what: { type: "string", description: "The exact change, one sentence a designer could follow." },
-      new_photo: { type: "string", description: "If this change needs a new or different photo: describe the photo to make (their niche, setting, people, mood, light). Empty if no new photo." },
+      new_photo: { type: "string", description: "If this change needs a new or different photo: describe the photo to make (their niche, setting, people, mood, light). Empty if no new photo. For several photos (e.g. one per journey step or card), make one change per step or card, each with its own new_photo, OR say in 'what' to clear those image fields: every empty step or card photo is filled with a fresh photo automatically after the build. The page map shows which steps or cards have NO PHOTO; never call photos done while it still shows them." },
       photo_url: { type: "string", description: "Only if Ty pasted a photo link to use: that link. Otherwise empty." }
     }, required: ["section", "what"] } },
     ready: { type: "boolean", description: "true when you know exactly what to change and have no open question for Ty." },
@@ -3099,14 +3112,60 @@ function wsdPutPhoto(s, url) {
   if (!s || !url) return false;
   if (s.type === "hero" || s.type === "gallery") { s.images = [url, ...(Array.isArray(s.images) ? s.images.filter((u) => u !== url) : [])].slice(0, 6); return true; }
   if ("image" in s || ["split", "expand", "quote", "founder"].includes(s.type)) { s.image = url; return true; }
-  if (Array.isArray(s.items) && s.items.length) { const it = s.items.find((x) => x && typeof x === "object" && !x.image) || s.items[0]; if (it && typeof it === "object") { it.image = url; return true; } }
+  for (const k of WSD_CARD_LISTS) if (Array.isArray(s[k]) && s[k].length) { const it = s[k].find((x) => x && typeof x === "object" && !x.image) || s[k][0]; if (it && typeof it === "object") { it.image = url; return true; } }
   s.images = [url, ...(Array.isArray(s.images) ? s.images : [])].slice(0, 6); return true;
+}
+// v122: fill every empty photo spot in an existing concept (journey steps, feature cards, hero, gallery and the rest).
+async function wsdFillPhotos(env, token, { why = "" } = {}) {
+  const rec = await wsdGet(env, token).catch(() => null);
+  if (!rec || !rec.spec) return { skipped: "no concept" };
+  const gaps = wsdMap(rec.spec).filter((m) => m.missing).length;
+  if (!gaps) { await secPut(env, "photofill:" + token, { at: new Date().toISOString(), left: 0 }).catch(() => {}); return { skipped: "no gaps" }; }
+  const r = await wsdImagesFix(env, rec.spec, { name: rec.name, industry: rec.industry || "", area: rec.area || "", website: rec.website || "", origin: (env.PUBLIC_ORIGIN || "https://studioflowandsystems.app").replace(/\/+$/, "") }).catch((e) => ({ error: e.message }));
+  const left = wsdMap(rec.spec).filter((m) => m.missing).length;
+  if (r && r.generated) {
+    rec.chat = [...(rec.chat || []), { at: wsdNow(), r: "ai", t: "Filled " + r.generated + " empty photo spot" + (r.generated === 1 ? "" : "s") + (why ? " (" + why + ")" : "") + "." + (left ? " " + left + " section" + (left === 1 ? " still needs" : "s still need") + " a photo: the photo service didn't answer for those, I'll try again." : " Every section now has its photos.") }].slice(-40);
+    await wsdPut(env, token, rec);
+  }
+  await secPut(env, "photofill:" + token, { at: new Date().toISOString(), generated: (r && r.generated) || 0, left }).catch(() => {});
+  return { generated: (r && r.generated) || 0, left };
+}
+// v122: one pass over EVERY drafted concept: queue a photo-only fix for each one with an empty photo spot (designs untouched).
+async function wsdPhotoFixAll(env, { force = false } = {}) {
+  const st = (await secGet(env, "photo_fix_all").catch(() => null)) || {};
+  if (st.done && !force) return CRON_NOT_DUE;
+  const items = (await wsdIndex(env).catch(() => [])) || [];
+  let gaps = 0, queued = 0, inline = 0;
+  for (const it of items) {
+    const rec = await wsdGet(env, it.token).catch(() => null);
+    if (!rec || !rec.spec || !wsdMap(rec.spec).some((m) => m.missing)) continue;
+    gaps++;
+    if (env.COMMAND_QUEUE && env.COMMAND_QUEUE.send) { await env.COMMAND_QUEUE.send({ kind: "photo_fill", token: it.token }).then(() => queued++).catch(() => {}); }
+    else if (inline < 3) { await wsdFillPhotos(env, it.token, { why: "fixing every concept's missing photos" }).catch(() => null); inline++; }
+  }
+  await secPut(env, "photo_fix_all", { done: !!(queued || !gaps || (!env.COMMAND_QUEUE && inline >= gaps)), at: new Date().toISOString(), concepts: items.length, with_gaps: gaps, queued, inline });
+  if (gaps) await notify(env, "\u{1F5BC} <b>Fixing missing photos on " + gaps + " homepage concept" + (gaps === 1 ? "" : "s") + "</b>\nOnly the empty photo spots get filled (journey steps, cards, hero, gallery). The designs stay exactly as they are. Each concept tells you in its chat how many photos it got.").catch(() => {});
+  return { concepts: items.length, with_gaps: gaps, queued, inline };
+}
+async function wsdPhotoSweep(env, n = 5) {
+  const items = (await wsdIndex(env).catch(() => [])) || [];
+  const order = items.slice().sort((a, b) => (+b.views || 0) - (+a.views || 0));
+  const out = [];
+  for (const it of order) {
+    if (out.length >= n) break;
+    const st = await secGet(env, "photofill:" + it.token).catch(() => null);
+    if (st && (st.left === 0 || Date.now() - Date.parse(st.at || 0) < 864e5)) continue;
+    out.push({ token: it.token, ...(await wsdFillPhotos(env, it.token, { why: "photo sweep" }).catch((e) => ({ error: e.message }))) });
+  }
+  return { checked: out.length, filled: out.reduce((a, x) => a + (x.generated || 0), 0) };
 }
 async function wsdTalk(env, token, message) {
   const ask = String(message || "").trim().slice(0, 2e3);
   if (!ask) throw new Error("Say what you'd like to change.");
-  const rec = await wsdGet(env, token);
+  let rec = await wsdGet(env, token);
   if (!rec) throw new Error("Demo not found.");
+  // v122: any empty photo spot gets filled before anything else, every time
+  if (wsdMap(rec.spec || {}).some((m) => m.missing)) { await wsdFillPhotos(env, token, { why: "before your change" }).catch(() => null); rec = await wsdGet(env, token); }
   if (rec.pending?.changes?.length && WSD_YES.test(ask)) {
     rec.chat = [...(rec.chat || []), { at: wsdNow(), r: "ty", t: ask }].slice(-40);
     await wsdPut(env, token, rec);
@@ -3180,6 +3239,12 @@ async function wsdBuildPlan(env, token) {
     let done = c.section === 0 ? !!(brandAsked && edited.brand) : changedSec(c.section);
     let note = String(r.note || "");
     if ((c.new_photo || c.photo_url) && c.section > 0) { const url = photoResults.get(c); if (!url) { done = false; note = c.photo_url ? "That photo link wouldn't load, so I couldn't use it." : "I couldn't make a new photo this time (the photo service didn't answer). Try again in a minute."; } else if (!wsdSecImgs(afterSecs[c.section - 1] || {}).includes(url)) { done = false; note = "The new photo was made but didn't stay in place."; } }
+    // v122: a photo request only counts when photos really landed in that section (no more "Done" with empty spots)
+    if (done && c.section > 0 && /\b(photo|image|picture|pic|imagery)s?\b/i.test(c.what)) {
+      const b4 = wsdSecImgs(JSON.parse(before)[c.section - 1] || {}), now = wsdSecImgs(afterSecs[c.section - 1] || {}), empty = wsdEmptyCards(afterSecs[c.section - 1]).length;
+      if (JSON.stringify(b4) === JSON.stringify(now)) { done = false; note = "No new photo landed in that section."; }
+      else if (empty) { done = false; note = empty + " spot" + (empty === 1 ? "" : "s") + " in that section still " + (empty === 1 ? "has" : "have") + " no photo."; }
+    }
     if (!done && !note) note = r.done === false ? "" : "Nothing changed in that section.";
     return { section: c.section, what: c.what, done, note: note.slice(0, 200) };
   });
@@ -3366,14 +3431,14 @@ async function wsdImagesFix(env, spec, { name, industry, area, website, origin }
   };
   const jobs = [];
   const add = (set, slot, subject) => { if (jobs.length < WSD_IMG_MAX) jobs.push({ set, prompt: promptFor(slot, subject) }); };
+  // v122: every section that shows a photo gets one, top to bottom: hero (3 for a collage), split, circle, expand,
+  // quote, gallery (3), every feature card, every journey step.
   for (const s of sections) {
     if (jobs.length >= WSD_IMG_MAX) break;
-    if (s.type === "hero" && !(s.images || []).filter(Boolean).length) add((u) => { s.images = [u]; }, "hero", shot("hero") || `The heart of ${name}'s service: ${about(s) || "the business at its best"}`);
+    if (s.type === "hero") { s.images = (s.images || []).filter(Boolean); const need = s.variant === "collage" ? 3 : 1; for (let k = s.images.length; k < need; k++) add((u) => { s.images.push(u); }, "hero", k ? `${about(s) || name}: scene ${k + 1}` : shot("hero") || `The heart of ${name}'s service: ${about(s) || "the business at its best"}`); }
     else if (["split", "expand", "quote"].includes(s.type) && !s.image) add((u) => { s.image = u; }, s.type === "quote" ? "split" : s.type, shot(s.type) || (s.type === "quote" ? "A real, happy customer moment: " + about(s) : about(s) || "A welcoming scene"));
     else if (s.type === "gallery") { s.images = (s.images || []).filter(Boolean); for (let k = s.images.length; k < 3; k++) add((u) => { s.images.push(u); }, "split", shot("gallery") || `${about(s) || "The experience"}: scene ${k + 1} of 3`); }
-    else if (s.type === "features" && Array.isArray(s.items) && (s.items.some((x) => x && x.image) || /image|photo|card|stack|fan|panels|flip|rail/.test(s.variant || ""))) {
-      for (const x of s.items.slice(0, 6)) if (x && typeof x === "object" && !x.image) add((u) => { x.image = u; }, "features", shot("features") || `${x.title}: ${x.text || ""}`);
-    }
+    else for (const x of wsdEmptyCards(s)) add((u) => { x.image = u; }, s.type === "journey" ? "split" : "features", (s.type === "journey" ? (s.title ? s.title + ", " : "") + (x.label ? x.label + ": " : "") : shot("features") ? shot("features") + ". " : "") + `${x.title || ""}: ${x.text || ""}`);
   }
   const made = await Promise.all(jobs.map(async (j) => { const g = await wsdGenImage(env, j.prompt).catch(() => null) || await wsdStockImage(env, ((industry || "") + " " + String(j.prompt).split(". ")[0]).slice(0, 80)).catch(() => null); if (g) j.set(`${origin}/demo/img/${g.id}.webp`); return g; }));
   const n = made.filter(Boolean).length;

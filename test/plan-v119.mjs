@@ -57,7 +57,7 @@ assert(setting("packbuild:" + T1)?.status === "done" && !(setting("pack_build_qu
 ({ t } = await run(new Request(O + "/demo/" + T1 + "/pack?preview=1")));
 assert(t.includes("/demo/" + T1 + "/site") && !/Designing now/.test(t), "Next time they open it, the homepage concept is there");
 const src = (await import("node:fs")).readFileSync(W, "utf8");
-assert(/const warm = \(d\.views \|\| 0\) > 0 \|\| \(d\.chats \|\| 0\) > 0 \|\| \(\+p\.score \|\| 0\) >= 8;/.test(src) && /var WSD_IMG_MAX = 6;/.test(src), "Warm or top-scoring businesses still get theirs up front; generated images capped at 6 (their own photos first)");
+assert(/const warm = \(d\.views \|\| 0\) > 0 \|\| \(d\.chats \|\| 0\) > 0 \|\| \(\+p\.score \|\| 0\) >= 8;/.test(src) && /var WSD_IMG_MAX = 16;/.test(src), "Warm or top-scoring businesses still get theirs up front; every photo spot gets a photo");
 
 // The daily plan
 x = await call("/outreach-plan");

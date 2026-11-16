@@ -144,6 +144,8 @@ async function teamScheduled(event, env) {
     ["Website demos", out(ai(() => continueDemos(e, 2))), { ms: 240000 }],
     ["Growth Pack re-approach", out(ai(() => packReengage(e))), { ms: 300000 }],
     ["Demo screenshots", out(ai(() => retryDemoShots(e)))],
+    ["Fix all concept photos (once)", out(() => wsdPhotoFixAll(e)), { ms: 240000 }],
+    ["Concept photos", out(ai(() => wsdPhotoSweep(e, 5))), { ms: 240000 }],
     ["Team brain", ai(() => brainTick(e))],
     // 4. Housekeeping, then the Telegram digest always gets its turn.
     ["Memory index", k(() => memBackfill(e))],
