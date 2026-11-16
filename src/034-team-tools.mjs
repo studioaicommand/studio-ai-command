@@ -2593,7 +2593,7 @@ async function heldApprovedTick(env, { force = false } = {}) {
 // break them. (2) Missing, blocked or tiny photos are replaced with AI images made for the brand (OpenAI GPT Image),
 // stored once and served from /demo/img/<id>. Max 4 per demo, labelled as AI concept imagery. ──
 var WSD_IMG_MODELS = ["gpt-image-2.6-flare", "gpt-image-2.5-flare"];
-var WSD_IMG_MAX = 10;
+var WSD_IMG_MAX = 6; // v119: their own photos first, generated images only for the gaps (was 10)
 var wsdH8 = (s) => { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return h.toString(16).padStart(8, "0"); };
 var WSD_IMG_KEYS = new Set(["image", "images", "hero_images", "logo", "before", "after"]);
 // rewrite every outside image url in a spec (deep) to go through Command

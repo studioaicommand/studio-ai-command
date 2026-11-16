@@ -280,12 +280,13 @@ var PACK_BOOK = "https://links.studioflowandsystems.com/widget/booking/tfzrthnax
 async function packData(env, token) {
   const [d] = await select(env, "agent_demos", "token=eq." + token + "&select=token,prospect_id,business_name,website,vertical,quality&limit=1").catch(() => []);
   if (!d) return null;
-  const [w, pr] = await Promise.all([wsdGet(env, token).catch(() => null), d.prospect_id ? select(env, "agent_prospects", "id=eq." + encodeURIComponent(d.prospect_id) + "&select=id,business_name,report_token,leak,leak_report,vertical,decision_maker,email&limit=1").then((r) => r[0] || null).catch(() => null) : null]);
+  const [w, pr] = await Promise.all([wsdGet(env, token).catch(() => null), d.prospect_id ? select(env, "agent_prospects", "id=eq." + encodeURIComponent(d.prospect_id) + "&select=id,business_name,report_token,leak,leak_report,vertical,decision_maker,email,website&limit=1").then((r) => r[0] || null).catch(() => null) : null]);
   const o = String(env.PUBLIC_ORIGIN || DEFAULT_ORIGIN).replace(/\/+$/, "");
   const site = !!(w && w.spec);
   const report = site ? o + "/demo/" + token + "/report" : pr && pr.report_token ? o + "/leak-report/" + pr.report_token : null;
   const lt = pr && pr.leak_report && pr.leak_report.live_test;
-  return { d, p: pr, name: (w && w.name) || d.business_name || (pr && pr.business_name) || "your business", site: site ? o + "/demo/" + token + "/site" : null, report, desk: !d.quality || d.quality === "good" ? o + "/demo/" + token : null, check: lt && lt.result && lt.result !== "waiting" ? lt : null };
+  const canBuild = !site && !!((pr && pr.website) || d.website);
+  return { d, p: pr, canBuild, name: (w && w.name) || d.business_name || (pr && pr.business_name) || "your business", site: site ? o + "/demo/" + token + "/site" : null, report, desk: !d.quality || d.quality === "good" ? o + "/demo/" + token : null, check: lt && lt.result && lt.result !== "waiting" ? lt : null };
 }
 function packComplete(pd) { return !!(pd && pd.site && pd.report && pd.desk); }
 function packPage(pd, { ty = false } = {}) {
@@ -295,6 +296,7 @@ function packPage(pd, { ty = false } = {}) {
   let i = 0;
   if (pd.report) cards.push(card(++i, "WHERE ENQUIRIES SLIP", "Your leak report", "What I found when I looked at how people reach " + name + ": search, mobile, booking and after-hours. Plain English, with what to fix first.", pd.report, "Read the report"));
   if (pd.site) cards.push(card(++i, "IN YOUR BRAND", "A homepage concept", "What your homepage could look like, designed in your own colours and style, built to turn more visitors into bookings.", pd.site, "See the concept"));
+  else if (pd.canBuild) cards.push('<div class="c wait"><span class="n">' + (++i) + '</span><span class="k">IN YOUR BRAND</span><h2>A homepage concept</h2><p>Being designed for you right now, in your own colours and style. It\u2019s ready in about 10 minutes: refresh this page then.</p><span class="go">Designing now\u2026</span></div>');
   if (pd.desk) cards.push(card(++i, "NEVER MISS AN ENQUIRY", "Your front desk, day and night", "Try it as one of your customers would. Ask about hours, services or booking. It answers from your own website and hands anything tricky to your team.", pd.desk, "Try it now"));
   const chk = pd.check ? '<div class="chk"><span class="k">THE RESPONSE TIME CHECK</span><p>' + esc6(pd.check.summary || (pd.check.result === "replied" ? "You replied to our enquiry in " + leakTestWords(pd.check.reply_minutes || 0) + "." : "Our enquiry didn't get a reply within 48 hours.")) + '</p><small>I sent ' + name + ' an honest enquiry (from me, Ty) and timed the reply. People who enquire usually book with whoever answers first.</small></div>' : "";
   return '<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>' + name + ' · Growth Pack</title><style>' +
@@ -302,7 +304,7 @@ function packPage(pd, { ty = false } = {}) {
     '.bar{border-bottom:1px solid var(--line);background:rgba(5,11,22,.75);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);position:sticky;top:0;z-index:2}.bar .in{max-width:1080px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}.bar img{height:30px;width:auto;display:block}.tag{font-size:12.5px;background:rgba(59,140,255,.1);border:1px solid rgba(59,140,255,.35);color:#CFE3FF;padding:6px 11px;border-radius:99px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
     '.wrap{max-width:1080px;margin:0 auto;padding:44px 16px 56px}.eb{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--sky);margin:0 0 12px}h1{font-size:clamp(30px,4.6vw,48px);line-height:1.08;letter-spacing:-.03em;margin:0 0 14px}h1 span{background:linear-gradient(90deg,#7FB4FF,var(--sky));-webkit-background-clip:text;background-clip:text;color:transparent}.lead{color:var(--mu);font-size:18px;max-width:700px;margin:0 0 30px}' +
     '.chk{border:1px solid rgba(22,193,243,.35);border-left:3px solid var(--sky);background:rgba(22,193,243,.07);border-radius:16px;padding:16px 18px;margin:0 0 26px;max-width:760px}.chk p{margin:6px 0 4px;font-size:18px;font-weight:700}.chk small{color:var(--mu)}' +
-    '.g{display:grid;grid-template-columns:repeat(' + Math.max(1, cards.length) + ',1fr);gap:16px}@media(max-width:860px){.g{grid-template-columns:1fr}}.c{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;transition:transform .2s,border-color .2s}.c:hover{transform:translateY(-3px);border-color:rgba(59,140,255,.55)}.n{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--acc),var(--sky));font-weight:800;margin:0 0 14px}.k{font-size:11.5px;font-weight:700;letter-spacing:.12em;color:var(--sky)}.c h2{font-size:21px;margin:6px 0 8px;letter-spacing:-.01em}.c p{color:var(--mu);margin:0 0 16px;flex:1}.go{font-weight:700;color:#CFE3FF}' +
+    '.g{display:grid;grid-template-columns:repeat(' + Math.max(1, cards.length) + ',1fr);gap:16px}@media(max-width:860px){.g{grid-template-columns:1fr}}.c{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;transition:transform .2s,border-color .2s}.c:hover{transform:translateY(-3px);border-color:rgba(59,140,255,.55)}.n{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--acc),var(--sky));font-weight:800;margin:0 0 14px}.k{font-size:11.5px;font-weight:700;letter-spacing:.12em;color:var(--sky)}.c h2{font-size:21px;margin:6px 0 8px;letter-spacing:-.01em}.c p{color:var(--mu);margin:0 0 16px;flex:1}.go{font-weight:700;color:#CFE3FF}.c.wait{border-style:dashed}.c.wait .go{color:var(--sky)}' +
     '.cta{margin-top:34px;background:linear-gradient(160deg,rgba(14,34,64,.9),rgba(8,18,36,.9));border:1px solid var(--line);border-radius:22px;padding:26px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}.cta h3{margin:0 0 4px;font-size:22px}.cta p{margin:0;color:var(--mu)}.btn{display:inline-block;background:linear-gradient(135deg,var(--acc),var(--sky));color:#fff;font-weight:800;padding:13px 20px;border-radius:99px;white-space:nowrap}' +
     '.fine{color:var(--mu);font-size:13px;margin-top:22px;max-width:760px}footer{color:var(--mu);font-size:13px;text-align:center;padding:24px 16px 40px}</style></head><body>' +
     '<header class="bar"><div class="in"><img src="/demo-assets/logo.png" alt="Studio Flow &amp; Systems" width="125" height="30"><div class="tag">Built for ' + name + '</div></div></header>' +
@@ -316,6 +318,7 @@ async function packSeen(env, token, pd, request, url) {
   if (url.searchParams.get("preview") === "1" || SITE_DEMO_BOTS.test(request.headers.get("user-agent") || "")) return;
   const k = "packv:" + token, v = (await secGet(env, k).catch(() => null)) || { views: 0 };
   v.views = (+v.views || 0) + 1; v.last_view = new Date().toISOString();
+  if (!/^test/i.test(pd.name)) await packOpenNote(env, token, pd.name).catch(() => {});
   const due = v.views === 1 || Date.now() - Date.parse(v.last_alert || 0) > 2 * 36e5;
   if (due) {
     v.last_alert = new Date().toISOString();
@@ -332,9 +335,56 @@ async function packPublic(request, env, url, ctx, token) {
   const pd = await packData(env, token);
   if (!pd) return notFound();
   const ty = await tyView(request, env, url);
-  const work = ty ? Promise.resolve() : packSeen(env, token, pd, request, url).catch(() => {});
+  const human = !ty && url.searchParams.get("preview") !== "1" && !SITE_DEMO_BOTS.test(request.headers.get("user-agent") || "");
+  const work = ty ? Promise.resolve() : Promise.all([packSeen(env, token, pd, request, url).catch(() => {}), human && pd.canBuild ? packConceptRequest(env, token).catch(() => {}) : null]);
   ctx?.waitUntil ? ctx.waitUntil(work) : await work;
   return new Response(tyDecorate(packPage(pd, { ty }), ty), { headers: { ...(await tyCookieHeader(env, url)), "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "strict-origin-when-cross-origin" } });
+}
+// ── v119 Homepage concept on open: cold packs start with the leak report and front desk; the homepage concept is
+// designed the moment the business opens its pack (built in the background, ready in about 10 minutes), so we only
+// pay for concepts people actually look at. Warm or top-scoring businesses still get theirs built up front. ──
+async function packConceptRequest(env, token) {
+  const k = "packbuild:" + token, st = await secGet(env, k).catch(() => null);
+  if (st && (st.status === "done" || (["requested", "building"].includes(st.status) && Date.now() - Date.parse(st.at || 0) < 2 * 36e5))) return st;
+  const next = { status: "requested", at: new Date().toISOString() };
+  await secPut(env, k, next);
+  const q = (await secGet(env, "pack_build_queue").catch(() => null)) || { tokens: [] };
+  if (!q.tokens.includes(token)) { q.tokens.push(token); await secPut(env, "pack_build_queue", { tokens: q.tokens.slice(-50) }); }
+  if (env.COMMAND_QUEUE && env.COMMAND_QUEUE.send) await env.COMMAND_QUEUE.send({ kind: "pack_concept", token }).catch((e) => console.error("pack concept queue:", e.message));
+  return next;
+}
+async function packConceptBuild(env, token) {
+  const k = "packbuild:" + token, st = (await secGet(env, k).catch(() => null)) || {};
+  if (st.status === "done" || (st.status === "building" && Date.now() - Date.parse(st.at || 0) < 20 * 6e4)) return { skipped: st.status };
+  const dropQ = async () => { const q = (await secGet(env, "pack_build_queue").catch(() => null)) || { tokens: [] }; await secPut(env, "pack_build_queue", { tokens: q.tokens.filter((t) => t !== token) }).catch(() => {}); };
+  if ((await wsdGet(env, token).catch(() => null))?.spec) { await secPut(env, k, { status: "done", at: new Date().toISOString() }); await dropQ(); return { skipped: "already built" }; }
+  await secPut(env, k, { status: "building", at: new Date().toISOString() });
+  const [d] = await select(env, "agent_demos", "token=eq." + token + "&select=token,prospect_id,business_name,website,vertical,quality,kb&limit=1").catch(() => []);
+  const [p] = d && d.prospect_id ? await select(env, "agent_prospects", "id=eq." + encodeURIComponent(d.prospect_id) + "&select=id,business_name,website,vertical,location,phone&limit=1").catch(() => []) : [];
+  const website = (p && p.website) || (d && d.website);
+  if (!d || !website) { await secPut(env, k, { status: "failed", at: new Date().toISOString(), why: "no website" }); await dropQ(); return { skipped: "no website" }; }
+  try {
+    const r = await wsdBuild(env, { website, name: (p && p.business_name) || d.business_name, vertical: (p && p.vertical) || d.vertical, area: p && p.location, reuse: { demo: { token, kb: d.kb, quality: d.quality } } });
+    await secPut(env, k, { status: "done", at: new Date().toISOString(), cost_aud: r.cost_aud });
+    await dropQ();
+    await notify(env, "\u{1F3E0} <b>" + esc6((p && p.business_name) || d.business_name) + "'s homepage concept is ready.</b> They opened their Growth Pack, so it's been designed for them." + (p && p.phone ? "\nGood moment to call: " + esc6(p.phone) : "")).catch(() => {});
+    return { built: true, cost_aud: r.cost_aud };
+  } catch (e) {
+    await secPut(env, k, { status: "failed", at: new Date().toISOString(), why: String(e.message).slice(0, 160) });
+    await dropQ();
+    return { error: String(e.message).slice(0, 160) };
+  }
+}
+// Backup for the queue: anything requested more than 15 minutes ago that isn't built yet.
+async function packConceptSweep(env, n = 2) {
+  const q = (await secGet(env, "pack_build_queue").catch(() => null)) || { tokens: [] };
+  const out = [];
+  for (const t of q.tokens.slice(0, 6)) {
+    if (out.length >= n) break;
+    const st = (await secGet(env, "packbuild:" + t).catch(() => null)) || {};
+    if (st.status === "requested" && Date.now() - Date.parse(st.at || 0) > 15 * 6e4) out.push(await packConceptBuild(env, t));
+  }
+  return { swept: out.length };
 }
 async function demoPublic(request, env, url, ctx) {
   const parts = url.pathname.split("/").filter(Boolean);

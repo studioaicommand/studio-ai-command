@@ -115,6 +115,7 @@ async function teamScheduled(event, env) {
     ["Inbox sweep", k(() => inboxSweep(e))],
     ["Inbox follow-ups", k(() => inboxFollowups(e))],
     ["Approved messages", k(() => heldApprovedTick(e))],
+    ["Outreach plan", out(() => outreachPlanDaily(e))],
     ["Away mode", k(() => awayTick(e))],
     ["Client receptionists", k(() => (instMods.receptionist_product ? clientsCron(e) : CRON_NOT_DUE))],
     ["Billing desk", k(() => billingDesk(e))],
@@ -714,6 +715,8 @@ var RELEASE_NOTES = [
     { rule: "Once a month the Head of Systems runs Evolve research: competitors' features, what their real users hate (only real, linked reviews, never invented) and new AI tech, ending in the top 5 upgrades for Command. Never suggest copying a competitor's code, design, branding or copy.", applies_to: ["head_of_systems", "command"] }] },
   { v: 107, title: "The Arena: nightly scoring of the team's replies", rules: [
     { rule: "Every night the Arena tests the team's replies against real conversations Ty approved, edited or rejected, and a set of golden scenarios. Write every reply as if it will be scored: follow the rulebook, match what Ty approved, avoid what he rejected.", applies_to: ["inbox", "dm"] }] },
+  { v: 119, studio_only: true, title: "Daily plan of attack", rules: [
+    { rule: "Every weekday at 7am Ty gets 'Today's plan of attack' on Telegram: hot leads to call first, replies and emails waiting for his OK, his call list, DMs to send, videos to film, warm network and content, built from live data. When Ty asks what to do today or how outreach is going, use outreach_plan. Cold Growth Packs start with the leak report and front desk; the homepage concept is designed when they open it (warm or top-scoring businesses get it up front).", applies_to: ["all"] }] },
   { v: 118, studio_only: true, title: "Growth Pack outreach", retire: /(free AI receptionist|lead with (the|an|our) AI receptionist|AI receptionist (is|as) (the|our) (offer|hook|lead)|DEMO-FIRST|SITE-FIRST)/i, rules: [
     { rule: "Cold outreach now leads with the Growth Pack: one link (pack_url) per business with where enquiries are slipping (leak report, plus the response time check if run), a homepage concept in their brand, and a front desk that answers every enquiry day and night. In cold emails, DMs, calls and replies never lead with 'AI', 'AI receptionist' or 'chatbot' (many owners are wary of AI): say what it does. Be honest that it runs on AI if they ask. No prices in cold outreach.", applies_to: ["all"] },
     { rule: "Every business we already built a front desk demo for gets its Growth Pack completed and one honest re-approach for Ty's OK (a few a day, warmest first). Never re-approach do not contact, replied, won, lost or skipped businesses, or anyone contacted in the last 14 days.", applies_to: ["sales", "email", "all"] }] },

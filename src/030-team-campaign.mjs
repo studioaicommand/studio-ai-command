@@ -206,7 +206,7 @@ async function callList(env, limit = 20) {
     const days = sentAt ? (now5 - Date.parse(sentAt)) / 864e5 : null;
     const ready = days != null && days >= 1 || !r.email;
     const d = demos[r.demo_token];
-    const demo = d && d.quality === "good" ? { url: `${origin}/demo/${d.token}`, views: d.views || 0, chats: d.chats || 0, hot: !!(d.chats || d.views) } : null;
+    const demo = d && d.quality === "good" ? { url: `${origin}/demo/${d.token}/pack`, desk_url: `${origin}/demo/${d.token}`, views: d.views || 0, chats: d.chats || 0, hot: !!(d.chats || d.views) } : null;
     const demoOpener = demo ? `${r.decision_maker ? "Hi, is this " + r.decision_maker.split(" ")[0] + "? " : "Hi, "}it's Ty from Studio Flow & Systems in Brisbane. Quick one: I put a few things together for ${r.business_name}: where enquiries are slipping, a homepage idea and a front desk that answers every enquiry, day and night, built from your website.${demo.chats ? " I noticed someone there has already had a go with the front desk." : ""} Who's the best person to send it to?` : null;
     return {
       demo,
@@ -226,7 +226,7 @@ async function callList(env, limit = 20) {
       observation: r.evidence,
       opener: demoOpener || (r.source === "no_website" && r.opener) || `${r.decision_maker ? "Hi, is this " + r.decision_maker.split(" ")[0] + "? " : "Hi, "}it's Ty from Studio Flow & Systems. We work with established service businesses on the systems behind missed enquiries and manual admin. I was looking into ${r.business_name} and noticed ${r.leak ? r.leak.charAt(0).toLowerCase() + r.leak.slice(1).replace(/\.$/, "") : "how you handle enquiries"}. How does your team currently handle that? Have you got a minute?`,
       questions: r.vertical === "property" ? QUESTIONS.property : HEALTH2.has(r.vertical) ? QUESTIONS.health : QUESTIONS[r.vertical] || QUESTIONS.other,
-      close: demo ? r.email ? `Offer to send the demo link now (or say it's in their inbox). If they like it: "The pilot is $497 for chat, or $697 for the Front Desk with voice, missed-call text-back and review requests: live on your site in 48 hours, with a 14-day money-back guarantee. The 'Yes, set this up' button is on your demo page."` : `If it's a good call: "What's the best email to send the demo link to?" Enter their email in the demo card, draft and review the email, then click Send demo now. If they're keen now: the pilot is $497 (chat) or $697 (Front Desk), live in 48 hours, 14-day money-back guarantee.` : r.email ? "Rather than guessing, I'd suggest a short Revenue Leak Review: we map the current process and see whether there's a practical fix. Would you be open to a 30-minute call?" : `If it's a good call: "What's the best email to send that one-page review to?" (save their details, then review and send the email explicitly). Then offer the free 30-minute call.`
+      close: demo ? r.email ? `Offer to send their Growth Pack link now (or say it's in their inbox). If they like it: "The pilot is $497 for chat, or $697 for the Front Desk with voice, missed-call text-back and review requests: live on your site in 48 hours, with a 14-day money-back guarantee. The 'Yes, set this up' button is on your front desk page."` : `If it's a good call: "What's the best email to send it all to?" Enter their email in the demo card, draft and review the email, then click Send demo now. If they're keen now: the pilot is $497 (chat) or $697 (Front Desk), live in 48 hours, 14-day money-back guarantee.` : r.email ? "Rather than guessing, I'd suggest a short Revenue Leak Review: we map the current process and see whether there's a practical fix. Would you be open to a 30-minute call?" : `If it's a good call: "What's the best email to send that one-page review to?" (save their details, then review and send the email explicitly). Then offer the free 30-minute call.`
     };
   }).sort((a, b) => (b.demo?.hot ? 1 : 0) - (a.demo?.hot ? 1 : 0) || b.ready - a.ready || (b.score || 0) - (a.score || 0)).slice(0, limit);
   return { ok: true, calls: due, complete: rows.length < 80 };
@@ -602,6 +602,7 @@ async function packReengage(env, { force = false } = {}) {
   if (inst.custom && !(inst.modules && inst.modules.outreach)) return { skipped: "client copy" };
   const st = (await secGet(env, "pack_reengage").catch(() => null)) || {};
   const bn = brisbaneNow();
+  await packConceptSweep(env).catch(() => null);
   const dow = new Date(Date.now() + 10 * 36e5).getUTCDay();
   if (!force && (st.last_date === bn.date || bn.hour < 9 || bn.hour > 16 || dow === 0 || dow === 6)) return { skipped: "not due" };
   const ls = await leanState(env).catch(() => ({}));
@@ -617,7 +618,8 @@ async function packReengage(env, { force = false } = {}) {
     if (Date.now() - lastTouch < PACK_RE.quiet_days * 864e5) { out.skipped.push(p.business_name + " (contacted in the last " + PACK_RE.quiet_days + " days)"); continue; }
     // 1. Complete the pack: add the homepage concept where it's missing.
     let w = await wsdGet(env, d.token).catch(() => null);
-    if (!(w && w.spec) && p.website) {
+    const warm = (d.views || 0) > 0 || (d.chats || 0) > 0 || (+p.score || 0) >= 8;
+    if (!(w && w.spec) && p.website && warm) {
       if (buildLeft <= 0) { out.waiting++; continue; }
       try { await wsdBuild(env, { website: p.website, name: p.business_name, vertical: p.vertical || d.vertical, area: p.location, reuse: { demo: { token: d.token, kb: d.kb, quality: d.quality } } }); buildLeft--; out.built.push(p.business_name); w = await wsdGet(env, d.token).catch(() => null); }
       catch (e) { out.skipped.push(p.business_name + " (homepage concept failed: " + String(e.message).slice(0, 80) + ")"); continue; }
@@ -634,7 +636,7 @@ async function packReengage(env, { force = false } = {}) {
     const u = wsdUsage();
     let mail;
     try {
-      mail = await wsdAsk(env, u, "smart", { max_tokens: 900, system: "You write ONE short re-approach email from Ty Brazel (Studio Flow & Systems, Brisbane) to an established Australian business, plus a phone opener. Ty " + (p.enrolled_at ? "emailed them a while back" : "built them a front desk demo a while back") + (d.views ? " and they opened it" + (d.chats ? " and tried it" : "") : "") + ". Since then he's put together their full Growth Pack at pack_url: where enquiries are slipping (their leak report" + (lt ? ", including the response time check: " + (lt.summary || "") : "") + ")" + (w && w.spec ? ", a homepage concept in their own brand" : "") + " and a front desk built from their own website that answers every enquiry, day and night.\n\nEMAIL (60 to 110 words): 'Hi [first name],' or 'Hi [business] team,'. If Ty contacted them before, mention it lightly in a few words (no guilt, no 'just following up'). One line that shows he looked (the finding given, in plain words, or the response time result). Say he put a few things together for them and name the pieces. pack_url exactly as given on its own line. One easy question (for example, worth a look?). No sign-off (the template adds it). PHONE OPENER (2 sentences): who Ty is, that he put a few things together for them, ask for the best email to send them to.\n\nRULES: never lead with 'AI', 'AI receptionist' or 'chatbot' (many owners are wary of AI): say what it does. No prices. No dashes. No made-up numbers, results or clients. Australian English." + (I ? " Their customers are called " + I.who + "; the business is a " + I.place + ". Use their industry's language." + (I.health ? " " + HEALTH_RULES : "") : "") + brainRulesText(await brainRules(env).catch(() => []), "email"),
+      mail = await wsdAsk(env, u, "smart", { max_tokens: 900, system: "You write ONE short re-approach email from Ty Brazel (Studio Flow & Systems, Brisbane) to an established Australian business, plus a phone opener. Ty " + (p.enrolled_at ? "emailed them a while back" : "built them a front desk demo a while back") + (d.views ? " and they opened it" + (d.chats ? " and tried it" : "") : "") + ". Since then he's put together their full Growth Pack at pack_url: where enquiries are slipping (their leak report" + (lt ? ", including the response time check: " + (lt.summary || "") : "") + ")" + (w && w.spec ? ", a homepage concept in their own brand" : "") + " and a front desk built from their own website that answers every enquiry, day and night." + (!(w && w.spec) && p.website ? " A homepage concept in their brand is designed for them the moment they open the link (ready about 10 minutes later), so you may mention a homepage concept is part of it." : "") + "\n\nEMAIL (60 to 110 words): 'Hi [first name],' or 'Hi [business] team,'. If Ty contacted them before, mention it lightly in a few words (no guilt, no 'just following up'). One line that shows he looked (the finding given, in plain words, or the response time result). Say he put a few things together for them and name the pieces. pack_url exactly as given on its own line. One easy question (for example, worth a look?). No sign-off (the template adds it). PHONE OPENER (2 sentences): who Ty is, that he put a few things together for them, ask for the best email to send them to.\n\nRULES: never lead with 'AI', 'AI receptionist' or 'chatbot' (many owners are wary of AI): say what it does. No prices. No dashes. No made-up numbers, results or clients. Australian English." + (I ? " Their customers are called " + I.who + "; the business is a " + I.place + ". Use their industry's language." + (I.health ? " " + HEALTH_RULES : "") : "") + brainRulesText(await brainRules(env).catch(() => []), "email"),
         tools: [PACK_RE_TOOL], messages: [{ role: "user", content: "Business: " + p.business_name + " (" + [I && I.name, p.location].filter(Boolean).join(", ") + ")" + (p.decision_maker ? "\nContact: " + p.decision_maker : "") + "\nWhat the team noticed: " + String(p.leak || "").slice(0, 400) + "\npack_url: " + pack + "\n\nCall save_email." }] }, "save_email");
     } catch (e) { out.skipped.push(p.business_name + " (couldn't write: " + String(e.message).slice(0, 60) + ")"); continue; } finally { await wsdLog(env, u, "growth_pack").catch(() => {}); }
     let body = String(mail && mail.body || "").trim(); const subject = String(mail && mail.subject || "").replace(/[\r\n]/g, " ").slice(0, 150).trim();
@@ -681,6 +683,57 @@ async function packStatus(env) {
   const cands = await packCandidates(env, 500);
   const st = (await secGet(env, "pack_reengage").catch(() => null)) || {};
   return { ok: true, waiting_for_re_approach: cands.length, last_run: st.at || null, last: st.last || null, per_day: PACK_RE, cost: await packCosts(env).catch((e) => ({ error: e.message })) };
+}
+// ── v119 Daily plan of attack: one plan each weekday morning on Telegram (and any time Ty asks Command), built from
+// live data: who's hot, what's waiting for his OK, who to call, DMs to send, videos to film. ──
+async function packOpenNote(env, token, name) {
+  const v = (await secGet(env, "pack_opens").catch(() => null)) || { items: [] };
+  v.items = [{ token, name, at: new Date().toISOString() }, ...(v.items || []).filter((x) => x.token !== token)].slice(0, 40);
+  await secPut(env, "pack_opens", v).catch(() => {});
+}
+async function outreachPlan(env) {
+  const day = 864e5, since = (ms) => new Date(Date.now() - ms).toISOString();
+  const [pend, opens, desks, calls, q, vids, called] = await Promise.all([
+    select(env, "team_actions", "status=eq.pending&select=id,type,title,params,created_at&order=created_at.asc&limit=200").catch(() => []),
+    secGet(env, "pack_opens").catch(() => null),
+    select(env, "agent_demos", "last_view_at=gte." + encodeURIComponent(since(day)) + "&select=business_name,prospect_id,views,chats,last_chat_at&limit=20").catch(() => []),
+    callList(env, 15).catch(() => ({ calls: [] })),
+    dmLoad(env).catch(() => ({ items: [] })),
+    select(env, "team_audit", "action=eq.video_script&created_at=gte." + encodeURIComponent(since(3 * day)) + "&select=summary,created_at&limit=10").catch(() => []),
+    select(env, "agent_prospects", "last_call_at=gte." + encodeURIComponent(since(7 * day)) + "&select=call_outcome,last_call_at&limit=500").catch(() => [])
+  ]);
+  const src = (a) => (a.params && a.params.source) || "";
+  const replies = pend.filter((a) => a.type === "ghl_reply");
+  const packs = pend.filter((a) => src(a) === "growth_pack"), noans = pend.filter((a) => src(a) === "no_answer");
+  const enrols = pend.filter((a) => a.type === "campaign_enrol"), fups = pend.filter((a) => src(a) === "demo_followup" || a.type === "ghl_followup");
+  const otherN = pend.length - replies.length - packs.length - noans.length - enrols.length - fups.length;
+  const hot = [...new Map([...((opens && opens.items) || []).filter((x) => Date.parse(x.at) > Date.now() - day).map((x) => [x.name, { name: x.name, why: "opened their Growth Pack" }]), ...desks.map((d) => [d.business_name, { name: d.business_name, why: d.chats && d.last_chat_at && Date.parse(d.last_chat_at) > Date.now() - day ? "tried their front desk" : "looked at their front desk" }])]).values()].slice(0, 8);
+  const C = (calls && calls.calls) || [];
+  const ready = (q.items || []).filter((x) => x.status === "ready").length, waitingDm = (q.items || []).filter((x) => x.status === "sent").length;
+  const wk = called.length, booked = called.filter((c) => ["booked", "interested", "awaiting_decision_maker"].includes(c.call_outcome)).length;
+  const blocks = [];
+  if (hot.length || replies.length) blocks.push({ time: "8:00", title: "Hot first (30 min)", items: [...hot.map((h) => "\u{1F525} Call " + h.name + " (" + h.why + ")"), replies.length ? "\u{1F4AC} Approve or edit " + replies.length + " repl" + (replies.length === 1 ? "y" : "ies") + " waiting on Telegram" : ""].filter(Boolean) });
+  if (C.length) blocks.push({ time: "8:30", title: "Power hour: calls (60 to 90 min)", items: ["\u{1F4DE} " + C.length + " on your call list. Start with: " + C.slice(0, 5).map((c) => c.business_name).join(", "), "Open with the Growth Pack line (it's on each card). Ask for the best email to send it to.", "Tap the outcome after every call: No answer and Voicemail draft the follow-up email for you."] });
+  if (packs.length || noans.length || enrols.length || fups.length || otherN > 0) blocks.push({ time: "10:00", title: "Approvals (15 min)", items: [packs.length ? "\u{1F4E6} " + packs.length + " Growth Pack email" + (packs.length === 1 ? "" : "s") : "", noans.length ? "\u{1F4DE} " + noans.length + " no-answer email" + (noans.length === 1 ? "" : "s") : "", enrols.length ? "✉️ " + enrols.length + " new lead" + (enrols.length === 1 ? "" : "s") + " for the email campaign" : "", fups.length ? "↩️ " + fups.length + " follow-up" + (fups.length === 1 ? "" : "s") : "", otherN > 0 ? otherN + " other card" + (otherN === 1 ? "" : "s") : ""].filter(Boolean) });
+  if (ready || waitingDm) blocks.push({ time: "11:00", title: "DMs (20 min)", items: [ready ? "\u{1F4E9} " + ready + " DM" + (ready === 1 ? "" : "s") + " ready: tick them and tap Send ticked for me (or send from your phone)" : "", waitingDm ? "\u{1F440} Run Check replies: " + waitingDm + " sent DM" + (waitingDm === 1 ? " is" : "s are") + " waiting on an answer" : ""].filter(Boolean) });
+  if (vids.length) blocks.push({ time: "1:00", title: "Film videos (15 min)", items: vids.map((v) => "\u{1F3AC} " + String(v.summary || "").replace(/^Video script for /, "") + " (script is on Telegram)") });
+  blocks.push({ time: "2:00", title: "Warm network and content (30 min)", items: ["\u{1F91D} Message 3 people you already know (Command's warm list, or anyone who could refer you)", "\u{1F4F1} Post or schedule one piece of content (a carousel, or a quick result from a Growth Pack, no client names)"] });
+  blocks.push({ time: "4:00", title: "Wrap up (15 min)", items: ["Clear anything left on Telegram", "Book any yes into the free 30-minute call calendar"] });
+  const text = "\u{1F3AF} <b>Today's plan of attack</b>\n" + blocks.map((b) => "\n<b>" + b.time + " · " + vcEsc(b.title) + "</b>\n" + b.items.map((i) => "• " + vcEsc(i)).join("\n")).join("\n") +
+    "\n\n\u{1F4CA} Last 7 days: " + wk + " call" + (wk === 1 ? "" : "s") + " logged, " + booked + " interested or booked.";
+  return { ok: true, blocks, hot, waiting: { replies: replies.length, growth_pack: packs.length, no_answer: noans.length, campaign: enrols.length, follow_ups: fups.length, other: Math.max(0, otherN) }, calls: C.slice(0, 15).map((c) => ({ business: c.business_name, phone: c.phone, hot: !!(c.demo && c.demo.hot) })), dms_ready: ready, videos: vids.length, week: { calls: wk, interested_or_booked: booked }, text };
+}
+async function outreachPlanDaily(env) {
+  const inst = await instGet(env).catch(() => ({})) || {};
+  if (inst.custom && !(inst.modules && inst.modules.outreach)) return { skipped: "client copy" };
+  const bn = brisbaneNow(), dow = new Date(Date.now() + 10 * 36e5).getUTCDay();
+  if (bn.hour !== 7 || dow === 0 || dow === 6) return CRON_NOT_DUE;
+  const st = (await secGet(env, "outreach_plan_sent").catch(() => null)) || {};
+  if (st.date === bn.date) return CRON_NOT_DUE;
+  const plan = await outreachPlan(env);
+  await notify(env, plan.text.slice(0, 3900));
+  await secPut(env, "outreach_plan_sent", { date: bn.date, at: new Date().toISOString() });
+  return { sent: true };
 }
 async function callDemoEmailAction(env, id, body) {
   if (!["draft", "send"].includes(body.mode)) throw new Error("Choose draft or send.");
