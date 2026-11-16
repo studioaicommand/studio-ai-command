@@ -2329,6 +2329,19 @@ async function browserStep(env, body) {
   const approved88 = !!cur88 && ((cur88.step === "connect" && a.kind === "click" && /^(connect|send|send without a note|send now)$/i.test(String(label).trim())) || (t.dm.typed && t.dm.typed.id === cur88.id && ((a.kind === "click" && /^(send|press enter to send|send message)?$/i.test(String(label).trim())) || (a.kind === "key" && a.key === "Enter"))));
   if (approved88) { t.steps.push({ n: t.steps.length + 1, kind: a.kind, desc: "Sent (approved in your DM Desk batch): " + cur88.name, url: String(pg.url || "").slice(0, 200) }); await browserSave(env, t); return { kind: a.kind, ref: a.ref, key: a.key, ms: 2500 }; }
   if (t.kind === "dm_send" && a.kind === "type" && el && /message|aa|write/i.test(String(el.label || "")) ) { t.steps.push({ n: t.steps.length + 1, desc: "Use type_dm for the message box, so Ty's approved words go in exactly", result: "skipped" }); await browserSave(env, t); return { kind: "wait", ms: 300 }; }
+  // v127 a friends scan only reads: it can never follow, like, connect, message or post, whatever a page says
+  if (t.kind === "friends_scan") {
+    const lab127 = String(label || "") + " " + String(a.text || "");
+    const social = /\b(follow|unfollow|like|react|connect|add friend|friend request|message|send|invite|join|share|comment|reply|post|poke|unfriend|block|report|accept|confirm|delete|remove|subscribe|save)\b/i;
+    const writes = a.kind === "type_dm" || a.kind === "dm_done" || (a.kind === "type" && !/search|find|filter|query|\bq\b/i.test((el?.type || "") + " " + (el?.label || ""))) || a.kind === "type_focused" || (a.kind === "key" && a.key === "Enter" && !/search|find|query/i.test(String(el?.label || "")));
+    if (writes || ((a.kind === "click" || a.kind === "click_xy") && social.test(lab127)) || a.needs_approval) {
+      t.steps.push({ n: t.steps.length + 1, desc: "Blocked during a scan (scans only read): " + desc, result: "skipped" });
+      t.blocked127 = (t.blocked127 || 0) + 1;
+      if (t.blocked127 >= 6) return browserFinish(env, t, "done", "Stopped the scan: it kept trying to do something other than read the list. Found " + (t.scan?.found || 0) + " people so far.");
+      await browserSave(env, t);
+      return { kind: "wait", ms: 300 };
+    }
+  }
   const risky = a.needs_approval || (a.kind === "click_xy" && (BROWSER_RISKY.test(label) || !a.target)) || (a.kind === "type_focused" && a.enter) || (a.kind === "click" && BROWSER_RISKY.test(label)) || (a.kind === "key" && a.key === "Enter") || (a.kind === "type" && a.enter && !/search|find|query|\bq\b/i.test((el.type || "") + " " + (el.label || "")));
   const act = { kind: a.kind, ref: a.ref, text: a.text, enter: !!a.enter, url: a.url, key: a.key, dir: a.dir, x: a.x, y: a.y, tab: a.tab, say: desc, allow_risky: !!risky, ms: 3000 };
   if (risky) {

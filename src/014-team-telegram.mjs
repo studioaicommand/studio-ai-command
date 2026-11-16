@@ -173,7 +173,7 @@ async function askTy(env, action, { urgent = false, settings = null } = {}) {
 async function telegramHook(request, env, ctx, deps) {
   if (request.method !== "POST") return new Response("ok");
   const secret = await hookSecret(env);
-  if (request.headers.get("X-Telegram-Bot-Api-Secret-Token") !== secret) return new Response("forbidden", { status: 403 });
+  if (!secret || !sfKeyEq(String(request.headers.get("X-Telegram-Bot-Api-Secret-Token") || ""), String(secret))) return new Response("forbidden", { status: 403 });
   const u = await request.json().catch(() => ({}));
   const cbq = u.callback_query, cbk = /^(ap|rj|pa):/.test(String(cbq?.data || "")) ? String(cbq.data).slice(0, 2) === "rj" ? "rj" : "ap" : null;
   if (cbk && ctx?.waitUntil) ctx.waitUntil(tgQuick(env, "answerCallbackQuery", { callback_query_id: cbq.id, text: cbk === "ap" ? "\u23F3 On it: approving now" : "\u23F3 Rejecting" }));

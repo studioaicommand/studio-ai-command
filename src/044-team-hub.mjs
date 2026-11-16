@@ -362,7 +362,7 @@ async function inboxRoute(request, rawEnv, ctx) {
   const env = teamEnv(rawEnv);
   const url = new URL(request.url);
   const key = url.pathname.replace(/^\/api\/v1\/inbox\/ghl\/?/, '').replace(/\/+$/, '');
-  if (!key || key !== await inboxKey(env)) return new Response(JSON.stringify({ ok: false }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+  if (!key || !sfKeyEq(key, String(await inboxKey(env) || ""))) return new Response(JSON.stringify({ ok: false }), { status: 404, headers: { 'Content-Type': 'application/json' } });
   if (request.method !== 'POST') {
     // GET <hook>?run=followups runs the follow-up check now (same rules as the hourly run).
     if (url.searchParams.get('run') === 'followups') {
@@ -580,6 +580,25 @@ async function inboxHealth(env) {
     note: !hookLast ? "GHL has never called Command's inbox webhook. Add the 'Customer replied' workflow in GHL (Settings > Connections shows the address). Until then the hourly sweep still catches every message." : "The webhook answers instantly; the hourly sweep catches anything it misses." };
 }
 
+// v127 Spam Act: an opt-out reply is recorded straight away (our cold emails invite "no thanks"), every
+// outreach to that contact stops, and Ty is told. Short replies only, so a real question isn't swallowed.
+var INBOX_OPTOUT = /\b(unsubscribe|opt(?:\s|-)?out|remove me|take me off|stop (?:emailing|messaging|contacting|texting|sending)|(?:don'?t|do not|please don'?t) (?:email|message|contact|text|send)|no,? thanks?|no thank you|not interested)\b/i;
+function inboxIsOptOut(text) {
+  const t = String(text || "").replace(/^(re|fwd?):\s*/i, "").trim();
+  if (/^\s*(stop|unsubscribe|opt ?out|cancel|remove)[.!\s]*$/i.test(t)) return true;
+  return t.length <= 200 && INBOX_OPTOUT.test(t) && !/\?\s*$/.test(t.replace(/no,? thanks?\??/i, ""));
+}
+async function inboxOptOut(env, contactId, text, channel) {
+  await addTags(env, contactId, ["outreach-opted-out", "hold-do-not-send"]).catch((e) => console.error("opt-out tag:", e.message));
+  const prs = await select(env, "agent_prospects", "ghl_contact_id=eq." + encodeURIComponent(contactId) + "&select=id,business_name,status&limit=5").catch(() => []);
+  for (const pr of prs) await update(env, "agent_prospects", "id=eq." + pr.id, { status: "do_not_contact", updated_at: new Date().toISOString() }).catch(() => {});
+  const pend = await select(env, "team_actions", "status=eq.pending&type=in.(outreach_email,ghl_reply,outreach_followup)&select=id,params&limit=200").catch(() => []);
+  for (const a of pend.filter((x) => x.params?.contact_id === contactId || x.params?.ghl_contact_id === contactId || (prs.length && prs.some((p) => p.id === x.params?.prospect_id)))) await update(env, "team_actions", "id=eq." + a.id, { status: "rejected", decided_at: new Date().toISOString(), result: { note: "They asked not to be contacted" } }).catch(() => {});
+  const who = prs[0]?.business_name || "A contact";
+  await audit(env, { actor: "system", action: "opt_out_recorded", target_type: "contact", target_id: contactId, summary: who + " opted out on " + channel + ": " + String(text).slice(0, 120) }).catch(() => {});
+  await notify(env, "\u{1F6AB} <b>" + esc2(who) + " asked not to be contacted</b> (" + esc2(channel) + "): \u201C" + esc2(String(text).slice(0, 160)) + "\u201D\nI've stopped all outreach to them and cancelled anything waiting. Nothing to do.").catch(() => {});
+  return { skipped: "opt-out", recorded: true, prospects: prs.length };
+}
 async function inboxHandle(env, body) {
   if (!enabled(env)) return { skipped: 'ghl not connected' };
   { const ev = emailEvName(body); if (ev) return emailEventRecord(env, body, ev); }
@@ -612,7 +631,7 @@ async function inboxHandle(env, body) {
   if (mode === 'off') return { skipped: 'channel off' };
   const text = inboxTxt(inbound.body || payloadMsg.body, 1500);
   if (!text) return { skipped: 'empty' };
-  if (/^\s*(stop|unsubscribe|opt ?out|cancel)\s*$/i.test(text)) return { skipped: 'opt-out' };
+  if (inboxIsOptOut(text)) return inboxOptOut(env, contactId, text, channel);
   const msgId = inbound.id || ('p-' + contactId + '-' + text.slice(0, 40));
   if (body.event === 'sweep') { const lq = (await v101Get(env, 'inbox_quiet').catch(() => null)) || { items: [] }; if ((lq.items || []).some((x) => x.message_id === msgId)) return { skipped: 'already seen' }; }
 
@@ -708,6 +727,8 @@ async function inboxVoiceSet(env, contactId, on, name) {
 
 // ── v106 Update Announcer: every release teaches the whole team ──
 var RELEASE_NOTES = [
+  { v: 127, title: "Opt-outs honoured automatically", rules: [
+    { rule: "When someone replies no thanks, not interested, unsubscribe, stop or remove me, Command records it straight away: the contact is tagged opted out in GHL, the business is marked do not contact, anything waiting for them is cancelled, and it's logged. Never draft outreach, follow-ups or DMs to anyone marked do not contact or opted out.", applies_to: ["all"] }] },
   { v: 126, title: "Command Link on Windows, socials login in tabs", rules: [
     { rule: "Command Link now works on Windows PCs as well as Macs. Settings > Brand & features > Command Link has Set up on a Mac and Set up on a Windows PC: on Windows the owner pastes one PowerShell line (no administrator needed), and it starts by itself at login. Browser tasks on Windows need Google Chrome and Node.js (free, nodejs.org); without Node.js it still opens pages.", applies_to: ["all"] },
     { rule: "Log in to my socials opens Facebook, Instagram, LinkedIn (and TikTok if the handle is saved) each in its own tab in Command Chrome, and stays still while the owner logs in, then they press Continue once. Command Link now updates itself between tasks, so after this one-time Set up again there's no need to reinstall for future fixes.", applies_to: ["all"] }] },
@@ -1267,7 +1288,7 @@ function controlResult(status, previous, messages) {
 }
 async function conversationTest(request, env) {
   if (!env.STUDIO_TEST_KEY) return json({ ok: false, error: "STUDIO_TEST_KEY is missing in Production." }, 503);
-  if (request.headers.get("Authorization") !== "Bearer " + env.STUDIO_TEST_KEY)
+  if (!sfKeyEq(String(request.headers.get("Authorization") || ""), "Bearer " + env.STUDIO_TEST_KEY))
     return json({ ok: false, error: "Incorrect test key." }, 401);
   if (!env.OPENAI_API_KEY || !env.SUPABASE_URL || !env.SUPABASE_SECRET_KEY)
     return json({ ok: false, error: "OpenAI or Supabase configuration is missing." }, 503);
