@@ -708,6 +708,9 @@ async function inboxVoiceSet(env, contactId, on, name) {
 
 // ── v106 Update Announcer: every release teaches the whole team ──
 var RELEASE_NOTES = [
+  { v: 126, title: "Command Link on Windows, socials login in tabs", rules: [
+    { rule: "Command Link now works on Windows PCs as well as Macs. Settings > Brand & features > Command Link has Set up on a Mac and Set up on a Windows PC: on Windows the owner pastes one PowerShell line (no administrator needed), and it starts by itself at login. Browser tasks on Windows need Google Chrome and Node.js (free, nodejs.org); without Node.js it still opens pages.", applies_to: ["all"] },
+    { rule: "Log in to my socials opens Facebook, Instagram, LinkedIn (and TikTok if the handle is saved) each in its own tab in Command Chrome, and stays still while the owner logs in, then they press Continue once. Command Link now updates itself between tasks, so after this one-time Set up again there's no need to reinstall for future fixes.", applies_to: ["all"] }] },
   { v: 124, title: "TikTok in the DM Desk", rules: [
     { rule: "The DM Desk now covers TikTok too: a TikTok handle in Your profiles, Scan my friends on TikTok (your Following list), and Find people in an industry also searches TikTok. TikTok messages are sent by hand with Copy & open profile (TikTok only allows messages to people who follow back), with a gentle 10 a day limit.", applies_to: ["all"] }] },
   { v: 123, title: "Two DM Desk scans, and no double hellos", rules: [

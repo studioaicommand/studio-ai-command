@@ -1,5 +1,5 @@
 // v125 Log in to my socials: each site in its own tab, one ask, quiet waits (no window jumps), TikTok, helper self-update.
-let AG = "5";
+let AG = "6";
 import crypto from "node:crypto";
 const W = process.argv[2] || "/home/claude/w/worker.mjs";
 const assert = (c, m) => { if (!c) { console.error("FAIL:", m); process.exit(1); } console.log("✓", m); };
@@ -66,11 +66,12 @@ task().status = "done";
 // 3) self-update
 DB.team_settings.find((x) => x.key === "mac_link").value.agent = 5;
 AG = "4"; n = await agent("next"); assert(!n.update, "Helpers older than v5 can't update themselves, so they aren't asked to");
-AG = "5"; n = await agent("next"); assert(!n.update, "A helper that's already current isn't asked to update");
+AG = "5"; n = await agent("next"); assert(n.update === true, "A v5 helper is told a newer one is ready (it then updates itself)");
+AG = String(+(/'X-SF-Agent': '(\d+)'/.exec(fs.readFileSync(new URL("../link-agent.mjs", import.meta.url), "utf8")) || [])[1]); n = await agent("next"); assert(!n.update, "A helper that's already current isn't asked to update");
 const res = await w.fetch(new Request(O + "/api/v1/link/agent", { headers: { Authorization: "Bearer " + TOK } }), env, { waitUntil() {} });
 const code = await res.text();
 assert(res.ok && code === fs.readFileSync(new URL("../link-agent.mjs", import.meta.url), "utf8"), "The helper can download its latest self from Command (same as link-agent.mjs)");
 const bad = await w.fetch(new Request(O + "/api/v1/link/agent", { headers: { Authorization: "Bearer nope" } }), env, { waitUntil() {} });
 assert(bad.status === 401, "Nobody without the Mac's token can download it");
-assert(/quiet = a\.kind === 'wait' && !!a\.quiet/.test(code) && /if \(quiet\)/.test(code) && /'X-SF-Agent': '5'/.test(code), "The helper stays still (no window jumps or screenshots) during quiet waits");
+assert(/quiet = a\.kind === 'wait' && !!a\.quiet/.test(code) && /if \(quiet\)/.test(code) && +(/'X-SF-Agent': '(\d+)'/.exec(code) || [])[1] >= 5, "The helper stays still (no window jumps or screenshots) during quiet waits");
 console.log("all good");
