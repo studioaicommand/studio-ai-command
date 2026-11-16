@@ -226,7 +226,7 @@ async function callList(env, limit = 20) {
       observation: r.evidence,
       opener: demoOpener || (r.source === "no_website" && r.opener) || `${r.decision_maker ? "Hi, is this " + r.decision_maker.split(" ")[0] + "? " : "Hi, "}it's Ty from Studio Flow & Systems. We work with established service businesses on the systems behind missed enquiries and manual admin. I was looking into ${r.business_name} and noticed ${r.leak ? r.leak.charAt(0).toLowerCase() + r.leak.slice(1).replace(/\.$/, "") : "how you handle enquiries"}. How does your team currently handle that? Have you got a minute?`,
       questions: r.vertical === "property" ? QUESTIONS.property : HEALTH2.has(r.vertical) ? QUESTIONS.health : QUESTIONS[r.vertical] || QUESTIONS.other,
-      close: demo ? r.email ? `Offer to send their Growth Pack link now (or say it's in their inbox). If they like it: "The pilot is $497 for chat, or $697 for the Front Desk with voice, missed-call text-back and review requests: live on your site in 48 hours, with a 14-day money-back guarantee. The 'Yes, set this up' button is on your front desk page."` : `If it's a good call: "What's the best email to send it all to?" Enter their email in the demo card, draft and review the email, then click Send demo now. If they're keen now: the pilot is $497 (chat) or $697 (Front Desk), live in 48 hours, 14-day money-back guarantee.` : r.email ? "Rather than guessing, I'd suggest a short Revenue Leak Review: we map the current process and see whether there's a practical fix. Would you be open to a 30-minute call?" : `If it's a good call: "What's the best email to send that one-page review to?" (save their details, then review and send the email explicitly). Then offer the free 30-minute call.`
+      close: demo ? r.email ? `Offer to send their Growth Pack link now (or say it's in their inbox). If they like it: "The pilot is $497 for chat, or $697 for the Front Desk with voice, missed-call text-back and review requests: live on your site in 48 hours, with a 14-day money-back guarantee. The 'Yes, set this up' button is on your front desk page."` : `If it's a good call: "What's the best email to send it all to?" Enter their email in the Growth Pack box, draft and review the email, then click Send it now. If they're keen now: the pilot is $497 (chat) or $697 (Front Desk), live in 48 hours, 14-day money-back guarantee.` : r.email ? "Rather than guessing, I'd suggest a short Revenue Leak Review: we map the current process and see whether there's a practical fix. Would you be open to a 30-minute call?" : `If it's a good call: "What's the best email to send that one-page review to?" (save their details, then review and send the email explicitly). Then offer the free 30-minute call.`
     };
   }).sort((a, b) => (b.demo?.hot ? 1 : 0) - (a.demo?.hot ? 1 : 0) || b.ready - a.ready || (b.score || 0) - (a.score || 0)).slice(0, limit);
   return { ok: true, calls: due, complete: rows.length < 80 };
@@ -398,12 +398,12 @@ function workflowStage(p, c, d) {
   if (c?.paid_at) return "Pilot payment recorded";
   if (c) return "Client setup";
   if (p.call_status === "booked") return "Appointment recorded";
-  if (p.call_outcome === "awaiting_decision_maker") return "Demo sent / Awaiting decision-maker";
+  if (p.call_outcome === "awaiting_decision_maker") return "Pack sent / Awaiting decision-maker";
   if (p.status === "do_not_contact" || p.status === "skipped" || p.call_status === "not_interested") return "Closed / do not contact";
   if (p.status === "won") return "Won · client setup to confirm";
-  if (d?.chats > 0) return "Demo chat activity";
+  if (d?.chats > 0) return "Tried their front desk";
   if (p.status === "sent" || p.status === "replied" || p.last_call_at) return "Contacted";
-  if (d?.quality === "good") return "Demo ready";
+  if (d?.quality === "good") return "Growth Pack ready";
   return "Researched";
 }
 async function workflowToday(env) {
@@ -442,7 +442,7 @@ async function workflowToday(env) {
   const callsVerified=results.every(r=>r.status==="fulfilled") && prospects.length<500 && pending.length<500 && recent.length<500 && clients.length<200;
   for(const c of (callsVerified ? callData.calls||[] : [])) {
     const p=pmap.get(c.id);if(!p || !(c.ready || c.demo) || workflowClosed(p) || workflowRecent(p,actions,at) || workflowClient(p,clients) || pending.some(a=>a.params?.prospect_id===p.id && a.type!=="owner_task"))continue;
-    put({kind:"call",priority:3,prospect_id:p.id,business_name:p.business_name,title:"Call this business",reason:c.demo?.chats?"Demo chat activity is recorded. Review the timeline before calling.":c.observation||"A researched call is ready.",cta:"Open call card",href:"business/"+p.id});
+    put({kind:"call",priority:3,prospect_id:p.id,business_name:p.business_name,title:"Call this business",reason:c.demo?.chats?"They tried their front desk. Review the timeline before calling.":c.observation||"A researched call is ready.",cta:"Open call card",href:"business/"+p.id});
   }
   const items=[...list.values()].sort((a,b)=>a.priority-b.priority || (Date.parse(a.due_at)||Infinity)-(Date.parse(b.due_at)||Infinity) || String(a.business_name || "").localeCompare(String(b.business_name || "")));
   return {ok:true,complete:!warnings.length,warnings,as_of:now(),items,automatic,counts:{calls:items.filter(i=>i.kind==="call").length,demos:items.filter(i=>i.kind==="demo").length,followups:items.filter(i=>i.kind==="followup").length,setup:items.filter(i=>i.kind==="setup").length},
@@ -475,12 +475,12 @@ async function workflowRecord(env,id) {
     add(a.decided_at||a.created_at,title,text,"action:"+a.id);
   }
   for(const a of audits)if(!["demo_email_sent","approved","rejected"].includes(a.action) && !(a.action==="prospect_status" && Math.abs(Date.parse(a.created_at)-Date.parse(p.last_call_at||""))<2000))add(a.created_at,a.summary,a.details?.note||"","audit:"+a.id);
-  if(d?.last_chat_at)add(d.last_chat_at,"Demo chat activity",(d.chats||0)+" non-preview chat turns recorded. A shared link does not identify the visitor.","chat");
+  if(d?.last_chat_at)add(d.last_chat_at,"Tried their front desk",(d.chats||0)+" non-preview chat turns recorded. A shared link does not identify the visitor.","chat");
   if(d?.last_view_at)add(d.last_view_at,"Demo page opened","A page open does not establish who visited or whether they are interested.","view");
   if(d?.last_voice_at)add(d.last_voice_at,"Voice demo connected","A connection does not confirm a conversation took place.","voice");
   if(c){add(c.paid_at,"Pilot payment recorded","Recorded in the client setup; this is not a verified recurring subscription.","paid");add(c.started_live_at,"Receptionist launched","Current client status: "+c.status,"live");}
   return {ok:true,prospect:{id:p.id,business_name:p.business_name,website:p.website,phone:onePhone(p.phone),email:p.email,decision_maker:p.decision_maker,contact_name:p.contact_name,contact_role:p.contact_role,call_status:p.call_outcome||p.call_status,status:p.status,evidence:p.evidence,source_url:p.email_source_url||p.website,call_notes:p.call_notes},stage:workflowStage(p,c,d),client:c||null,
-    demo:d&&d.quality==="good"?{...d,url:String(env.PUBLIC_ORIGIN||DEFAULT_ORIGIN).replace(/\/+$/,"")+"/demo/"+d.token}:null,
+    demo:d&&d.quality==="good"?{...d,url:String(env.PUBLIC_ORIGIN||DEFAULT_ORIGIN).replace(/\/+$/,"")+"/demo/"+d.token+"/pack",desk_url:String(env.PUBLIC_ORIGIN||DEFAULT_ORIGIN).replace(/\/+$/,"")+"/demo/"+d.token}:null,
     tasks:actions.filter(a=>a.params?.source==="workflow_task" && a.status==="pending").map(a=>({id:a.id,title:a.title,details:a.params.details,due_at:a.params.due_at,kind:a.params.workflow_kind})),
     events:events.sort((a,b)=>Date.parse(b.at)-Date.parse(a.at)),warnings,history_note:"Studio records and recorded demo activity. GHL inbox and payment history are not synced into this timeline."};
 }
@@ -783,7 +783,7 @@ async function callDemoEmailAction(env, id, body) {
   if (!contact?.id) throw new Error("GHL did not return a contact. No email was sent.");
   // Insert on the primary key is the cross-request lock: only one request can send.
   const claimed = await insertIgnore(env, "team_actions", [{id: actionId, department: "head_of_sales", type: "ghl_email", title: "Requested demo: " + p.business_name,
-    reason: "Clinic requested the demo on Ty's call. Ty reviewed and clicked Send demo now.", status: "running", decided_at: now(),
+    reason: "They asked for their Growth Pack on Ty's call. Ty reviewed the email and clicked Send it now.", status: "running", decided_at: now(),
     params: {contact_id: contact.id, prospect_id: id, email, subject, body: message, source: "call_demo_email", consent: true, contact_name: name, contact_role:contactRole, demo_token: p.demo_token, followup_enabled: body.followup_consent === true && body.test_send !== true, test_send: body.test_send === true}}], "id");
   if (!claimed.length) throw new Error("Another request has already started this email. Check GHL Conversations; no duplicate was sent.");
   let accepted = false;
@@ -862,11 +862,11 @@ async function queueDemoFollowup(env, d, at) {
   const id = hex.slice(0,8)+"-"+hex.slice(8,12)+"-4"+hex.slice(13,16)+"-a"+hex.slice(17,20)+"-"+hex.slice(20,32);
   const due = demoFollowupDue(at), name = demoContactName(op.contact_name);
   const origin = String(env.PUBLIC_ORIGIN || DEFAULT_ORIGIN).replace(/\/+$/, "");
-  const message = (name ? "Hi " + name + "," : "Hi there,") + "\n\nJust checking in on the AI receptionist demo I sent for " + d.business_name + ". How did you find it?\n\nIf you would like anything adjusted, reply here and I can help. You can also book a short call with me:\n" + FREE_CALL3 + "\n\nYour demo:\n" + origin + "/demo/" + d.token + "\n\nIf you would rather not hear from me again, reply to let me know.\n\nTy\nStudio Flow & Systems";
+  const message = (name ? "Hi " + name + "," : "Hi there,") + "\n\nI saw someone at " + d.business_name + " had a go with the front desk I put together. How did you find it?\n\nIf you'd like anything adjusted, reply here and I'll sort it. Or grab a time for a quick call:\n" + FREE_CALL3 + "\n\nEverything I put together for you is still here:\n" + origin + "/demo/" + d.token + "/pack" + "\n\nIf you would rather not hear from me again, reply to let me know.\n\nTy\nStudio Flow & Systems";
   await insertIgnore(env, "team_actions", [{id, type:"ghl_email", department:"head_of_sales", status:"pending",
     title:"Demo follow-up: " + d.business_name, reason:"One agreed follow-up after a successful demo chat. Earliest send: " + due + ". Cancel in Growth > Demo follow-ups.",
     params:{source:"demo_followup", original_action_id:original.id, prospect_id:d.prospect_id, contact_id:op.contact_id, email:op.email, contact_name:name,
-      subject:"How did you find the demo for " + String(d.business_name).replace(/[\r\n]/g," ").slice(0,130) + "?", body:message, due_at:due, engaged_at:new Date(at).toISOString()}}], "id");
+      subject:"How did you find the front desk for " + String(d.business_name).replace(/[\r\n]/g," ").slice(0,130) + "?", body:message, due_at:due, engaged_at:new Date(at).toISOString()}}], "id");
 }
 async function sendDemoFollowup(env, params) {
   // All approvals (manual and automatic) use the same fresh checks.
