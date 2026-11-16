@@ -141,6 +141,7 @@ async function teamScheduled(event, env) {
     ["Team leader", ai(() => coachDaily(e))],
     ["Design retro", out(ai(() => (brisbaneNow().hour === 8 && new Date().getUTCDay() === 0 ? wsdRetro(e) : CRON_NOT_DUE)))],
     ["Website demos", out(ai(() => continueDemos(e, 2))), { ms: 240000 }],
+    ["Growth Pack re-approach", out(ai(() => packReengage(e))), { ms: 300000 }],
     ["Demo screenshots", out(ai(() => retryDemoShots(e)))],
     ["Team brain", ai(() => brainTick(e))],
     // 4. Housekeeping, then the Telegram digest always gets its turn.
@@ -713,6 +714,9 @@ var RELEASE_NOTES = [
     { rule: "Once a month the Head of Systems runs Evolve research: competitors' features, what their real users hate (only real, linked reviews, never invented) and new AI tech, ending in the top 5 upgrades for Command. Never suggest copying a competitor's code, design, branding or copy.", applies_to: ["head_of_systems", "command"] }] },
   { v: 107, title: "The Arena: nightly scoring of the team's replies", rules: [
     { rule: "Every night the Arena tests the team's replies against real conversations Ty approved, edited or rejected, and a set of golden scenarios. Write every reply as if it will be scored: follow the rulebook, match what Ty approved, avoid what he rejected.", applies_to: ["inbox", "dm"] }] },
+  { v: 118, studio_only: true, title: "Growth Pack outreach", retire: /(free AI receptionist|lead with (the|an|our) AI receptionist|AI receptionist (is|as) (the|our) (offer|hook|lead)|DEMO-FIRST|SITE-FIRST)/i, rules: [
+    { rule: "Cold outreach now leads with the Growth Pack: one link (pack_url) per business with where enquiries are slipping (leak report, plus the response time check if run), a homepage concept in their brand, and a front desk that answers every enquiry day and night. In cold emails, DMs, calls and replies never lead with 'AI', 'AI receptionist' or 'chatbot' (many owners are wary of AI): say what it does. Be honest that it runs on AI if they ask. No prices in cold outreach.", applies_to: ["all"] },
+    { rule: "Every business we already built a front desk demo for gets its Growth Pack completed and one honest re-approach for Ty's OK (a few a day, warmest first). Never re-approach do not contact, replied, won, lost or skipped businesses, or anyone contacted in the last 14 days.", applies_to: ["sales", "email", "all"] }] },
   { v: 117, studio_only: true, title: "No-answer email", rules: [
     { rule: "When Ty marks a call No answer or Voicemail, Command drafts one honest email about that call (only to an address the business publishes itself, checked so it won't bounce) pointing to their demo or the AI Front Desk demo, for Ty's OK. Only one per business; never if they're already in the campaign, asked not to be contacted, or replied.", applies_to: ["sales", "email", "all"] }] },
   { v: 115, studio_only: true, title: "Video Coach", rules: [

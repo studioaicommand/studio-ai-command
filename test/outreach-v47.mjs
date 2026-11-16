@@ -74,12 +74,12 @@ assert(lr.search && lr.search.query === "vet Maroochydore" && lr.search.position
 const sa = asks.find((a) => (a.tools || []).some((t) => t.name === "save_search"));
 assert(sa && sa.tools.some((t) => t.type === "web_search_20250305") && /haiku/i.test(sa.model || ""), "The search check runs on the fast model with web search");
 const wr = asks.find((a) => (a.tools || []).some((t) => t.name === "write_outreach"));
-assert(/PREMIUM POSITIONING/.test(wr.system) && /SITE-FIRST/.test(wr.system), "The sales writer is briefed on premium positioning and the homepage-concept offer");
+assert(/PREMIUM POSITIONING/.test(wr.system) && /PACK-FIRST/.test(wr.system) && /never lead with "AI"/.test(wr.system), "The sales writer is briefed on premium positioning and the Growth Pack offer (no leading with AI)");
 const design = asks.filter((a) => (a.tools || []).some((t) => t.name === "save_site_design"));
 assert(design.length === 1 && /10X RULE/.test(design[0].system), "A homepage concept is designed, under the 10x rule");
 assert(asks.filter((a) => (a.tools || []).some((t) => t.name === "save_front_desk")).length === 1, "The concept reuses the hunt's AI receptionist (not built twice)");
 const act = DB.team_actions.find((a) => a.type === "campaign_enrol");
-assert(act && act.status === "pending" && /\/site$/.test(act.params.site_demo_url || "") && act.params.body.includes(act.params.site_demo_url) && /\/report$/.test(act.params.follow_up_1), "Email 1 links the homepage concept; follow-up 1 links the leak report; it waits for approval");
+assert(act && act.status === "pending" && /\/demo\/[a-f0-9]{40}\/pack$/.test(act.params.pack_url || "") && act.params.body.includes(act.params.pack_url) && (!act.params.follow_up_1 || act.params.follow_up_1.includes(act.params.pack_url)), "Email 1 and follow-up 1 link their Growth Pack (report, homepage concept, front desk); it waits for approval");
 x = await call("/outreach/today");
 const it = x.j.items[0];
 assert(x.j.ok && it && it.business === "Sunny Paws Vet Clinic" && it.site && /leak-report/.test(it.report) && /\/demo\//.test(it.receptionist) && it.search.query === "vet Maroochydore" && x.j.stats.site_demos === 1, "Outreach today lists it with concept, leak report, receptionist and search result");

@@ -220,7 +220,7 @@ async function brainLibrarian(env, exam = null) {
       if (merged) await brainPut(env, "team_rules", { rules, updated_at: new Date().toISOString() });
     } catch (e) { console.error("librarian rules:", e.message); }
   }
-  const today = rules.filter((r) => r.at && brisbaneNow(new Date(r.at)).date === bn.date);
+  const today = rules.filter((r) => r.at && r.source !== "release" && brisbaneNow(new Date(r.at)).date === bn.date);
   const examLine = exam && (exam.passed.length || exam.failed.length) ? "\n\n\u{1F4DD} Tonight's exam: " + exam.passed.length + " of " + (exam.passed.length + exam.failed.length) + " rules followed." + (exam.failed.length ? " Slipped on: " + exam.failed.map((f) => esc2(f.rule) + (f.why ? " (" + esc2(f.why) + ")" : "")).join("; ") + ". Those are now pinned to the top for every agent." : "") : "";
   if (!today.length && !removed && !merged && !examLine) return { removed, merged, today: 0 };
   const lines = today.slice(0, 12).map((r, i) => (i + 1) + ". " + esc2(r.rule));

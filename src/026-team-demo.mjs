@@ -250,7 +250,8 @@ function demoBrief(env, d) {
   return { demo_url: demoUrl(env, d.token), demo_can_answer: (d.kb.suggested_questions || []).slice(0, 3), demo_highlight: d.kb.highlight || null };
 }
 async function continueDemos(env, n = 2) {
-  const P = await select(env, "agent_prospects", "demo_token=is.null&website=not.is.null&vertical=in.(allied,dental,aesthetics)&status=in.(to_send,queued,nurture,sent,needs_research)&select=id,business_name,website,vertical,phone,email,status&order=updated_at.desc&limit=40").catch(() => null);
+  const on = outreachOn(await getSettings(env).catch(() => ({})));
+  const P = await select(env, "agent_prospects", "demo_token=is.null&website=not.is.null&vertical=in.(" + (on.length ? on : ["allied", "dental", "aesthetics"]).join(",") + ")&status=in.(to_send,queued,nurture,sent,needs_research)&select=id,business_name,website,vertical,phone,email,status&order=updated_at.desc&limit=40").catch(() => null);
   if (!P) return { skipped: "run the v15 database step" };
   const order = [...P.filter((p) => !p.email && p.phone), ...P.filter((p) => !(!p.email && p.phone))].slice(0, n);
   const out = [];
@@ -272,11 +273,75 @@ async function listDemos(env, limit = 50) {
 var tokenOk = (t) => /^[a-f0-9]{40}$/.test(t || "");
 var notFound = () => new Response("This demo link isn't valid.", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8", "X-Robots-Tag": "noindex" } });
 var PAGE_COLS = "token,prospect_id,business_name,website,vertical,kb,quality,views,chats,last_chat_at,day,day_count,transcript,buy_clicks,voice_day,voice_count,voice_calls,last_voice_at,has_shot";
+// ── v118 Growth Pack: one page per business with everything we made for them: where enquiries slip (leak report,
+// plus the response-time check if we ran one), a homepage concept in their brand, and a front desk that answers every
+// enquiry. Every outreach channel links here. ──
+var PACK_BOOK = "https://links.studioflowandsystems.com/widget/booking/tfzrthnax3Ldpncejghq";
+async function packData(env, token) {
+  const [d] = await select(env, "agent_demos", "token=eq." + token + "&select=token,prospect_id,business_name,website,vertical,quality&limit=1").catch(() => []);
+  if (!d) return null;
+  const [w, pr] = await Promise.all([wsdGet(env, token).catch(() => null), d.prospect_id ? select(env, "agent_prospects", "id=eq." + encodeURIComponent(d.prospect_id) + "&select=id,business_name,report_token,leak,leak_report,vertical,decision_maker,email&limit=1").then((r) => r[0] || null).catch(() => null) : null]);
+  const o = String(env.PUBLIC_ORIGIN || DEFAULT_ORIGIN).replace(/\/+$/, "");
+  const site = !!(w && w.spec);
+  const report = site ? o + "/demo/" + token + "/report" : pr && pr.report_token ? o + "/leak-report/" + pr.report_token : null;
+  const lt = pr && pr.leak_report && pr.leak_report.live_test;
+  return { d, p: pr, name: (w && w.name) || d.business_name || (pr && pr.business_name) || "your business", site: site ? o + "/demo/" + token + "/site" : null, report, desk: !d.quality || d.quality === "good" ? o + "/demo/" + token : null, check: lt && lt.result && lt.result !== "waiting" ? lt : null };
+}
+function packComplete(pd) { return !!(pd && pd.site && pd.report && pd.desk); }
+function packPage(pd, { ty = false } = {}) {
+  const name = esc6(pd.name), first = pd.p && pd.p.decision_maker ? esc6(String(pd.p.decision_maker).split(/\s+/)[0]) : "";
+  const card = (n, k, h, p, href, btn) => '<a class="c" href="' + esc6(href) + '" target="_blank" rel="noopener"><span class="n">' + n + '</span><span class="k">' + k + '</span><h2>' + h + '</h2><p>' + p + '</p><span class="go">' + btn + ' →</span></a>';
+  const cards = [];
+  let i = 0;
+  if (pd.report) cards.push(card(++i, "WHERE ENQUIRIES SLIP", "Your leak report", "What I found when I looked at how people reach " + name + ": search, mobile, booking and after-hours. Plain English, with what to fix first.", pd.report, "Read the report"));
+  if (pd.site) cards.push(card(++i, "IN YOUR BRAND", "A homepage concept", "What your homepage could look like, designed in your own colours and style, built to turn more visitors into bookings.", pd.site, "See the concept"));
+  if (pd.desk) cards.push(card(++i, "NEVER MISS AN ENQUIRY", "Your front desk, day and night", "Try it as one of your customers would. Ask about hours, services or booking. It answers from your own website and hands anything tricky to your team.", pd.desk, "Try it now"));
+  const chk = pd.check ? '<div class="chk"><span class="k">THE RESPONSE TIME CHECK</span><p>' + esc6(pd.check.summary || (pd.check.result === "replied" ? "You replied to our enquiry in " + leakTestWords(pd.check.reply_minutes || 0) + "." : "Our enquiry didn't get a reply within 48 hours.")) + '</p><small>I sent ' + name + ' an honest enquiry (from me, Ty) and timed the reply. People who enquire usually book with whoever answers first.</small></div>' : "";
+  return '<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>' + name + ' · Growth Pack</title><style>' +
+    ':root{--bg:#050B16;--ink:#EAF2FF;--mu:#93A9C6;--line:rgba(125,190,255,.16);--card:rgba(255,255,255,.04);--acc:#3B8CFF;--sky:#16C1F3}*{box-sizing:border-box}html,body{margin:0}body{font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;color:var(--ink);background:var(--bg);background-image:radial-gradient(1000px 600px at 85% -10%,rgba(59,140,255,.18),transparent 60%),radial-gradient(800px 500px at -10% 20%,rgba(22,193,243,.08),transparent 60%)}a{color:inherit;text-decoration:none}' +
+    '.bar{border-bottom:1px solid var(--line);background:rgba(5,11,22,.75);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);position:sticky;top:0;z-index:2}.bar .in{max-width:1080px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}.bar img{height:30px;width:auto;display:block}.tag{font-size:12.5px;background:rgba(59,140,255,.1);border:1px solid rgba(59,140,255,.35);color:#CFE3FF;padding:6px 11px;border-radius:99px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+    '.wrap{max-width:1080px;margin:0 auto;padding:44px 16px 56px}.eb{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--sky);margin:0 0 12px}h1{font-size:clamp(30px,4.6vw,48px);line-height:1.08;letter-spacing:-.03em;margin:0 0 14px}h1 span{background:linear-gradient(90deg,#7FB4FF,var(--sky));-webkit-background-clip:text;background-clip:text;color:transparent}.lead{color:var(--mu);font-size:18px;max-width:700px;margin:0 0 30px}' +
+    '.chk{border:1px solid rgba(22,193,243,.35);border-left:3px solid var(--sky);background:rgba(22,193,243,.07);border-radius:16px;padding:16px 18px;margin:0 0 26px;max-width:760px}.chk p{margin:6px 0 4px;font-size:18px;font-weight:700}.chk small{color:var(--mu)}' +
+    '.g{display:grid;grid-template-columns:repeat(' + Math.max(1, cards.length) + ',1fr);gap:16px}@media(max-width:860px){.g{grid-template-columns:1fr}}.c{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;transition:transform .2s,border-color .2s}.c:hover{transform:translateY(-3px);border-color:rgba(59,140,255,.55)}.n{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--acc),var(--sky));font-weight:800;margin:0 0 14px}.k{font-size:11.5px;font-weight:700;letter-spacing:.12em;color:var(--sky)}.c h2{font-size:21px;margin:6px 0 8px;letter-spacing:-.01em}.c p{color:var(--mu);margin:0 0 16px;flex:1}.go{font-weight:700;color:#CFE3FF}' +
+    '.cta{margin-top:34px;background:linear-gradient(160deg,rgba(14,34,64,.9),rgba(8,18,36,.9));border:1px solid var(--line);border-radius:22px;padding:26px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}.cta h3{margin:0 0 4px;font-size:22px}.cta p{margin:0;color:var(--mu)}.btn{display:inline-block;background:linear-gradient(135deg,var(--acc),var(--sky));color:#fff;font-weight:800;padding:13px 20px;border-radius:99px;white-space:nowrap}' +
+    '.fine{color:var(--mu);font-size:13px;margin-top:22px;max-width:760px}footer{color:var(--mu);font-size:13px;text-align:center;padding:24px 16px 40px}</style></head><body>' +
+    '<header class="bar"><div class="in"><img src="/demo-assets/logo.png" alt="Studio Flow &amp; Systems" width="125" height="30"><div class="tag">Built for ' + name + '</div></div></header>' +
+    '<main class="wrap"><p class="eb">YOUR GROWTH PACK</p><h1>' + (first ? first + ", here's" : "Here's") + ' what I put together for <span>' + name + '</span>.</h1><p class="lead">No obligation and nothing to install. Each piece is built from your own website and what I found when I looked at how people reach you.</p>' + chk +
+    '<div class="g">' + cards.join("") + '</div>' +
+    '<div class="cta"><div><h3>Want to walk through it together?</h3><p>A free 30-minute call. I’ll show you what would make the biggest difference first. No pressure.</p></div><a class="btn" href="' + PACK_BOOK + '" target="_blank" rel="noopener">Book a free 30-minute call</a></div>' +
+    '<p class="fine">The front desk runs on AI, says so if anyone asks, and passes anything it isn’t sure about to your team. Nothing changes on your real website unless you decide to go ahead.</p></main>' +
+    '<footer>Ty Brazel · Studio Flow &amp; Systems · Brisbane</footer></body></html>';
+}
+async function packSeen(env, token, pd, request, url) {
+  if (url.searchParams.get("preview") === "1" || SITE_DEMO_BOTS.test(request.headers.get("user-agent") || "")) return;
+  const k = "packv:" + token, v = (await secGet(env, k).catch(() => null)) || { views: 0 };
+  v.views = (+v.views || 0) + 1; v.last_view = new Date().toISOString();
+  const due = v.views === 1 || Date.now() - Date.parse(v.last_alert || 0) > 2 * 36e5;
+  if (due) {
+    v.last_alert = new Date().toISOString();
+    if (!/^test/i.test(pd.name)) {
+      await watchHot(env, { name: pd.name, prospect_id: pd.d.prospect_id, what: "Growth Pack", views: v.views, link: url.origin + url.pathname }).catch(() => {});
+      await notify(env, "\u{1F440} <b>" + esc6(pd.name) + " just opened their Growth Pack</b> (" + (v.views === 1 ? "first time" : "view " + v.views) + ").\nGood moment to call." + (pd.p && pd.p.email ? "" : "")).catch(() => {});
+      if (v.views === 1) await demoOpenTag(env, { email: pd.p && pd.p.email, what: "Growth Pack" }).catch(() => {});
+    }
+  }
+  await secPut(env, k, v);
+}
+async function packPublic(request, env, url, ctx, token) {
+  if (request.method !== "GET" && request.method !== "HEAD") return notFound();
+  const pd = await packData(env, token);
+  if (!pd) return notFound();
+  const ty = await tyView(request, env, url);
+  const work = ty ? Promise.resolve() : packSeen(env, token, pd, request, url).catch(() => {});
+  ctx?.waitUntil ? ctx.waitUntil(work) : await work;
+  return new Response(tyDecorate(packPage(pd, { ty }), ty), { headers: { ...(await tyCookieHeader(env, url)), "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "strict-origin-when-cross-origin" } });
+}
 async function demoPublic(request, env, url, ctx) {
   const parts = url.pathname.split("/").filter(Boolean);
   if (parts[0] === "demo" && parts[1] === "img") return wsdImgRoute(request, env, url, ctx, parts);
   if (parts[0] === "demo" && Object.prototype.hasOwnProperty.call(SITE_DEMOS, parts[1] || "")) return siteDemoResponse(request, env, url, ctx, parts);
   if (parts[0] === "demo" && tokenOk(parts[1]) && (parts[2] === "site" || parts[2] === "report") && !parts[3]) return wsdPublic(request, env, url, ctx, parts);
+  if (parts[0] === "demo" && tokenOk(parts[1]) && parts[2] === "pack" && !parts[3]) return packPublic(request, env, url, ctx, parts[1]);
   if (parts[0] === "demo-assets") {
     const a = DEMO_ASSETS[parts[1]];
     if (!a || request.method !== "GET") return notFound();
@@ -659,7 +724,7 @@ function demoHtml(d, url, nonce, { offer = DEFAULT_OFFER, voice = false } = {}) 
   const cfg = { pt, t: d.token, p: preview2, greet, tz: clinicTz(kb), hours: Array.isArray(kb.open_hours) ? kb.open_hours.filter((h) => h && h.day >= 0 && h.day <= 6 && /^\d{1,2}:\d{2}$/.test(h.open) && /^\d{1,2}:\d{2}$/.test(h.close)) : [], name, voice, vmax: VOICE_MAX_SECONDS, pay };
   const cfgJson = JSON.stringify(cfg).replace(/</g, "\\u003c");
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
-<title>${esc6(poss(name))} AI receptionist</title>
+<title>${esc6(poss(name))} front desk</title>
 <style>
 :root{--bg:#050B16;--navy:#0B1B33;--navy2:#0E2240;--ink:#EAF2FF;--mu:#93A9C6;--line:rgba(125,190,255,.15);--card:rgba(255,255,255,.035);--card2:rgba(255,255,255,.06);--acc:#3B8CFF;--sky:#16C1F3;--b:${brand};--ok:#34D399}
 *{box-sizing:border-box}html,body{margin:0}body{font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;color:var(--ink);background:var(--bg);background-image:radial-gradient(1100px 600px at 85% -10%,rgba(22,193,243,.13),transparent 60%),radial-gradient(900px 600px at -10% 20%,rgba(59,140,255,.12),transparent 60%);background-attachment:fixed}
@@ -715,12 +780,12 @@ section.sec{margin-top:56px}.sec h2{font-size:clamp(24px,3.2vw,34px);letter-spac
 <main class="wrap">
 <div class="hero"><div class="intro">
 <p class="eyebrow">Your private demo</p>
-<h1>Meet <span>${esc6(poss(name))}</span> AI receptionist.</h1>
+<h1>Meet <span>${esc6(poss(name))}</span> new front desk.</h1>
 <p class="lead">We trained it on ${esc6(host2 || "your website")}. It answers ${pt}s in seconds, day or night, and gets them booked. Try it like a ${pt} would${voice ? ", by typing or tapping <b>Talk</b>" : ""}.</p>
 <div class="ah" id="ah"><span class="i">${svg("bolt", 20)}</span><span id="ahT"></span></div>
 ${knows.length ? `<ul class="knows">${knows.map((k) => `<li>\u2713 ${esc6(k)}</li>`).join("")}</ul>` : ""}
 </div>
-<div class="phone" id="chat" aria-label="AI receptionist demo"><div class="ph"><div class="av sfoav" id="av" aria-hidden="true"></div><div class="t"><b>${esc6(name)}</b><small><span class="dot"></span>AI receptionist \xB7 replies instantly</small></div>${voice ? `<button class="talk" id="talk" type="button" aria-label="Talk to the receptionist">${svg("mic", 16)}<span>Talk</span></button>` : ""}</div>
+<div class="phone" id="chat" aria-label="Front desk demo"><div class="ph"><div class="av sfoav" id="av" aria-hidden="true"></div><div class="t"><b>${esc6(name)}</b><small><span class="dot"></span>AI receptionist \xB7 replies instantly</small></div>${voice ? `<button class="talk" id="talk" type="button" aria-label="Talk to the receptionist">${svg("mic", 16)}<span>Talk</span></button>` : ""}</div>
 <div class="vs" id="vs"><div class="vso" id="vso" aria-hidden="true"></div><div class="vt" id="vt">${voice ? "Tap Talk to speak with us, or type below" : "Ask anything below"}</div><button class="vx" id="vx" type="button">End call</button></div>
 <div class="vbar" id="vbar"><div class="wave"><i></i><i></i><i></i><i></i></div><span id="vst">Connecting\u2026</span></div>
 <div class="log" id="log" aria-live="polite"><div class="m b">${esc6(greet)}</div></div>
@@ -757,7 +822,7 @@ ${d.has_shot ? `<section class="sec"><h2>Here's ${esc6(host2 || "your site")} wi
 <div class="plan"><div class="k">AI Receptionist</div><h3>${esc6(offer.plan_chat)}</h3><div class="p">${money3(offer.pilot_price)} <small>${offer.pilot_days}-day pilot</small></div><div class="then">then ${money3(offer.monthly)} a month</div>
 <ul><li>Answers ${pt}s on your website in seconds, 24/7</li><li>Books them in or passes them to your team</li><li>New enquiries sent to your team by SMS &amp; email</li><li>Set up, tuned and looked after by Ty</li></ul>
 ${pay ? `<a class="buy" data-buy="chat" href="${esc6(pay)}">Start the chat pilot</a>` : `<a class="buy" href="${esc6(FREE_CALL3)}" target="_blank" rel="noopener">Start the chat pilot</a>`}</div>
-<div class="plan pop2"><span class="badge">Most popular</span><div class="k">Your AI front desk</div><h3>${esc6(offer.plan_voice)}</h3><div class="p">${money3(offer.pilot_price_voice)} <small>${offer.pilot_days}-day pilot</small></div><div class="then">then ${money3(offer.monthly_voice)} a month</div>
+<div class="plan pop2"><span class="badge">Most popular</span><div class="k">Your front desk</div><h3>${esc6(offer.plan_voice)}</h3><div class="p">${money3(offer.pilot_price_voice)} <small>${offer.pilot_days}-day pilot</small></div><div class="then">then ${money3(offer.monthly_voice)} a month</div>
 <ul><li>Everything in ${esc6(offer.plan_chat)}, plus <b>voice</b>: visitors tap Talk and speak to it</li><li><b>Missed-call text-back</b>: every missed call gets a text in seconds</li><li><b>SMS follow-up</b> until new enquiries book</li><li><b>Google review requests</b> after each visit</li><li><b>Monthly results report</b>: enquiries, bookings and what it saved</li></ul>
 ${payV ? `<a class="buy" data-buy="voice" href="${esc6(payV)}">Start the Front Desk pilot</a>` : `<a class="buy" href="${esc6(FREE_CALL3)}" target="_blank" rel="noopener">Start the Front Desk pilot</a>`}</div>
 </div>

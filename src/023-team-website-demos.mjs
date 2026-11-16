@@ -134,7 +134,7 @@ YOUR CRAFT
 - Copy: Australian English, warm, sharp, benefit-led, short. ONLY facts from their site/facts. No invented prices, awards, years, numbers, staff, guarantees or testimonials. Stats only from real facts.
 - Conversion: one clear primary action (book, call, enquire, quote) repeated in nav, hero, a mid-page CTA and the closing form.
 - Report: leaks ONLY from the scan's confirmed findings and things you can see in what was given (e.g. no online booking link, no reviews shown, slow, not mobile-friendly, no after-hours answers). Each leak gets the matching fix we sell. A money line only when there's a sensible basis, written as an estimate with the assumption stated.
-- Offers: 4 to 6 things Studio Flow & Systems can switch on, each tied to a leak where possible: AI receptionist (chat + phone), missed-call text-back, SMS follow-ups, review requests, online booking and waitlist workflows, website rebuild, SEO + AI-search (GEO), their own command centre. No prices.
+- Offers: 4 to 6 things Studio Flow & Systems can switch on, each tied to a leak where possible: a front desk that answers every enquiry (chat + phone), missed-call text-back, SMS follow-ups, review requests, online booking and waitlist workflows, website rebuild, SEO + AI-search (GEO), their own command centre. No prices.
 - CRAFT CHECKLIST (what the best local-business sites do; check every one before saving):
   1. Hero headline names what they do and where (service + suburb/area) as a benefit, 4 to 9 words, never a slogan. Kicker or badges carry the proof: real star rating and review count, years, service area.
   2. One primary action, named specifically ("Book a physio appointment", "Get a free quote"), in the hero, after each proof section and at the end. A secondary action (call) is visually quieter. Show the phone number when they have one.
@@ -284,8 +284,8 @@ var wsdGet = (env, token) => secGet(env, "wsd:" + token);
 var wsdPut = (env, token, rec) => { let t = JSON.stringify(rec), n = 0; for (const [, re] of SEC_SECRET_PATTERNS) t = t.replace(new RegExp(re.source, "g"), () => { n++; return "[key removed]"; }); return secPut(env, "wsd:" + token, n ? JSON.parse(t) : rec); };
 function wsdLinks(env, token) {
   const o = String(env.PUBLIC_ORIGIN || DEFAULT_ORIGIN).replace(/\/+$/, "");
-  const L = { site: `${o}/demo/${token}/site`, report: `${o}/demo/${token}/report`, receptionist: `${o}/demo/${token}` };
-  return { ...L, ty_site: tyAdd(L.site), ty_report: tyAdd(L.report), ty_receptionist: tyAdd(L.receptionist) };
+  const L = { site: `${o}/demo/${token}/site`, report: `${o}/demo/${token}/report`, receptionist: `${o}/demo/${token}`, pack: `${o}/demo/${token}/pack` };
+  return { ...L, ty_site: tyAdd(L.site), ty_report: tyAdd(L.report), ty_receptionist: tyAdd(L.receptionist), ty_pack: tyAdd(L.pack) };
 }
 // ── Build ──
 // v51 the outreach design team. The Creative Director designs; a panel of four critiques every concept before

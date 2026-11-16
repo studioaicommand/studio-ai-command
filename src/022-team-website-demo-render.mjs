@@ -377,7 +377,7 @@ var WSD_MOTION3 = `(function(){var d=document;d.querySelectorAll('.fnd').forEach
 d.querySelectorAll('[data-qt]').forEach(function(f){f.querySelectorAll('input[type=range]').forEach(function(r){var o=r.parentNode.querySelector('[data-qv]'),u=r.getAttribute('data-unit');r.addEventListener('input',function(){o.textContent=r.value+(u?' '+u:'')})});f.addEventListener('submit',function(e){e.preventDefault();var ok=f.querySelector('.qt-ok');if(ok)ok.hidden=false;var b=f.querySelector('button[type=submit]');if(b)b.disabled=true})})})();`;
 
 var WSD_DEFAULT_OFFERS = [
-  { title: "AI receptionist, chat and phone", text: "Answers every question in your voice, day and night, and books or passes on every enquiry." },
+  { title: "Front desk, chat and phone", text: "Answers every question in your voice, day and night, and books or passes on every enquiry." },
   { title: "Missed-call text-back", text: "Every missed call gets a friendly text within seconds, so callers don't ring the next business." },
   { title: "Booking and enquiry workflows", text: "Online booking, waitlists and follow-ups that run themselves and land in one place." },
   { title: "Review requests", text: "Happy customers get a timely nudge, so your Google rating keeps climbing." },

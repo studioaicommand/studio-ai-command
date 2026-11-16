@@ -51,14 +51,14 @@ function scoreLeaks(rep, { vertical = "allied", google_rating, google_reviews } 
     );
     const chat3 = h.chat || [];
     if (chat3.length) add("after_hours", "After-hours enquiries", "pass", `Live chat or an assistant is on the site (${chat3.join(", ")}).`, "", "", null, { page: rep.url, element: chat3.join(", ") });
-    else if (h.gtm || scripty) add("after_hours", "After-hours enquiries", "unverified", "We didn't see live chat or an AI assistant, but this site loads tools through a tag manager, so one may still appear.", "The first business to reply usually wins the booking.", "An AI front desk that answers and books 24/7, with instant SMS replies to every enquiry.", null, { page: where });
+    else if (h.gtm || scripty) add("after_hours", "After-hours enquiries", "unverified", "We didn't see live chat or an AI assistant, but this site loads tools through a tag manager, so one may still appear.", "The first business to reply usually wins the booking.", "A front desk that answers and books every enquiry 24/7, with instant SMS replies.", null, { page: where });
     else add(
       "after_hours",
       "After-hours enquiries",
       "fail",
       `No live chat or AI assistant on ${where}: enquiries outside opening hours wait until someone is back.`,
       "The first business to reply usually wins the booking.",
-      "An AI front desk that answers and books 24/7, with instant SMS replies to every enquiry.",
+      "A front desk that answers and books every enquiry 24/7, with instant SMS replies.",
       LOSS.after_hours,
       { page: where }
     );
