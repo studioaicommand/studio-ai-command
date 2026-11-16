@@ -584,7 +584,7 @@ async function noAnswerEmail(env, prospectId, outcome = "no_answer", { at = Date
 // homepage concept is added where it's missing, a few a day), then each business gets ONE fresh, honest
 // re-approach for Ty's OK: an email to the address they publish, or a phone opener on the call list.
 // Warmest first (opened or chatted with their demo). Never: do not contact, replied, won, lost, skipped. ──
-var PACK_RE = { build_per_day: 2, build_lean: 1, drafts_per_day: 5, quiet_days: 14 };
+var PACK_RE = { build_per_day: 2, build_lean: 1, drafts_per_day: 10, quiet_days: 14 };
 var PACK_RE_TOOL = { name: "save_email", description: "Save the email.", input_schema: { type: "object", properties: { subject: { type: "string" }, body: { type: "string" }, phone_opener: { type: "string" } }, required: ["subject", "body", "phone_opener"] } };
 async function packCandidates(env, limit = 200) {
   const demos = await select(env, "agent_demos", "prospect_id=not.is.null&select=token,prospect_id,business_name,website,vertical,quality,kb,views,chats,created_at&order=created_at.desc&limit=" + limit).catch(() => []);
@@ -648,7 +648,7 @@ async function packReengage(env, { force = false } = {}) {
         title: ("\u{1F4E6} Growth Pack → " + p.business_name).slice(0, 200),
         reason: ("Their front desk demo is now a full Growth Pack" + (w && w.spec ? " (report, homepage concept, front desk)" : " (report and front desk)") + (d.views ? ". They opened their demo before" + (d.chats ? " and tried it" : "") : "") + ". Email " + pub.email + " is " + pub.source + " and its mail server checks out. One re-approach, then it's up to them.").slice(0, 600),
         params: { email: pub.email, subject, body, business_name: p.business_name, prospect_id: p.id, contact_name: p.decision_maker || void 0, source: "growth_pack", pack_url: pack } }]).catch(() => []);
-      if (row) { mark = { ...mark, channel: "email", action_id: row.id, email: pub.email }; out.drafted.push(p.business_name); await askTy(env, row).catch(() => null); }
+      if (row) { mark = { ...mark, channel: "email", action_id: row.id, email: pub.email }; out.drafted.push(p.business_name); out.emails = [...(out.emails || []), { name: p.business_name, subject, first: body.split(/\n+/).filter((l) => l.trim() && !/^hi\b/i.test(l.trim()))[0] || "" }]; }
     } else if (p.phone && opener) {
       mark = { ...mark, channel: "call" };
       await update(env, "agent_prospects", "id=eq." + encodeURIComponent(p.id), { opener, status: ["sent", "queued", "nurture", "needs_research"].includes(p.status) ? "to_send" : p.status, call_status: null, updated_at: new Date().toISOString() }).catch(() => {});
@@ -658,7 +658,7 @@ async function packReengage(env, { force = false } = {}) {
     await update(env, "agent_prospects", "id=eq." + encodeURIComponent(p.id), { leak_report: { ...lr, pack_reengage: mark }, updated_at: new Date().toISOString() }).catch(() => {});
   }
   await secPut(env, "pack_reengage", { last_date: bn.date, last: out, at: new Date().toISOString() }).catch(() => {});
-  if (out.built.length || out.drafted.length || out.call_list.length) await notify(env, "\u{1F4E6} <b>Growth Pack re-approach</b>\n" + [out.built.length ? "Homepage concepts added: " + out.built.join(", ") : "", out.drafted.length ? out.drafted.length + " email" + (out.drafted.length === 1 ? "" : "s") + " waiting for your OK: " + out.drafted.join(", ") : "", out.call_list.length ? "Back on your call list with a Growth Pack opener: " + out.call_list.join(", ") : "", out.waiting ? out.waiting + " more queued for the coming days" : ""].filter(Boolean).join("\n")).catch(() => {});
+  if (out.built.length || out.drafted.length || out.call_list.length) await notify(env, "\u{1F4E6} <b>Today's Growth Pack emails</b>" + (out.drafted.length ? " (" + out.drafted.length + ")" : "") + "\n" + [(out.emails || []).map((e, i) => (i + 1) + ". <b>" + vcEsc(e.name) + "</b>: " + vcEsc(e.subject) + (e.first ? "\n   <i>" + vcEsc(String(e.first).slice(0, 120)) + "</i>" : "")).join("\n"), out.built.length ? "\nHomepage concepts added: " + out.built.join(", ") : "", out.call_list.length ? "Back on your call list with a Growth Pack opener: " + out.call_list.join(", ") : "", out.waiting ? out.waiting + " more queued for the coming days" : "", out.drafted.length ? "\nTap Approve all to send them now (your daily email limit still applies). To change one first, open Approvals in Command." : ""].filter(Boolean).join("\n"), out.drafted.length ? { buttons: [[{ text: "\u2705 Approve all " + out.drafted.length, callback_data: "pa:1" }]] } : {}).catch(() => {});
   return { ok: true, candidates: cands.length, ...out };
 }
 // What one Growth Pack really costs, from the last 60 days of logged AI usage (AUD).

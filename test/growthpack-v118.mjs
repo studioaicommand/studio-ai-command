@@ -62,7 +62,7 @@ assert(/emailed them a while back/.test(writes[0].sys) && /they opened it and tr
 const p3 = DB.agent_prospects.find((p) => p.id === "p3");
 assert(p3.status === "to_send" && /put a few things together/.test(p3.opener) && p3.leak_report.pack_reengage.channel === "call", "Phone-only businesses go back on the call list with a Growth Pack opener");
 assert(!DB.team_actions.some((a) => /Said No Co|Just Emailed Co/.test(a.title)), "Never: do not contact, or anyone emailed in the last 14 days");
-assert(tg.some((m) => /Growth Pack re-approach/.test(m) && /2 emails waiting for your OK/.test(m) && /Phone Only Physio/.test(m)), "Ty gets a Telegram summary of the batch");
+assert(tg.some((m) => /Today's Growth Pack emails<\/b> \(2\)/.test(m) && /Midway Dental Clinic/.test(m) && /Phone Only Physio/.test(m) && /Approve all/.test(m)), "Ty gets one Telegram message for the batch, with every email listed and Approve all");
 x = await call("/growth-pack/run", {});
 assert(DB.team_actions.filter((a) => a.params?.source === "growth_pack").length === 2, "Each business is re-approached once only");
 

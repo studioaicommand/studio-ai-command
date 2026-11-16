@@ -175,7 +175,7 @@ async function telegramHook(request, env, ctx, deps) {
   const secret = await hookSecret(env);
   if (request.headers.get("X-Telegram-Bot-Api-Secret-Token") !== secret) return new Response("forbidden", { status: 403 });
   const u = await request.json().catch(() => ({}));
-  const cbq = u.callback_query, cbk = /^(ap|rj):/.test(String(cbq?.data || "")) ? String(cbq.data).slice(0, 2) : null;
+  const cbq = u.callback_query, cbk = /^(ap|rj|pa):/.test(String(cbq?.data || "")) ? String(cbq.data).slice(0, 2) === "rj" ? "rj" : "ap" : null;
   if (cbk && ctx?.waitUntil) ctx.waitUntil(tgQuick(env, "answerCallbackQuery", { callback_query_id: cbq.id, text: cbk === "ap" ? "\u23F3 On it: approving now" : "\u23F3 Rejecting" }));
   try {
     const [stored]=await select(env,'team_settings','key=eq.telegram&limit=1'),t=stored?.value||{};
@@ -222,7 +222,14 @@ async function handleUpdate(env, u, deps) {
     const [kind, id] = String(u.callback_query.data || "").split(":");
     let note = "";
     try {
-      if (kind === "ap") {
+      if (kind === "pa") {
+        // v121: approve every Growth Pack email waiting, in one tap
+        const rows = await select(env, "team_actions", "status=eq.pending&type=eq.outreach_email&params->>source=eq.growth_pack&select=id,title&order=created_at.asc&limit=20").catch(() => []);
+        let ok = 0, held = 0;
+        for (const r of rows) { try { await deps.approveAction(env, r.id); ok++; } catch (e) { held++; } }
+        note = rows.length ? "\u2705 Approved " + ok + " Growth Pack email" + (ok === 1 ? "" : "s") + (held ? " (" + held + " held back by the safety checks)" : "") : "Nothing waiting.";
+        await audit(env, { actor: "Ty (Telegram)", action: "approved", target_type: "outreach_email", summary: "Approved all Growth Pack emails (" + ok + ")" });
+      } else if (kind === "ap") {
         const a = await deps.approveAction(env, id);
         note = a.type === "owner_task" ? `\u2705 Done: ${a.title}` : `\u2705 Approved: ${a.title}`;
         await audit(env, { actor: "Ty (Telegram)", action: "approved", target_type: a.type, target_id: id, summary: a.title });
