@@ -550,8 +550,8 @@ async function dailyBriefing(env) {
     messages: [{
       role: "user",
       content: `It's the morning of ${date}. Write today's MORNING BRIEFING for the owner, using the briefing format in your playbook.
-Get the numbers yourself (snapshot, leads, revenue, invoices, appointments where connected). Consult head_of_sales and head_of_finance,
-plus any other head whose area has something urgent. Propose any follow-ups that clearly need doing today as approval actions.`
+Get what you need yourself first (outreach_snapshot, call_list or leads, mission progress, appointments). Consult another head only if
+something in their area looks urgent. Queue any follow-up that clearly needs doing today as an approval action. Keep it short: Ty reads it on his phone.`
     }]
   });
   const [row] = await insert(env, "team_reports", [{ department: "chief_of_staff", kind: "briefing", title: `Morning briefing \u2014 ${date}`, body: reply }]);

@@ -1546,7 +1546,8 @@ async function v49Route(p, m, body, env) {
   if (p === "/performance" && m === "GET") {
     const [sc, fun, coach, tier] = await Promise.all([scorecards(env, { fresh: true }), funnelWeek(env).catch((e) => ({ ok: false, error: e.message })), coachGet(env), planTier(env)]);
     const hideCost = (await instGet(env).catch(() => ({}))).custom; if (hideCost) instSpecSwap();
-    return J({ ok: true, tier, specialists: tier === "company" ? SPECIALISTS : null, spec_count: SPEC_COUNT, scorecards: hideCost ? Object.values(sc).map((x) => ({ ...x, cost_aud: null })) : Object.values(sc), funnel: hideCost && fun && fun.ok ? { ...fun, cost_aud: null, cost_per_booked: null } : fun, coach: { review: coach.review, rules: coach.rules, last_date: coach.last_date, history: coach.history.slice(-14) } });
+    const act136 = activeSpecialists();
+    return J({ ok: true, tier, specialists: tier === "company" ? act136 : null, spec_count: Object.values(act136).reduce((n, x) => n + x.length, 0), shape: hideCost ? null : publicDepartments(), scorecards: hideCost ? Object.values(sc).map((x) => ({ ...x, cost_aud: null })) : Object.values(sc), funnel: hideCost && fun && fun.ok ? { ...fun, cost_aud: null, cost_per_booked: null } : fun, coach: { review: coach.review, rules: coach.rules, last_date: coach.last_date, history: coach.history.slice(-14) } });
   }
   if (p === "/performance/review" && m === "POST") {
     if (await planTier(env) !== "company") return J({ ok: false, error: "The Team Leader is part of the Full Company plan." }, 403);
@@ -1565,7 +1566,7 @@ async function v49Route(p, m, body, env) {
 
 // ── v50: Full Company. Each department head leads specialists (8 heads + 36 specialists = 44 agents) on the
 // Full Company plan; a demo watcher jumps on warm prospects; a no-show rebooker chases missed sales calls. ──
-function instSpecSwap() { { const DMX = ["social_prospect_finder", "dm_writer", "dm_reviewer", "linkedin_connector", "dm_reply_coach"]; for (const k of Object.keys(SPECIALISTS)) for (let i = SPECIALISTS[k].length - 1; i >= 0; i--) if (DMX.includes(SPECIALISTS[k][i].id)) SPECIALISTS[k].splice(i, 1); SPEC_COUNT = Object.values(SPECIALISTS).reduce((n, x) => n + x.length, 0); for (const d of Object.values(DEPARTMENTS)) if (Array.isArray(d.tools)) d.tools = d.tools.filter((t) => !/^dm_desk_/.test(t)); } const fin = SPECIALISTS.head_of_finance || [], k = fin.findIndex((x) => x.id === "ai_spend_controller"); if (k >= 0) fin[k] = { id: "expense_watcher", name: "Expense Watcher", focus: "Watches business costs, subscriptions and supplier bills for waste and price creep." }; Object.assign(KPI, KPI_CLIENT); }
+function instSpecSwap() { globalThis.__sfClientSpec = true; { const DMX = ["social_prospect_finder", "dm_writer", "dm_reviewer", "linkedin_connector", "dm_reply_coach"]; for (const k of Object.keys(SPECIALISTS)) for (let i = SPECIALISTS[k].length - 1; i >= 0; i--) if (DMX.includes(SPECIALISTS[k][i].id)) SPECIALISTS[k].splice(i, 1); SPEC_COUNT = Object.values(SPECIALISTS).reduce((n, x) => n + x.length, 0); for (const d of Object.values(DEPARTMENTS)) if (Array.isArray(d.tools)) d.tools = d.tools.filter((t) => !/^dm_desk_/.test(t)); } const fin = SPECIALISTS.head_of_finance || [], k = fin.findIndex((x) => x.id === "ai_spend_controller"); if (k >= 0) fin[k] = { id: "expense_watcher", name: "Expense Watcher", focus: "Watches business costs, subscriptions and supplier bills for waste and price creep." }; Object.assign(KPI, KPI_CLIENT); }
 var KPI_CLIENT = { chief_of_staff: "Bookings and revenue this week against the monthly target; the whole team moving in one direction", head_of_sales: "Enquiries turned into bookings; every new lead and quote followed up within one working day", head_of_marketing: "New enquiries each week from Google, social and referrals; cost per new client", head_of_content: "Content and proof (reviews, before-and-afters, videos) that brings in enquiries and bookings", head_of_client_success: "Rebookings, referrals and Google reviews from current clients; no client goes quiet", head_of_systems: "Automations live and errors fixed within a day; the business runs without the owner chasing it", head_of_finance: "Cash collected, overdue invoices chased, business costs kept in check" };
 var SPECIALISTS = {
   chief_of_staff: [
@@ -1635,8 +1636,10 @@ function specialistBlock(deptId, sp) {
 For this task you are the ${sp.name} in the ${head}'s team, reporting to the ${head}. Your speciality: ${sp.focus}
 Do the task in depth, using the team's tools. Hand back something finished and usable (copy, a list, a plan with dates), not advice about what someone could do. End with the result in numbers where possible and the one next step.`;
 }
+function specLead(id) { return !!globalThis.__sfClientSpec || !(typeof TEAM_SHAPE === "object" && TEAM_SHAPE[id] && TEAM_SHAPE[id].group === "back"); }
+function activeSpecialists() { return Object.fromEntries(Object.entries(SPECIALISTS).filter(([id]) => specLead(id))); }
 function specTool(dept, depth, tier) {
-  if (tier !== "company" || depth > 0 || !SPECIALISTS[dept.id]) return [];
+  if (tier !== "company" || depth > 0 || !SPECIALISTS[dept.id] || !specLead(dept.id)) return [];
   const list = SPECIALISTS[dept.id];
   return [{ name: "assign_specialist", description: "Hand a focused task to one of your specialists. They work it in depth with your tools and report back. Call several at once to run them in parallel. Your team: " + list.map((s) => `${s.id} (${s.name}: ${s.focus})`).join("; "), input_schema: { type: "object", properties: { specialist: { type: "string", enum: list.map((s) => s.id) }, task: { type: "string", description: "The task, with context and the format you want back." } }, required: ["specialist", "task"] } }];
 }

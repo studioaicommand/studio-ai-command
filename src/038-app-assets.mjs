@@ -2160,11 +2160,19 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     if (el.dataset.embed || (ROUTE.arg && BY[ROUTE.arg]) || !still('team', el)) return;
     let d; try { d = await team('/performance'); } catch (e) { return; }
     if (!still('team', el) || $('.v69-plan', el)) return;
-    const n = (d.scorecards || []).length || 8, sp = d.specialists, all = n + (d.spec_count || 0);
-    const box = document.createElement('section'); box.className = 'wf-glass v69-plan';
+    let box, sp = d.specialists;
+    if (d.shape) {
+    const shp = d.shape || [], leads = shp.filter((x) => x.group === 'lead'), back = shp.filter((x) => x.group !== 'lead');
+    box = document.createElement('section'); box.className = 'wf-glass v69-plan';
+    box.innerHTML = '<span class="wf-eyebrow">YOUR TEAM</span><h3 style="margin:4px 0">' + (leads.length ? esc(leads.map((x) => x.team).join(', ')) + ', plus a quiet back office' : 'Your AI team') + '</h3><p class="mu sm">You talk to Command. Sales finds and follows up the people worth calling. Clients looks after everyone who has paid. The back office (' + esc(back.map((x) => x.short || x.name).join(', ')) + ') works weekly in the background and only tells you when something needs you.' + (sp ? ' The leads also have ' + esc(d.spec_count) + ' specialist skills they use when a job needs one.' : '') + '</p>';
+    } else {
+    const n = (d.scorecards || []).length || 8;
+    const all = n + (d.spec_count || 0);
+    box = document.createElement('section'); box.className = 'wf-glass v69-plan';
     box.innerHTML = sp
       ? '<div class="row sp" style="gap:10px;flex-wrap:wrap"><div><span class="wf-eyebrow">FULL COMPANY · ' + all + ' AI AGENTS</span><h3 style="margin:4px 0">' + n + ' department heads leading ' + esc(d.spec_count) + ' specialists</h3></div><span class="chip ok">Full Company</span></div><p class="mu sm">Ask any head and they hand the focused work to their specialists. The Team Leader reviews every agent each day and runs small experiments to improve results.</p>'
       : '<div class="row sp" style="gap:10px;flex-wrap:wrap"><div><span class="wf-eyebrow">CORE TEAM · ' + n + ' AI AGENTS</span><h3 style="margin:4px 0">' + n + ' department heads working for you</h3></div><span class="chip">Core Team</span></div><p class="mu sm">Each head handles its whole department directly. On Full Company, every head leads its own specialists (' + esc(d.spec_count) + ' more agents, ' + all + ' in total) and the Team Leader reviews the team every day. Ask us if you would like to upgrade.</p>';
+    }
     el.prepend(box);
     if (!sp) return;
     const addSp = () => $$('#tGrid .dept', el).forEach((a) => { if ($('.v69-sp', a)) return; const id = (a.getAttribute('href') || '').split('/').pop(); const L = sp[id] || []; if (!L.length) return; const s = document.createElement('span'); s.className = 'v69-sp'; s.textContent = L.length + ' specialists: ' + L.map((x) => x.name).join(' · '); ($('.grow', a) || a).append(s); });
@@ -2416,12 +2424,17 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     let d; try { d = await team('/performance'); } catch (e) { return; }
     if (!still('performance', el)) return;
     const box = document.createElement('section'); box.className = 'wf-glass v50-roster';
+    if (d.shape) {
+    const shp = d.shape || [], leads = shp.filter((x) => x.group === 'lead');
+    box.innerHTML = '<span class="wf-eyebrow">YOUR TEAM</span><h3 style="margin:4px 0">3 leads, one score each</h3><p class="mu sm">' + esc(leads.map((x) => x.team).join(' · ')) + '. The back office runs weekly and stays quiet unless something needs you. Anything client-facing still comes to you for approval.</p>' + (d.specialists ? '<div class="v50-grid">' + leads.map((h) => '<div class="v50-team"><b>' + esc(h.team) + '</b><ul>' + (d.specialists[h.id] || []).map((s) => '<li title="' + esc(s.focus) + '">' + esc(s.name) + '</li>').join('') + '</ul></div>').join('') + '</div>' : '');
+    } else {
     const heads = d.scorecards.map((x) => [x.department, x.name]);
     if (d.specialists) {
       box.innerHTML = '<div class="row sp" style="gap:10px;flex-wrap:wrap"><div><span class="wf-eyebrow">YOUR AI COMPANY</span><h3 style="margin:4px 0">' + esc(heads.length) + ' department heads · ' + esc(d.spec_count) + ' specialists · ' + esc(heads.length + d.spec_count) + ' agents</h3></div><span class="chip ok">Full Company</span></div><p class="mu sm">Each head hands focused work to its specialists and reports back. Specialists use the same tools and rules, so anything client-facing still comes to you for approval.</p><div class="v50-grid">' +
         heads.map((h) => '<div class="v50-team"><b>' + esc(h[1]) + '</b><ul>' + (d.specialists[h[0]] || []).map((s) => '<li title="' + esc(s.focus) + '">' + esc(s.name) + '</li>').join('') + '</ul></div>').join('') + '</div>';
     } else {
       box.innerHTML = '<span class="wf-eyebrow">YOUR AI COMPANY</span><h3 style="margin:4px 0">' + esc(heads.length) + ' department heads</h3><p class="mu sm">On Full Company, each head leads its own specialists: ' + esc(d.spec_count) + ' more agents, such as a Proposal Writer, Follow-up Chaser, No-show Rebooker, Case Study Writer and Invoice Chaser, plus the daily Team Leader review.</p>';
+    }
     }
     const agents = $('.v49-agents', el);
     if (agents) agents.before(box); else el.append(box);

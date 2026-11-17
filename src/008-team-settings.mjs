@@ -20,7 +20,7 @@ var ALWAYS_ASK = {
 };
 var WEEKDAYS = [1, 2, 3, 4, 5];
 var DEFAULT_SHIFTS = [
-  { id: "market_research", department: "head_of_marketing", label: "Research: fresh angles for each industry we hunt", days: [1], hour: 6, enabled: true, prompt: "RESEARCH SHIFT. For each industry Sales is hunting (check outreach_snapshot for this week's targets), use web search to find 2 or 3 fresh, specific insights about Australian businesses in that industry: what their customers complain about (slow replies, hard to book, no follow-up), new rules or tech changes, what other agencies and software are pitching them, and seasonal timing. Save each insight with save_memory, category \"market\", starting with the industry name (e.g. \"Trades & services: ...\"). At most 15 saves, only things you actually found. Finish with the 3 sharpest angles for Sales this week." },
+  { id: "market_research", department: "head_of_marketing", label: "Research: fresh angles for each industry we hunt", days: [1], hour: 6, enabled: false, prompt: "RESEARCH SHIFT. For each industry Sales is hunting (check outreach_snapshot for this week's targets), use web search to find 2 or 3 fresh, specific insights about Australian businesses in that industry: what their customers complain about (slow replies, hard to book, no follow-up), new rules or tech changes, what other agencies and software are pitching them, and seasonal timing. Save each insight with save_memory, category \"market\", starting with the industry name (e.g. \"Trades & services: ...\"). At most 15 saves, only things you actually found. Finish with the 3 sharpest angles for Sales this week." },
   { id: "morning_briefing", department: "chief_of_staff", label: "Morning briefing", days: [1, 2, 3, 4, 5, 6, 7], hour: 7, enabled: true, kind: "briefing" },
   {
     id: "sales_am",
@@ -40,14 +40,14 @@ var DEFAULT_SHIFTS = [
     enabled: true,
     prompt: "Afternoon check: any new leads or replies since this morning? Anyone booked for tomorrow who needs prep? Queue only follow-ups that are clearly needed today. Keep it short."
   },
-  { id: "weekly_reports", department: "chief_of_staff", label: "Weekly reports (all heads + CEO review)", days: [1], hour: 8, enabled: true, kind: "weekly" },
+  { id: "weekly_reports", department: "chief_of_staff", label: "Weekly reports (all heads + CEO review)", days: [1], hour: 8, enabled: false, kind: "weekly" },
   {
     id: "marketing_review",
     department: "head_of_marketing",
     label: "Funnel review + this week's experiment",
     days: [1],
     hour: 10,
-    enabled: true,
+    enabled: false,
     prompt: "Review last week's funnel toward the $20k/month mission. Name the single biggest bottleneck, and propose one experiment for this week with a clear metric."
   },
   {
@@ -56,7 +56,7 @@ var DEFAULT_SHIFTS = [
     label: "Cash, invoices and mission pace",
     days: [1, 4],
     hour: 9,
-    enabled: true,
+    enabled: false,
     prompt: "Check mission progress (revenue this month vs target), open or overdue invoices, and the 30-day cash outlook. Queue polite reminders for overdue invoices if any."
   },
   {
@@ -74,7 +74,7 @@ var DEFAULT_SHIFTS = [
     label: "Next week's content plan",
     days: [4],
     hour: 10,
-    enabled: true,
+    enabled: false,
     prompt: "Build next week's Instagram content calendar (4\u20135 posts: pillar, format, hook, slide-by-slide outline, caption, MAP or AI CTA, posting day and time in Brisbane). Save it as a deliverable."
   },
   {
@@ -87,8 +87,8 @@ var DEFAULT_SHIFTS = [
     kind: "hunt",
     prompt: "Run a PROSPECT HUNT (see your playbook): only the industries Ty has switched on in Growth. Check campaign_status for which of them is furthest behind its target, pick that industry and an Australian city, find about 10 ESTABLISHED businesses with web_search (skip any already in query_prospects; note Google rating and review count), leak_scan each, save_prospect the good fits with the full research quality gate, and propose_campaign_enrol up to 10 of the best with email 01, follow_up_1 and follow_up_2 written from their leak findings. Finish with: checked, saved, queued, average leak score, and patterns you noticed."
   },
-  { id: "prospect_hunt_pm", department: "head_of_sales", label: "Afternoon prospect hunt (second industry)", days: WEEKDAYS, hour: 13, enabled: true, kind: "hunt" },
-  { id: "prospect_hunt_eve", department: "head_of_sales", label: "Late-afternoon prospect hunt (tomorrow's call list)", days: WEEKDAYS, hour: 16, enabled: true, kind: "hunt" },
+  { id: "prospect_hunt_pm", department: "head_of_sales", label: "Afternoon prospect hunt (second industry)", days: WEEKDAYS, hour: 13, enabled: false, kind: "hunt" },
+  { id: "prospect_hunt_eve", department: "head_of_sales", label: "Late-afternoon prospect hunt (tomorrow's call list)", days: WEEKDAYS, hour: 16, enabled: false, kind: "hunt" },
   {
     id: "import_review",
     department: "head_of_sales",
@@ -104,7 +104,7 @@ var DEFAULT_SHIFTS = [
     label: "Brand radar: our site, SEO & presence",
     days: [1],
     hour: 11,
-    enabled: true,
+    enabled: false,
     prompt: "Run BRAND RADAR (see your playbook): audit www.studioflowandsystems.com with analyse_website (pages 6) and our public Studio AI page, check Google visibility for 6\u20138 buyer searches in Australia and who outranks us, and review how our socials position us. Save a scorecard deliverable with the 5 highest-impact fixes (effort vs impact), 3 SEO pages to create (keyword, intent, outline), and Google Business Profile actions. Propose owner tasks only for fixes Ty must do himself."
   },
   {
@@ -113,7 +113,7 @@ var DEFAULT_SHIFTS = [
     label: "Authority content: SEO article + LinkedIn",
     days: [3],
     hour: 11,
-    enabled: true,
+    enabled: false,
     prompt: "Create this week's AUTHORITY CONTENT: one SEO article draft for a buyer keyword from the latest brand radar (title, meta description, outline, full draft, FAQ, CTA to the free 30-min call), plus two LinkedIn posts from Ty's point of view and one Instagram carousel outline on the same theme. Use real patterns from recent prospect hunts (no business names). Save it all as one deliverable."
   },
   {
@@ -122,7 +122,7 @@ var DEFAULT_SHIFTS = [
     label: "Email marketing: nurture + newsletter",
     days: [5],
     hour: 10,
-    enabled: true,
+    enabled: false,
     prompt: "Plan EMAIL MARKETING: draft this week's newsletter for our GHL contacts (subject, preview text, body, one CTA) and, if not done yet, a 4-email nurture sequence for new enquiries who haven't booked (day 0/2/5/9). Save as a deliverable for Ty to load into GHL. Don't send anything."
   },
   {
@@ -131,7 +131,7 @@ var DEFAULT_SHIFTS = [
     label: "Weekly systems review \u2192 change proposals",
     days: [5],
     hour: 15,
-    enabled: true,
+    enabled: false,
     prompt: "Run the weekly SYSTEMS REVIEW (see your playbook): system_check, outreach_snapshot, acquisition_costs, read_memory for feedback (Ty's edits and rejections), and audit_log. Save ONE change_proposal deliverable with the top 3 improvements (each: what, evidence, expected impact, risk, test plan, who builds it). Propose up to 3 team rules with propose_team_rule only for behaviour patterns Ty's edits or rejections clearly show. Keep it under 500 words."
   },
   {
@@ -141,7 +141,7 @@ var DEFAULT_SHIFTS = [
     days: [1],
     hour: 9,
     monthly: true,
-    enabled: true,
+    enabled: false,
     prompt: "Run the monthly EVOLVE RESEARCH for Studio AI Command (our own software). Follow the Replica method: 1) RECON: use web_search to map what the leading competitors offer service businesses right now (GoHighLevel AI Employee, Podium, Weave, Birdeye, Hatch, ServiceTitan or Jobber AI receptionists, and any new AI front-desk or AI-team products you find): their main features, pricing tiers and what they changed recently (changelogs). Public pages only. 2) WHAT USERS HATE: search public reviews and discussions (G2, Capterra, Trustpilot, Reddit, app store reviews) for their 1 to 3 star complaints and feature requests. Quote only real reviews, word for word, each with its link; if you cannot find enough, say so. Never invent a review, quote, rating or number. 3) NEW TECH: check what Anthropic, OpenAI and Cloudflare (Agents SDK, Workflows, Browser Run, AI Gateway, MCP) released in the last month that could make our AI team smarter, faster or cheaper. 4) Compare against what Command already does (read memory and the rulebook). Then save ONE report titled \"Evolve report <month>\" with: the TOP 5 upgrades ranked by impact on winning and keeping clients versus effort, each with what to build, why (the linked evidence), and how we would know it worked; plus a short \"what competitors do that we already do better\" list for sales. Never suggest copying a competitor's code, design, branding or copy. Finish by telling Ty the top 3 in plain words."
   },
   {
@@ -150,8 +150,17 @@ var DEFAULT_SHIFTS = [
     label: "Systems health + automation idea",
     days: [5],
     hour: 14,
-    enabled: true,
+    enabled: false,
     prompt: "Weekly systems health check: agent errors, drafts waiting, conversations needing Ty, integrations not connected. Then name the single highest-value thing to automate next, with hours saved per month."
+  },
+  {
+    id: "back_office",
+    department: "chief_of_staff",
+    label: "Back office check (quiet unless something needs you)",
+    days: [5],
+    hour: 14,
+    enabled: true,
+    prompt: "BACK OFFICE CHECK (weekly, quiet). Ask head_of_finance, head_of_operations and head_of_systems in parallel with ask_department, each the same question: 'Is there anything this week that needs Ty (overdue money, something broken or stuck, an error repeating, a client at risk)? Check your tools. If not, reply All quiet.' Then write ONE short note: either 'All quiet' with one line on what was checked, or at most 3 things that need Ty, each with the fix and who does it. No reports, no plans, no ideas lists."
   }
 ];
 var DEFAULT_SETTINGS = {

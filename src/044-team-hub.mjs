@@ -729,6 +729,12 @@ async function inboxVoiceSet(env, contactId, on, name) {
 
 // ── v106 Update Announcer: every release teaches the whole team ──
 var RELEASE_NOTES = [
+  { v: 136, studio_only: true, title: "Simpler team: Command, Sales, Clients and a quiet back office",
+    shifts_set: { off: ["market_research", "marketing_review", "finance_check", "content_plan", "prospect_hunt_pm", "prospect_hunt_eve", "brand_radar", "authority_content", "email_nurture", "systems_review", "evolve_research", "ops_health", "weekly_reports"], on: ["back_office"] },
+    rules: [
+    { rule: "The team is now three leads with one score each: Command (Chief of Staff: revenue vs target and Ty's few actions today), Sales (conversations, calls booked, deals won) and Clients (clients live, happy and paid). Marketing, finance, operations, content and systems are a quiet back office: they work weekly or when asked, and only tell Ty when something needs him.", applies_to: ["all"] },
+    { rule: "Results over reports. Ty is easily overwhelmed by long reports. Lead with the result in one line, then at most 3 actions for Ty (each one tap or one call with name, phone and why now). If nothing needs Ty, say All quiet.", applies_to: ["all"] },
+    { rule: "Before finishing any run, check: did this move my score or is it just activity; is every number, name and phone from a tool; is every client or prospect message queued for approval and price-free if cold.", applies_to: ["all"] }] },
   { v: 133, studio_only: true, title: "Prices, product names, senders and Leak Snapshot (17 Nov 2026)", rules: [
     { rule: "Prices (AUD, no GST): AI Front Desk $1,500 setup ($2,197 to start incl. first 30 days) then $697/month, 14-day money-back, live in 48 hours. Phone AI Receptionist from $997/month. Leak Report & Systems Audit $497, credited to any build or Command setup within 30 days. Studio AI Command Core $4,900 setup + $1,997/month; Growth (most popular) $9,500 + $2,997/month; Multi-location from $18,000 + from $4,997/month. Founding Command Offer: 'Founding offer for our first 3 businesses: $997/month for 12 months, $2,900 setup'. White-Label Command $7,500 setup + $997/month. Websites: Launch $3,500 (normally $4,900), Growth $6,900 ($9,500), Signature from $12,000 ($18,000). Website Care Plan $149/month (normally $249). SEO & AI Visibility from $690/month (normally $990). CRM Setup $1,500. Automation Build $1,500. Custom Backend Build quoted on a call.", applies_to: ["all"] },
     { rule: "NEVER quote prices in cold outreach (cold emails, cold DMs, first-call openers). Prices only come up after someone replies or on a call.", applies_to: ["all"] },
@@ -786,6 +792,7 @@ async function releaseAnnounce(env, { force = false } = {}) {
   BRAIN_CACHE = { at: 0, rules: null };
   const rules = (await brainRules(env).catch(() => [])).map((r) => ({ ...r }));
   const at = new Date().toISOString(), taught = [], retired = [], memRetired = [];
+  let shiftNote = "";
   let list = rules;
   for (const n of todo) {
     if (n.retire) {
@@ -794,6 +801,14 @@ async function releaseAnnounce(env, { force = false } = {}) {
       list = keep;
       const mem = await select(env, "team_memory", "order=created_at.desc&limit=400&select=id,fact,category").catch(() => []);
       for (const m of mem) if (["rule", "decision", "goal", "offer", "other", "business", "feedback"].includes(m.category) && n.retire.test(String(m.fact || "")) && (n.retire_mem || /(niche|focus|priorit|first|main|target|beachhead|clinic owners?)/i.test(String(m.fact || "")))) { await remove(env, "team_memory", "id=eq." + encodeURIComponent(m.id)).catch(() => {}); memRetired.push(String(m.fact).slice(0, 120)); }
+    }
+    if (n.shifts_set) {
+      const cs = await getSettings(env).catch(() => null);
+      if (cs && Array.isArray(cs.shifts)) {
+        const off = new Set(n.shifts_set.off || []), on = new Set(n.shifts_set.on || []);
+        await saveSetting(env, "shifts", cs.shifts.map((x) => ({ id: x.id, enabled: off.has(x.id) ? false : on.has(x.id) ? true : x.enabled, hour: x.hour, days: x.days, last_run: x.last_run || null })));
+        shiftNote = "Turned off " + off.size + " back-office shifts" + (on.size ? " and turned on " + [...on].join(", ").replace(/_/g, " ") : "") + ".";
+      }
     }
     if (n.charter_fix) {
       const cs = await getSettings(env).catch(() => null);
@@ -813,6 +828,7 @@ async function releaseAnnounce(env, { force = false } = {}) {
   const esc = (x) => String(x).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
   const msg = ["\u{1F4E3} <b>Update taught to every agent</b>", ...todo.map((n) => "• v" + n.v + ": " + esc(n.title)),
     retired.length ? "\nRetired " + retired.length + " old rule" + (retired.length === 1 ? "" : "s") + ": " + esc(retired.map((r) => "“" + String(r).slice(0, 90) + "”").join(", ")) : "",
+    shiftNote,
     memRetired.length ? "Cleared " + memRetired.length + " old memor" + (memRetired.length === 1 ? "y" : "ies") + " that said otherwise." : "",
     "\nEvery agent reads this before it works. Reply here to change anything."].filter(Boolean).join("\n");
   await notify(env, msg).catch(() => {});

@@ -15,7 +15,7 @@ var DEPARTMENTS = {
     icon: "\u25CE",
     color: "#5aa2ff",
     tagline: "Runs the team, briefs you daily, routes every request",
-    tools: [...CORE, ...LEADS, ...GHL_READ, ...STRIPE_READ, ...CONTACT_ACTIONS, "propose_ghl_opportunity_status", "propose_ghl_contact_delete", "propose_owner_task", "analyse_website", "acquisition_costs", "outreach_snapshot", ...CONSULT],
+    tools: [...CORE, ...LEADS, ...GHL_READ, ...STRIPE_READ, ...CONTACT_ACTIONS, "propose_ghl_opportunity_status", "propose_ghl_contact_delete", "propose_owner_task", "analyse_website", "acquisition_costs", "outreach_snapshot", "call_list", ...CONSULT],
     webSearch: true,
     playbook: `
 MISSION
@@ -42,15 +42,12 @@ HOW YOU WORK
    reconcile conflicts, and come back with ONE plan: owners, deadlines, and what needs the owner's approval.
 4. Always end with the clearest next 1\u20133 moves for the owner.
 
-MORNING BRIEFING FORMAT (when asked for the daily briefing)
-- Headline: one sentence on the state of the business today.
-- Mission: revenue this month vs target, % and pace (get_mission_progress).
-- Outreach (outreach_snapshot): analysed, queued, enrolled, replies, booked today; this week's enrolments vs target; Ty's top 5 calls; any compliance flags (always list flags).
-- Numbers: new leads (24h), calls booked (24h / next 7 days), hot leads waiting, revenue (7d vs prior 7d), overdue invoices, actions awaiting approval.
-- Top 3 priorities for today, each with why and the department behind it.
-- Risks/fires: anything urgent (hot lead going cold, unpaid invoice, broken system, client at risk).
-- One opportunity worth the owner's attention.
-Keep it scannable in under 60 seconds.
+MORNING BRIEFING FORMAT (when asked for the daily briefing; Ty reads it on his phone, keep it under 20 lines)
+- One line: how the business is today, and revenue this month vs target (get_mission_progress).
+- TODAY, JUST THESE (at most 3): the 2 best calls (business, person if known, phone, one line on why now: replied, viewed a demo, said yes) and 1 other action. Pull warm people from outreach_snapshot, replies and demo viewers before cold ones.
+- Waiting on Ty: how many approvals, and the single most important one.
+- Only if real: one risk (a hot lead going cold, unpaid invoice, something broken, an outreach compliance flag) with the fix.
+Leave out sections with nothing in them. No numbers dump; the full numbers live in Reports.
 
 DECISIONS AND MEMORY
 When the owner makes a decision or states a durable fact about the business (an offer, a price, a goal, a rule), save it with save_memory
@@ -434,10 +431,50 @@ or AHPRA rules. When unsure, say what you'd need to confirm.
 };
 var DEPARTMENT_IDS = Object.keys(DEPARTMENTS);
 var HEADS = DEPARTMENT_IDS.filter((d) => d !== "chief_of_staff");
+// v136 team shape: three leads with one score each; the rest is a quiet back office.
+var TEAM_SHAPE = {
+  chief_of_staff: { group: "lead", team: "Command", score: "revenue this month vs the mission target, and how many of today's actions Ty actually completed",
+    done: "Ty has at most 3 clear actions for today, every department has its next step, and nothing urgent is sitting unnoticed." },
+  head_of_sales: { group: "lead", team: "Sales", score: "conversations started, calls booked and deals won this week (activity like emails sent does not count on its own)",
+    done: "every warm lead (replied, clicked, viewed a demo, said yes in a DM) has a next step queued or a call on Ty's list, and Ty's top 2 calls have a name, a phone number and one line on why now." },
+  head_of_client_success: { group: "lead", team: "Clients", score: "clients live, happy and paid on time",
+    done: "every client has a next check-in date, any setup step that is stuck has an owner, and any risk is flagged with one suggested fix." },
+  head_of_marketing: { group: "back", team: "Back office", score: "qualified leads coming in", done: "one useful change is proposed or done; nothing else." },
+  head_of_finance: { group: "back", team: "Back office", score: "cash collected and nothing overdue", done: "overdue money has a reminder queued; otherwise all quiet." },
+  head_of_operations: { group: "back", team: "Back office", score: "systems working and nothing stuck", done: "anything broken or stuck is fixed or flagged; otherwise all quiet." },
+  head_of_content: { group: "back", team: "Back office", score: "posts ready to publish that bring enquiries", done: "the requested content is saved, ready to post." },
+  head_of_systems: { group: "back", team: "Back office", score: "fewer errors and fewer things Ty has to repeat", done: "one evidence-based improvement is proposed; otherwise all quiet." }
+};
+function teamContract(id) {
+  const t = TEAM_SHAPE[id];
+  if (!t) return "";
+  const lead = t.group === "lead";
+  return `=== YOUR JOB IN ONE LINE (v136 team: Command, Sales, Clients, plus a quiet back office) ===
+Team: ${t.team}${lead ? " (a lead role: you own results, not reports)" : " (back office: work quietly in the background)"}.
+Your score: ${t.score}.
+Done means: ${t.done}
+
+HOW TO WORK
+- Results over reports. If a tool can do the job, do it (or queue it for approval) instead of describing what could be done. A plan nobody acts on scores zero.
+- Effort to match the task: a quick question needs 1 to 3 tool calls; a full sweep up to about 10. Stop once you have enough to act. Don't fetch the same thing twice.
+- Pick the right tool first: prefer the specialised tool over web_search, and check our own data (prospects, GHL, Stripe) before guessing.
+- If a tool fails, say which one in one line and carry on with what you have. Never pretend it worked.
+- Hand-offs: when you ask another department, give them the objective, what you already know, and exactly what you need back.
+
+BEFORE YOU FINISH, CHECK YOURSELF (silently)
+1. Did this move my score, or is it just activity? If just activity, do the one thing that would move it.
+2. Is every number, name and phone from a tool result, not memory or a guess?
+3. Is every message to a client or prospect queued for approval (never sent silently) and free of prices if it's cold?
+
+WHAT TY SEES (he is busy and gets overwhelmed by long reports)
+- Start with one line: the result.${lead ? "\n- Then at most 3 actions for Ty, each one tap or one call (name, phone, why now). Everything else stays in Reports." : "\n- If nothing needs Ty, write just: All quiet. (and one line on what you checked). Only exceptions reach him."}
+- No walls of text. Short bullets, Australian English.`;
+}
 function publicDepartments() {
   return DEPARTMENT_IDS.map((id) => {
     const d = DEPARTMENTS[id];
-    return { id, name: d.name, short: d.short, icon: d.icon, color: d.color, tagline: d.tagline };
+    const t = TEAM_SHAPE[id] || {};
+    return { id, name: d.name, short: d.short, icon: d.icon, color: d.color, tagline: d.tagline, group: t.group || "back", team: t.team || "Back office" };
   });
 }
 

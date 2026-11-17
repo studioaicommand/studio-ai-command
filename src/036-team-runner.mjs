@@ -254,6 +254,8 @@ ${BUSINESS_BRIEF}
 === YOUR ROLE: ${dept.name.toUpperCase()} ===
 ${dept.playbook.trim()}
 
+${typeof teamContract === "function" ? teamContract(dept.id) : ""}
+
 === HOW EVERY HEAD WORKS ===
 - Use your tools to get real numbers before giving an answer that depends on them. Never invent data, clients, results or prices.
   If a tool isn't connected or returns an error, say what's missing and work with what you have.

@@ -1,0 +1,23 @@
+// v136 simpler team: Command, Sales and Clients lead with one score each; the rest is a quiet back office.
+const W = process.argv[2] || "/home/claude/w/worker.mjs";
+const fs = await import("node:fs");
+const assert = (c, m) => { if (!c) { console.error("FAIL:", m); process.exit(1); } console.log("✓", m); };
+globalThis.fetch = async (u, init = {}) => { u = String(u); if (u.includes("sb.test/rest/v1/")) return Response.json([]); return Response.json({}); };
+globalThis.caches = undefined;
+const w = (await import(W)).default;
+const O = "https://x.studioflowandsystems.app";
+const env = { COMMAND_2FA: "off", STUDIO_TEST_KEY: "k", SUPABASE_URL: "https://sb.test", SUPABASE_SECRET_KEY: "s", ANTHROPIC_API_KEY: "a", PUBLIC_ORIGIN: O };
+const get = async (p) => (await w.fetch(new Request(O + "/api/v1/team" + p, { headers: { Authorization: "Bearer k" } }), env, { waitUntil() {} })).json();
+const d = await get("/departments");
+const leads = d.departments.filter((x) => x.group === "lead").map((x) => x.team);
+assert(leads.length === 3 && ["Command", "Sales", "Clients"].every((t) => leads.includes(t)), "Three leads: Command, Sales, Clients");
+assert(d.departments.filter((x) => x.group === "back").length === 5, "Five heads are the quiet back office");
+const s = await get("/settings");
+const sh = (s.settings || s).shifts || [];
+const on = sh.filter((x) => x.enabled).map((x) => x.id).sort();
+assert(JSON.stringify(on) === JSON.stringify(["back_office", "client_health", "import_review", "morning_briefing", "prospect_hunt", "sales_am", "sales_pm"]), "Only 7 shifts on by default: " + on.join(", "));
+const src = fs.readFileSync(W, "utf8");
+assert(/Results over reports/.test(src) && /BEFORE YOU FINISH, CHECK YOURSELF/.test(src), "Every agent gets the results-first contract and a self-check");
+assert(/v: 136, studio_only: true[\s\S]{0,200}shifts_set/.test(src), "The v136 update turns the back-office shifts off on the live copy");
+assert(/if \(tier !== "company" \|\| depth > 0 \|\| !SPECIALISTS\[dept\.id\] \|\| !specLead\(dept\.id\)\)/.test(src), "Back-office heads no longer hand work to specialists");
+assert(/under 20 lines/.test(src), "Morning briefing is short enough for a phone");
