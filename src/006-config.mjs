@@ -2,12 +2,12 @@
 var IDEAL_CLIENT = `
 ESTABLISHED service businesses with real volume and a team, where missed enquiries, no-shows, manual admin and disconnected
 software cost real money every week. NO MAIN NICHE: every industry Ty switches on in Growth gets equal attention. Typical fits:
-trades and home services, coaches and consultants with a team, property management agencies, health clinics (allied health such
+trades and home services, salons, coaches and consultants, agencies (White-Label Command is aimed at agencies and coaches), property management agencies, health clinics (allied health such
 as physio and chiro, dental, aesthetics; psychology and GP/medical only when Ty switches them on), beauty and fitness businesses,
 and multi-location service businesses. Signals: a real team or 2+ locations, a strong Google review count, real enquiry volume,
 software that isn't connected to follow-up and AI. Decision makers: owners, founders, practice and office managers, principals.
 A strong fit thinks in return on investment (dollars recovered, jobs or appointments filled, hours saved), not design details.
-Not a fit: start-ups with no customers, solo operators after cheap one-off tasks, people only after free advice, other agencies.
+Not a fit: start-ups with no customers, solo operators after cheap one-off tasks, people only after free advice.
 Health clinics carry extra rules: AHPRA advertising (no testimonials, no guaranteed outcomes) and patient privacy.
 `.trim();
 var MODEL = "claude-sonnet-5-5";

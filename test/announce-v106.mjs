@@ -42,5 +42,5 @@ const inboxTyStarted = new Function(grab("inboxTyStarted") + "; return inboxTySt
 assert(inboxTyStarted("ig", [{ direction: "outbound", body: "Hey Libby! Hope you're well" }, { direction: "inbound", body: "Haha I'm still on it" }], {}) === true, "Instagram chat Ty started himself: reply in Ty's own voice");
 assert(inboxTyStarted("ig", [{ direction: "inbound", body: "Hi, how much is a website?" }, { direction: "outbound", body: "Hi!" }], {}) === false, "A stranger messaging the business first still gets the business assistant");
 assert(inboxTyStarted("sms", [{ direction: "outbound", body: "x" }, { direction: "inbound", body: "y" }], {}) === false, "SMS and other channels unchanged");
-assert(/Pilot checkouts are open to any established service business/.test(src) && !/Pilot checkouts are for clinics/.test(src) && !/Founding Clinic Pilot/.test(src), "Founding pilots are offered to any service business, not just clinics");
+assert(/AI Front Desk checkout is open to any established service business/.test(src) && !/Pilot checkouts are for clinics/.test(src) && !/Founding Clinic Pilot/.test(src), "Founding pilots are offered to any service business, not just clinics");
 console.log("announce-v106 OK");

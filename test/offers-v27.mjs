@@ -9,7 +9,7 @@ assert(!/\$597|\$797/.test(h),"No old prices");
 assert(/\$697/.test(h)&&!/\$297 a month/.test(h)&&/AI Front Desk/.test(h)&&/\$1,997/.test(h)&&/Leak Report &amp; Systems Audit|Leak Report & Systems Audit/.test(h),"Premium prices: AI Front Desk $697/month, no $297 plan, Command Core $1,997, Leak Report & Systems Audit");
 assert(/\$3,500/.test(h)&&/\$6,900/.test(h)&&/\$12,000/.test(h)&&/<s>\$9,500<\/s>/.test(h),"Website founding prices with normal price crossed out");
 assert(/\$149/.test(h)&&/\$690/.test(h)&&/\$497/.test(h)&&!/\$350/.test(h),"Care, SEO and Leak Report & Audit ($497) prices");
-assert(/Command Centre/.test(h)&&/Quoted/.test(h),"Command Centre quoted");
+assert(/Custom Backend Build/.test(h)&&/Quoted/.test(h),"Custom Backend Build quoted");
 assert(!h.includes("buy.stripe.com/cNidRaaWFdr69V31OeeZ206")&&!h.includes("buy.stripe.com/3cI5kE7Kteva3wF8cCeZ207")&&!h.includes("8x214oggZ72I5ENboOeZ204"),"Old Stripe links (old prices) are never shown: the button books a call until new links are saved");
 assert(/Everything your business needs/.test(h)&&!/AI receptionist · website chat/.test(h)&&!/Chat Receptionist/.test(h)&&/AI Front Desk/.test(h),"Old default headline and card names replaced (chat plan retired, Front Desk shown)");
 r=await w.fetch(new Request("https://studioflowandsystems.app/app/app.js"),env,{waitUntil(){}});const js=await r.text();

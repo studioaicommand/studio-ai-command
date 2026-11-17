@@ -73,7 +73,7 @@ reset({ig:"approve",sms:"approve",fb:"approve",chat:"approve"},[inb("m8","Do you
 await hook({contact_id:"ct1"});
 assert(state.actions[0]&&!state.actions[0].params.handoff&&/Yes, we do/.test(state.actions[0].params.message),"Messy JSON from the model still becomes a reply");
 assert(/Reflect first/.test(lastSystem)&&/blank line between them/.test(lastSystem)&&/Feels heard/.test(lastSystem),"Replies are told to reflect, space out and walk cold to booked");
-assert(/CURRENT PRODUCTS AND PRICES/.test(lastSystem)&&/Command Centre/.test(lastSystem),"Replies know every product on the Offers page");
+assert(/CURRENT PRODUCTS AND PRICES/.test(lastSystem)&&/Custom Backend Build/.test(lastSystem),"Replies know every product on the Offers page");
 assert(state.actions[0].params.tg_msg,"Telegram card remembered so Ty can reply to it");
 const SECRET=crypto.createHash("sha256").update("teamkey|telegram").digest("hex").slice(0,48);
 const tgPost=(m)=>w.fetch(new Request("https://studioflowandsystems.app/api/v1/telegram/hook",{method:"POST",headers:{"content-type":"application/json","X-Telegram-Bot-Api-Secret-Token":SECRET},body:JSON.stringify({update_id:7,message:{message_id:55,chat:{id:42},from:{username:"ty"},text:m,reply_to_message:{message_id:state.actions[0].params.tg_msg}}})}),env,{waitUntil(){}});

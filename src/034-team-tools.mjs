@@ -2978,9 +2978,8 @@ function leakReportHtml(r, origin) {
   const max = Math.max(1, ...top.map((l) => l.monthly));
   const book = "https://links.studioflowandsystems.com/widget/booking/tfzrthnax3Ldpncejghq";
   const audit = "https://links.studioflowandsystems.com/widget/booking/letd3kiR8QpsaVL6SXkJ";
-  const leak = "https://links.studioflowandsystems.com/widget/booking/vND5nQhzXNvi1K5Aa8nq";
   const date = new Date(r.at).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Brisbane" });
-  return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Leak Report · ${leakE(r.business || r.name)} · Studio Flow & Systems</title>
+  return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Leak Snapshot · ${leakE(r.business || r.name)} · Studio Flow & Systems</title>
 <style>
 :root{--bg:#050c18;--card:#0b1a30;--ln:rgba(127,212,255,.18);--ink:#fff;--mu:#a9c2dd;--a:#7fd4ff;--b:#2f7df6;--red:#ff6b6b}
 *{box-sizing:border-box}html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -3010,15 +3009,15 @@ h2{color:var(--ink);font-size:24px;letter-spacing:-.02em;margin:34px 0 14px}
 @media(max-width:620px){.hero{grid-template-columns:1fr}}
 @media print{.print,.btns{display:none}.w{padding:10px}body{font-size:13px}.leak{page-break-inside:avoid}}
 </style></head><body><div class="w">
-<div class="top"><img src="https://www.studioflowandsystems.com/img/logo.webp" alt="Studio Flow & Systems"><span>Leak Report · ${leakE(date)}</span></div>
+<div class="top"><img src="https://www.studioflowandsystems.com/img/logo.webp" alt="Studio Flow & Systems"><span>Leak Snapshot · ${leakE(date)}</span></div>
 <p class="k">Prepared for ${leakE(r.business || r.name)}</p>
 <h1>Your business is leaking about <em>${leakAud(r.calc.monthly)} a month.</em></h1>
 <p class="lead">That's roughly <b style="color:#fff">${leakAud(r.calc.yearly)} a year</b> in bookings and payments that walk out the door, based on your answers. Here's where it's going, biggest first, and how each one gets fixed.</p>
 <div class="hero"><div class="stat big"><b>${leakAud(r.calc.monthly)}</b><small>estimated lost each month</small></div><div class="stat"><b>${leakAud(r.calc.yearly)}</b><small>estimated lost each year</small></div></div>
 <h2>Where it's leaking</h2>
 ${top.map((l) => `<div class="leak"><div class="lh"><b>${leakE(l.label)}</b><strong>${leakAud(l.monthly)}/mo</strong></div><div class="bar"><i style="width:${Math.max(4, Math.round(l.monthly / max * 100))}%"></i></div><div class="fix">${leakE(l.agent)}</div><div class="how">How we worked it out: ${leakE(l.how)}</div></div>`).join("")}
-<div class="cta"><h3>Want these leaks plugged?</h3><p>Studio AI Command runs an AI team that answers, follows up, books and chases payments for you, and you approve anything that matters from your phone. Book a free 30-minute call and we'll show you which leak to fix first. If you go ahead within 30 days, the cost of a Full Leak Report or Business Audit comes off your setup price.</p><div class="btns"><a class="btn p" href="${book}">Book a free call</a><a class="btn g" href="${leak}">Leak Report & Systems Audit ($497)</a><a class="btn g" href="${audit}">2-hour Business Audit ($497)</a></div></div>
-<p class="note">These are estimates using conservative assumptions (shown under each leak) and the numbers you entered. The Full Leak Report checks your real phone, inbox, CRM and invoices for exact figures. Studio Flow & Systems · Brisbane · 0495 105 377 · studioflowandsystems.com</p>
+<div class="cta"><h3>Want these leaks plugged?</h3><p>Studio AI Command runs an AI team that answers, follows up, books and chases payments for you, and you approve anything that matters from your phone. Book a free 30-minute call and we'll show you which leak to fix first. Want exact figures? The Leak Report & Systems Audit ($497) checks your real systems, and it comes off your setup price if you go ahead within 30 days.</p><div class="btns"><a class="btn p" href="${book}">Book a free call</a><a class="btn g" href="${audit}">Leak Report & Systems Audit ($497)</a></div></div>
+<p class="note">These are estimates using conservative assumptions (shown under each leak) and the numbers you entered. The Leak Report & Systems Audit checks your real phone, inbox, CRM and invoices for exact figures. Studio Flow & Systems · Brisbane · 0495 105 377 · studioflowandsystems.com</p>
 </div><button class="print" onclick="window.print()">Save as PDF</button></body></html>`;
 }
 async function leakPublic(request, env, ctx) {
@@ -3058,13 +3057,13 @@ async function leakPublic(request, env, ctx) {
     const d = await req(te, "POST", "/contacts/upsert", { locationId: te.GHL_LOCATION_ID, email, phone: phone || undefined, firstName: first, lastName: rest.join(" ") || undefined, companyName: business || undefined, source: "Website Leak Calculator", tags: ["leak-calculator", "leak-" + leakBand(calc.monthly), industry ? "industry-" + industry.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30) : "industry-other"] });
     contactId = d?.contact?.id || null;
     if (contactId) {
-      await req(te, "POST", `/contacts/${contactId}/notes`, { body: `Leak Calculator (${new Date().toLocaleString("en-AU", { timeZone: "Australia/Brisbane" })} Brisbane)\nEstimated leak: ${leakAud(calc.monthly)}/month (${leakAud(calc.yearly)}/year)\n${calc.lines.map((l) => `• ${l.label}: ${leakAud(l.monthly)}/mo`).join("\n")}\nIndustry: ${industry || "-"} · Avg job: ${leakAud(calc.inputs.job)} · Reply speed: ${calc.inputs.speed}\nReport: ${reportUrl}\n\nConsent: they asked for their Leak Report by email.` }).catch(() => {});
+      await req(te, "POST", `/contacts/${contactId}/notes`, { body: `Leak Calculator (${new Date().toLocaleString("en-AU", { timeZone: "Australia/Brisbane" })} Brisbane)\nEstimated leak: ${leakAud(calc.monthly)}/month (${leakAud(calc.yearly)}/year)\n${calc.lines.map((l) => `• ${l.label}: ${leakAud(l.monthly)}/mo`).join("\n")}\nIndustry: ${industry || "-"} · Avg job: ${leakAud(calc.inputs.job)} · Reply speed: ${calc.inputs.speed}\nReport: ${reportUrl}\n\nConsent: they asked for their Leak Snapshot by email.` }).catch(() => {});
       const top = calc.lines.filter((l) => l.monthly > 0).slice(0, 3);
-      const body = `Hi ${first},\n\nThanks for running the Leak Calculator. Here's your Leak Report for ${business || "your business"}:\n\n${reportUrl}\n\nBased on your answers, you're losing about ${leakAud(calc.monthly)} a month (${leakAud(calc.yearly)} a year). The biggest leaks:\n\n${top.map((l) => `${l.label}: about ${leakAud(l.monthly)} a month`).join("\n")}\n\nThe good news: every one of these can be fixed, mostly on autopilot. If you'd like, book a free 30-minute call and I'll show you which leak to fix first:\n\nhttps://links.studioflowandsystems.com/widget/booking/tfzrthnax3Ldpncejghq`;
-      await sendEmail(te, contactId, `Your Leak Report: about ${leakAud(calc.monthly)} a month`, brandedEmail({ body, origin: pub, kind: "message", closing: "Cheers," })).catch(() => {});
+      const body = `Hi ${first},\n\nThanks for running the Leak Calculator. Here's your free Leak Snapshot for ${business || "your business"}:\n\n${reportUrl}\n\nBased on your answers, you're losing about ${leakAud(calc.monthly)} a month (${leakAud(calc.yearly)} a year). The biggest leaks:\n\n${top.map((l) => `${l.label}: about ${leakAud(l.monthly)} a month`).join("\n")}\n\nThe good news: every one of these can be fixed, mostly on autopilot. If you'd like, book a free 30-minute call and I'll show you which leak to fix first:\n\nhttps://links.studioflowandsystems.com/widget/booking/tfzrthnax3Ldpncejghq`;
+      await sendEmail(te, contactId, `Your Leak Snapshot: about ${leakAud(calc.monthly)} a month`, brandedEmail({ body, origin: pub, kind: "message", closing: "Cheers," })).catch(() => {});
     }
   } catch (e) { rec.ghl_error = String(e.message || e).slice(0, 200); await secPut(env, "wsdlk:" + token, rec).catch(() => {}); }
-  ctx?.waitUntil?.(siteNotifyTy(env, `💧 <b>Leak Calculator lead</b>\n${siteEsc(name)}${business ? " · " + siteEsc(business) : ""}${industry ? " · " + siteEsc(industry) : ""}\n${siteEsc(email)}${phone ? " · " + siteEsc(phone) : ""}\nLeaking about <b>${leakAud(calc.monthly)}/mo</b> (${leakAud(calc.yearly)}/yr)\nTop: ${siteEsc(calc.lines[0].label)} ${leakAud(calc.lines[0].monthly)}/mo\n${contactId ? "Saved in GHL (tag leak-calculator) and report emailed." : "⚠️ GHL save failed, follow up by hand."}\n${reportUrl}`));
+  ctx?.waitUntil?.(siteNotifyTy(env, `💧 <b>Leak Calculator lead</b>\n${siteEsc(name)}${business ? " · " + siteEsc(business) : ""}${industry ? " · " + siteEsc(industry) : ""}\n${siteEsc(email)}${phone ? " · " + siteEsc(phone) : ""}\nLeaking about <b>${leakAud(calc.monthly)}/mo</b> (${leakAud(calc.yearly)}/yr)\nTop: ${siteEsc(calc.lines[0].label)} ${leakAud(calc.lines[0].monthly)}/mo\n${contactId ? "Saved in GHL (tag leak-calculator) and Leak Snapshot emailed." : "⚠️ GHL save failed, follow up by hand."}\n${reportUrl}`));
   return J({ ok: true, token, report_url: reportUrl, calc });
 }
 

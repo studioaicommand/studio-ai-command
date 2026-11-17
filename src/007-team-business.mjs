@@ -14,28 +14,38 @@ HOW CLIENTS FIND US (THE FUNNEL)
 1. Instagram content (carousels, Reels, Stories) \u2192 people comment a keyword.
 2. Comment keywords (ONLY these two): MAP \u2192 Business Backend Map (maps the leaks in their systems); AI \u2192 AI Business Kit.
 3. The Instagram DM agent delivers the resource, qualifies them, and sends the booking link to fit leads.
-4. Free 30-min discovery call (GHL calendar) \u2192 2-hour Systems Business Audit \u2192 proposal. Pre-call briefs before each.
+4. Free 30-min discovery call (GHL calendar) \u2192 Leak Report & Systems Audit ($497, 2 hours) \u2192 proposal. Pre-call briefs before each.
+   The website's free Leak Calculator emails a free "Leak Snapshot" (never call the free one a Leak Report; the paid one is the Leak Report & Systems Audit).
 5. Proposal \u2192 client \u2192 onboarding \u2192 delivery \u2192 results \u2192 referrals and testimonials.
-Outbound: Sales runs prospect hunts (web search + website analysis), saves researched prospects, and queues them for Ty's GHL outreach campaign (3-email sequence from ty@outreach.studioflowandsystems.com; client email stays on hello@mail.studioflowandsystems.com) once Ty approves. Ty calls the best prospects 1\u20133 days after the first email.
+Outbound: Sales runs prospect hunts (web search + website analysis), saves researched prospects, and queues them for Ty's GHL outreach campaign once Ty approves. Ty calls the best prospects 1\u20133 days after the first email.
+
+EMAIL SENDERS (never mix them)
+- Cold outreach: ONLY from ty@outreach.studioflowandsystems.com (the outreach domain), at most 40 a day. Never send cold email from any other address or domain.
+- Clients, replies to people who wrote to us, and transactional email (receipts, onboarding, reports): hello@mail.studioflowandsystems.com. NEVER send cold email from mail.studioflowandsystems.com.
+- Every Studio Flow email uses the branded template.
 
 OFFERS AND PRICING (premium price list agreed 17 Nov 2026, AUD, no GST; the live list is Command > Offers and Settings)
 We are the premium option: price against what the problem costs (a full-time receptionist costs about $6,000 to $8,000 a month all in), never against cheap AI tools.
 0. Free 30-minute systems call (the main call to action).
 1. AI Front Desk (the only receptionist plan): $1,500 one-off setup, then $697 a month ($2,197 to start: setup + first 30 days).
    Chat + website voice, missed-call text-back, SMS follow-up, Google review requests, monthly results report. 14-day money-back guarantee, live in 48 hours.
-   Phone AI receptionist (answers their phone line): quoted, from $997/month. (The $297 Chat Receptionist is retired.)
-1b. Studio AI Command: Core $4,900 setup + $1,997/month; Growth $9,500 setup + $2,997/month; Multi-location from $18,000 setup + from $4,997/month.
-   White-label add-on (on top of Growth): +$7,500 setup and +$997/month, in the client's own brand. Never discounted.
-   Founding Command offer: Core at $2,900 setup + $997/month for 12 months, 3 places only, in return for a case study.
+   Phone AI Receptionist (answers their phone line): from $997/month, scoped on a call. There is no chat-only plan.
+1b. Studio AI Command: Core $4,900 setup + $1,997/month; Growth (most popular) $9,500 setup + $2,997/month; Multi-location from $18,000 setup + from $4,997/month.
+   White-Label Command (add-on, for agencies and coaches): $7,500 setup + $997/month, in their own brand, colours and web address, on its own separate system. Never discounted.
+   Founding Command Offer: "Founding offer for our first 3 businesses: $997/month for 12 months, $2,900 setup" (in return for a case study).
    Guarantee: if Command doesn't find or recover at least its monthly fee in the first 90 days, the next month is free.
 2. Websites (founding / normal): Launch $3,500 / $4,900; Growth $6,900 / $9,500 (main offer); Signature from $12,000 / $18,000. 50% upfront, 50% at launch.
-3. Monthly: Care plan $149 / $249 a month; SEO & AI visibility from $690 / $990 a month.
-4. Leak Report & Systems Audit $497 (2 hours plus the written Leak Report, credited to any build or Command setup within 30 days). Backend systems builds are quoted after a call.
-Founding prices apply to the first 5 clients in each offer. Never prices in cold emails; never promise rankings or ROI.
+3. Monthly: Website Care Plan $149/month (normally $249); SEO & AI Visibility from $690/month (normally $990).
+4. Leak Report & Systems Audit $497 (2 hours plus the written Leak Report, credited to any build or Command setup within 30 days).
+5. CRM Setup $1,500. Automation Build $1,500. Custom Backend Build: quoted on a call.
+PRICE RULE: NEVER quote prices in cold outreach (cold emails, cold DMs, first calls' openers). Prices only come up after someone replies, on a call, or on the offers or demo page. Never promise rankings or ROI. Say "replies in seconds", never a specific number of seconds.
 
-POSITIONING (WHERE WE'RE GOING)
-Move upmarket to ESTABLISHED service businesses. Main focus (70\u201380%): health clinics of all types. Secondary test (20\u201330%):
-property management. Become Australia's go-to team for business systems, AI integration and custom software for these businesses.
+PRODUCT NAMES (use exactly these, the same as our Google Business Profile and website)
+Studio AI Command, Founding Command Offer, AI Front Desk, Phone AI Receptionist, Leak Report & Systems Audit, Premium Websites, Website Care Plan, SEO & AI Visibility, CRM Setup, Automation Build, Custom Backend Build, White-Label Command.
+
+WHO WE SERVE
+Service-based businesses (clinics, trades, salons, property) plus coaches and agencies. White-Label Command is aimed at agencies and coaches.
+Move upmarket to ESTABLISHED businesses with a real team and real enquiry volume. Become Australia's go-to team for business systems, AI integration and custom software for them.
 Lead with business outcomes (fewer missed enquiries, fewer no-shows, less admin, faster follow-up, better reporting), not "AI".
 Health compliance is a trust advantage: AHPRA advertising rules (no patient testimonials in clinic advertising) and patient privacy
 (keep patient data in the practice software; use only what bookings and reminders need).

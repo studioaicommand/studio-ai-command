@@ -195,5 +195,5 @@ assert(nr.status === 503 && /book a call/i.test(nd.error), "Unconfigured backend
 const tr = await worker.fetch(new Request("https://studioflowandsystems.app/api/v1/public/chat", { method: "POST", headers: { Origin: "https://studioflowandsystems.app" }, body: "{}" }), env, {});
 assert(tr.status === 403, "Existing /api/v1/public trial routes still guarded as before");
 { const sys = calls.anthropic.map((b) => typeof b.system === "string" ? b.system : JSON.stringify(b.system)).find((x) => /CONFIRMED OFFERS/.test(x)) || "";
-  assert(/CURRENT PRODUCTS AND PRICES/.test(sys) && /Studio AI Command/.test(sys) && /coaches and consultants/.test(sys), "v37: website Studio AI quotes the live Offers price list and knows Studio AI Command"); }
+  assert(/CURRENT PRODUCTS AND PRICES/.test(sys) && /Studio AI Command/.test(sys) && /coaches, agencies/.test(sys), "v37: website Studio AI quotes the live Offers price list and knows Studio AI Command"); }
 console.log("\nAll site assistant backend tests passed.");
