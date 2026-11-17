@@ -285,7 +285,7 @@ function offersPrice(value) { return typeof value==='number'&&Number.isFinite(va
 function offersLink(value) {
   try{const u=new URL(String(value||''));return u.protocol==='https:'&&!u.username&&!u.password?u.href:'';}catch{return '';}
 }
-function offersPaymentLink(value) {const link=offersLink(value);if(!link)return '';const u=new URL(link);return ['buy.stripe.com','checkout.stripe.com'].includes(u.hostname)?link:'';}
+function offersPaymentLink(value) {const link=offersLink(value);if(!link)return '';const u=new URL(link);return (['buy.stripe.com','checkout.stripe.com'].includes(u.hostname)||(['links.studioflowandsystems.com','link.fastpaydirect.com'].includes(u.hostname)&&/^\/payment-link\/[A-Za-z0-9]+\/?$/.test(u.pathname)))?link:'';}
 async function offersState(env) {
   // Do not show fallback prices when storage is unavailable.
   const rows=await select(env,'team_settings','key=in.(offer,offer_catalog)&select=key,value,updated_at');

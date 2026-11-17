@@ -1914,9 +1914,9 @@ async function siteOffer(env) {
     const rows = await db(siteEnvNorm(env), 'team_settings?key=eq.offer&select=value&limit=1');
     const v0 = rows?.[0]?.value || {}, v = +v0.prices_v >= 2 ? v0 : { pilot_days: v0.pilot_days, live_hours: v0.live_hours, refund_days: v0.refund_days };
     for (const k of Object.keys(base)) if (Number.isFinite(+v[k]) && +v[k] > 0) base[k] = Math.round(+v[k]);
-    const okLink = (u) => typeof u === 'string' && /^https:\/\/(buy\.stripe\.com|checkout\.stripe\.com)\//.test(u);
+    const okLink = (u) => typeof u === 'string' && (/^https:\/\/(buy\.stripe\.com|checkout\.stripe\.com)\//.test(u) || /^https:\/\/(links\.studioflowandsystems\.com|link\.fastpaydirect\.com)\/payment-link\/[A-Za-z0-9]+\/?$/.test(u));
     for (const k of ['payment_link', 'payment_link_voice']) if (typeof v[k] === 'string') v[k] = ({ 'https://buy.stripe.com/8x214oggZ72I5ENboOeZ204': 'https://buy.stripe.com/3cI5kE7Kteva3wF8cCeZ207', 'https://buy.stripe.com/8x24gAe8Rcn20ktakKeZ205': 'https://buy.stripe.com/cNidRaaWFdr69V31OeeZ206' })[v[k]] || v[k];
-    if (okLink(v.payment_link_voice)) { base.payment_link_voice = v.payment_link_voice; Object.assign(SITE_LINKS.checkout_voice, { kind: 'checkout', label: 'Set up my Front Desk (Stripe)', url: v.payment_link_voice }); }
+    if (okLink(v.payment_link_voice)) { base.payment_link_voice = v.payment_link_voice; Object.assign(SITE_LINKS.checkout_voice, { kind: 'checkout', label: 'Set up my Front Desk', url: v.payment_link_voice }); }
     base.monthly = ({ 597: 297, 797: 497 })[base.monthly] || base.monthly; base.monthly_voice = ({ 597: 297, 797: 497 })[base.monthly_voice] || base.monthly_voice;
   } catch {}
   try {
