@@ -729,7 +729,7 @@ async function inboxVoiceSet(env, contactId, on, name) {
 
 // ── v106 Update Announcer: every release teaches the whole team ──
 var RELEASE_NOTES = [
-  { v: 136, studio_only: true, title: "Simpler team: Command, Sales, Clients and a quiet back office",
+  { v: 136, studio_only: true, lean_off: true, title: "Simpler team: Command, Sales, Clients and a quiet back office",
     shifts_set: { off: ["market_research", "marketing_review", "finance_check", "content_plan", "prospect_hunt_pm", "prospect_hunt_eve", "brand_radar", "authority_content", "email_nurture", "systems_review", "evolve_research", "ops_health", "weekly_reports"], on: ["back_office"] },
     rules: [
     { rule: "The team is now three leads with one score each: Command (Chief of Staff: revenue vs target and Ty's few actions today), Sales (conversations, calls booked, deals won) and Clients (clients live, happy and paid). Marketing, finance, operations, content and systems are a quiet back office: they work weekly or when asked, and only tell Ty when something needs him.", applies_to: ["all"] },
@@ -809,6 +809,11 @@ async function releaseAnnounce(env, { force = false } = {}) {
         await saveSetting(env, "shifts", cs.shifts.map((x) => ({ id: x.id, enabled: off.has(x.id) ? false : on.has(x.id) ? true : x.enabled, hour: x.hour, days: x.days, last_run: x.last_run || null })));
         shiftNote = "Turned off " + off.size + " back-office shifts" + (on.size ? " and turned on " + [...on].join(", ").replace(/_/g, " ") : "") + ".";
       }
+    }
+    if (n.lean_off) {
+      const lr = await select(env, "team_settings", "key=eq.ai_lean&select=value&limit=1").catch(() => []);
+      await saveSetting(env, "ai_lean", { ...(lr?.[0]?.value || {}), mode: "off" }).catch(() => {});
+      shiftNote = (shiftNote ? shiftNote + " " : "") + "AI saving mode is off (Ty asked, 18 Nov): reports use the full model again.";
     }
     if (n.charter_fix) {
       const cs = await getSettings(env).catch(() => null);

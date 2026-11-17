@@ -21,3 +21,4 @@ assert(/Results over reports/.test(src) && /BEFORE YOU FINISH, CHECK YOURSELF/.t
 assert(/v: 136, studio_only: true[\s\S]{0,200}shifts_set/.test(src), "The v136 update turns the back-office shifts off on the live copy");
 assert(/if \(tier !== "company" \|\| depth > 0 \|\| !SPECIALISTS\[dept\.id\] \|\| !specLead\(dept\.id\)\)/.test(src), "Back-office heads no longer hand work to specialists");
 assert(/under 20 lines/.test(src), "Morning briefing is short enough for a phone");
+assert(/v: 136, studio_only: true, lean_off: true/.test(src) && /mode: "off" \}\)/.test(src), "The v136 update turns AI saving mode off once (Ty asked, 18 Nov)");
