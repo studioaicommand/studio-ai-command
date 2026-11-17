@@ -8,7 +8,8 @@ async function fleetInfo(env) {
     memLoad(env).catch(() => ({ users: [] }))
   ]);
   const fuCap = Number((await secGet(env, "fair_use").catch(() => null) || {}).monthly_aud) || null;
-  return { ok: true, version: APP.v, fair_use_aud: fuCap, ai_spend_month_aud: Math.round(usage.reduce((a, r) => a + (+r.cost_aud || 0), 0) * 100) / 100, approvals_waiting: pending.length, last_activity_at: last[0]?.occurred_at || null, people: M.users.filter((u) => !u.disabled && u.id !== SUPPORT_ID).length, passkeys: M.users.reduce((a, u) => a + (u.id === SUPPORT_ID ? 0 : (u.creds || []).length), 0) };
+  const setup = await setupProgress(env).catch(() => null);
+  return { ok: true, version: APP.v, setup, fair_use_aud: fuCap, ai_spend_month_aud: Math.round(usage.reduce((a, r) => a + (+r.cost_aud || 0), 0) * 100) / 100, approvals_waiting: pending.length, last_activity_at: last[0]?.occurred_at || null, people: M.users.filter((u) => !u.disabled && u.id !== SUPPORT_ID).length, passkeys: M.users.reduce((a, u) => a + (u.id === SUPPORT_ID ? 0 : (u.creds || []).length), 0) };
 }
 async function fleetFairUseWatch(env) {
   const seen = await secGet(env, "fleet_fair_use_alerts").catch(() => null) || {};
@@ -16,6 +17,12 @@ async function fleetFairUseWatch(env) {
   const items = await fleetList(env), month = aiMonth(), sent = seen.month === month ? seen.sent || {} : {};
   for (const it of items) {
     const st = await fleetCall(env, it, "status").catch(() => null);
+    // v132 heads-up when a client's set-up has stalled for 2+ days (once a day per client)
+    const su = st?.setup, day = new Date().toISOString().slice(0, 10);
+    if (su && su.done < su.total && su.started_at && Date.now() - Date.parse(su.started_at) > 2 * 864e5 && (seen.setup || {})[it.id] !== day) {
+      seen.setup = { ...(seen.setup || {}), [it.id]: day };
+      await notify(env, "🧭 <b>" + String(it.business || "").replace(/[<>&]/g, "") + " is " + su.done + " of " + su.total + " set up</b>\nStuck on: " + String(su.next || "").replace(/[<>&]/g, "") + ". Worth a quick call. (Clients › Client Commands)").catch(() => {});
+    }
     const cap = Number(st?.fair_use_aud) || 0, spend = Number(st?.ai_spend_month_aud) || 0;
     if (!cap) continue;
     const pct = Math.round(spend / cap * 100), level = pct >= 100 ? 100 : pct >= 80 ? 80 : 0;
@@ -23,7 +30,7 @@ async function fleetFairUseWatch(env) {
     sent[it.id] = level;
     await notify(env, (level >= 100 ? "⏸ <b>" + String(it.business || "").replace(/[<>&]/g, "") + " hit their fair-use AI cap</b>\nTheir background AI work is paused until the 1st (chat, inbox and phone keep running)." : "📈 <b>" + String(it.business || "").replace(/[<>&]/g, "") + " is at " + pct + "% of their fair-use AI cap</b>") + "\nAI cost this month $" + spend.toFixed(2) + " of a $" + cap.toFixed(0) + " cap" + (it.plan_aud ? " · they pay $" + it.plan_aud + "/mo" : "") + ". Raise the cap or talk about the next plan up in Clients › Client Commands.").catch(() => {});
   }
-  await secPut(env, "fleet_fair_use_alerts", { month, sent, checked_at: new Date().toISOString() });
+  await secPut(env, "fleet_fair_use_alerts", { month, sent, setup: seen.setup || {}, checked_at: new Date().toISOString() });
 }
 async function fleetList(env) { const x = await secGet(env, "fleet").catch(() => null); return Array.isArray(x?.items) ? x.items : []; }
 async function fleetCall(env, item, path, init = {}) {

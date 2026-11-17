@@ -169,7 +169,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     ["clients", "Clients", "shop", [["clients", "Clients"], ["fleet", "Client Commands"], ["money", "Money"], ["offers", "Products & prices"]]],
     ["growth", "Growth", "growth", [["outreach", "Outreach today"], ["dms", "DM Desk"], ["growth", "Pipeline"], ["demos", "Website demos"]]],
     ["studio", "Studio AI", "studio", [["studio", "Talk to Studio"], ["chrome", "Do it for me"], ["team", "Team"], ["knowledge", "Knowledge"]]],
-    ["settings", "Settings", "sliders", [["connections", "Connections"], ["autopilot", "Autopilot"], ["brand", "Brand & features"], ["security", "Security"]]],
+    ["settings", "Settings", "sliders", [["setup", "Get set up"], ["connections", "Connections"], ["autopilot", "Autopilot"], ["brand", "Brand & features"], ["security", "Security"]]],
   ];
   const VIEW_HOST = { home: "today", goals: "today", business: "growth", jobs: "team", brain: "knowledge", memory: "knowledge", systems: "autopilot", scout: "team" };
   const hubOf = (view) => HUBS.find((h) => h[3].some((t) => t[0] === view || t[0] === VIEW_HOST[view])) || HUBS[0];
@@ -194,6 +194,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     clients: ["Clients", "Every client: who bought what, what they pay, and what to sell them next"],
     goals: ["Goals & KPIs", "Your mission and the targets the team works toward"],
     connections: ["Connections", "Every system Studio AI and the team can see"],
+    setup: ["Get set up", "Connect your systems, one step at a time"],
     autopilot: ["Settings", "What runs on its own, when, and what always waits for you"],
     chrome: ["Do it for me", "Ask Command to do something in the Command Chrome window on your Mac, and watch it work"],
     dms: ["DM Desk", "Instagram, Facebook, LinkedIn and TikTok messages, one unique message per person. You approve, the team does the rest"],
@@ -279,11 +280,14 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     if (!b || !b.ok) return;
     INST = b;
     for (const [mod, views] of Object.entries(INST_VIEWS)) if (b.modules && b.modules[mod] === false) views.forEach((v) => INST_OFF.add(v));
+    if (!b.custom) INST_OFF.add('setup');
     if (b.custom) { INST_OFF.add('fleet'); INST_OFF.add('money'); if (TITLES.performance) TITLES.performance[1] = 'Every agent judged on results: work done, approvals and its weekly scorecard'; }
     if (INST_OFF.has('today')) { INST_HOME = 'home'; if (!HUBS[0][3].some((x) => x[0] === 'home')) HUBS[0][3].unshift(['home', 'Overview']); }
     for (let hi = HUBS.length - 1; hi >= 0; hi--) { const h = HUBS[hi]; const keep = h[3].filter((s) => !INST_OFF.has(s[0])); if (keep.length) h[3] = keep; else if (hi) { HUBS.splice(hi, 1); const ti = TABS.findIndex((t) => t[0] === h[0]); if (ti >= 0) TABS.splice(ti, 1); document.querySelectorAll('[data-nav="' + h[0] + '"],[data-tab="' + h[0] + '"]').forEach((x) => x.remove()); } }
     Object.keys(b.modules || {}).forEach((k) => { document.documentElement.dataset['mod' + k.replace(/(^|_)([a-z])/g, (m, a, c) => c.toUpperCase())] = b.modules[k] ? 'on' : 'off'; });
     if (!b.custom) return;
+    // v132 the owner of a new client copy lands on Get set up until it's done (once per session)
+    (function sgAuto() { let n = 0; const t = setInterval(async () => { if (++n > 120) return clearInterval(t); if (!KEY || $('#app').hidden) return; clearInterval(t); try { if (sessionStorage.getItem('sgSeen')) return; sessionStorage.setItem('sgSeen', '1'); } catch (e) {} if (ME && ME.role && ME.role !== 'owner') return; try { const g = await team('/setup-guide?fresh=0'); if (!g.complete && !g.dismissed) go('setup'); } catch (e) {} }, 1000); })();
     const r = document.documentElement.style;
     if (b.colours && b.colours.primary) { r.setProperty('--c', b.colours.primary); r.setProperty('--c3', b.colours.primary); }
     if (b.colours && b.colours.accent) r.setProperty('--c2', b.colours.accent);
@@ -1631,6 +1635,37 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     try { await op("/goals", { method: "POST", body: b }); toast(g ? "Goal updated" : "Goal added", "ok"); bust("goals"); render(); } catch (e) { toast(e.message, "bad"); }
   }
 
+  // v132 Get set up: the client's guided onboarding. Every step is checked live; keys are checked, then sealed.
+  VIEWS.setup = async (el, fresh) => {
+    el.innerHTML = '<section class="wf-glass"><p class="mu">Checking each step...</p></section>';
+    let g; try { g = await team('/setup-guide' + (fresh === false ? '?fresh=0' : '')); } catch (e) { el.innerHTML = '<section class="wf-glass"><p class="bad">' + esc(e.message) + '</p></section>'; return; }
+    if (!still('setup', el)) return;
+    const pct = Math.round(g.done / g.total * 100);
+    const keyForm = (x) => x.key === 'ghl' ? '<div class="sg-keys"><input class="in" data-k="token" type="password" autocomplete="off" placeholder="GoHighLevel private integration token"><input class="in" data-k="location_id" autocomplete="off" placeholder="Location ID"><button class="btn pri sm" data-sg-key="ghl">Connect</button></div>'
+      : '<div class="sg-keys"><input class="in" data-k="token" type="password" autocomplete="off" placeholder="' + (x.key === 'stripe' ? 'Stripe restricted key (rk_live_...)' : 'Telegram bot token from @BotFather') + '"><button class="btn pri sm" data-sg-key="' + x.key + '">Connect</button></div>';
+    const card = (x, i) => '<article class="wf-glass sg-step' + (x.done ? ' done' : '') + '" data-id="' + esc(x.id) + '"><div class="sg-n">' + (x.done ? '&#10003;' : (i + 1)) + '</div><div class="grow"><h3>' + esc(x.title) + (x.done ? ' <span class="chip ok">Done</span>' : '') + '</h3><p class="sm">' + esc(x.why) + '</p>' +
+      (x.done ? (x.connected_by ? '<p class="mu xs">Connected by ' + esc(x.connected_by.by) + ' &middot; key ending ' + esc(x.connected_by.ends) + '. Paste a new key below any time to replace it.</p>' + (x.key ? keyForm(x) : '') : '')
+        : '<p class="mu sm">' + esc(x.how) + '</p>' + (x.key ? keyForm(x) : '') + '<div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px">' + (x.go ? '<button class="btn sm" data-sg-go="' + esc(x.go) + '">Open</button>' : '') + (x.manual ? '<button class="btn sm" data-sg-tick="' + esc(x.id) + '">' + esc(x.manual) + '</button>' : '') + '</div>') +
+      '<div class="sg-out sm"></div></div></article>';
+    el.innerHTML = '<section class="wf-glass wf-intro"><div><span class="wf-eyebrow">GET SET UP</span><h2>' + (g.complete ? 'You’re all set up.' : g.done + ' of ' + g.total + ' done') + '</h2><p class="mu">' + (g.complete ? 'Everything is connected and checked. Your team is working.' : 'Next: <b>' + esc(g.next) + '</b>. Each step is checked live, so it only shows Done when it really works. Stuck? Reply to us on Telegram or book your onboarding call and we’ll do it together.') + '</p><div class="sg-bar"><i style="width:' + pct + '%"></i></div><div class="row" style="gap:8px;margin-top:12px"><button class="btn sm" id="sgRe">Check again</button>' + (g.complete ? '' : '<button class="btn sm ghost" id="sgHide">' + (g.dismissed ? 'Show at sign-in again' : 'Don’t open this at sign-in') + '</button>') + '</div></div></section>' +
+      '<div class="sg-list">' + g.steps.map(card).join('') + '</div><p class="mu xs" style="margin:14px 4px">Keys are checked with GoHighLevel, Stripe or Telegram first, then stored locked inside your own Command. Nobody can see them again, including us. Stripe is read-only: it can never move money.</p>';
+    $('#sgRe', el).onclick = () => VIEWS.setup(el);
+    const hide = $('#sgHide', el); if (hide) hide.onclick = async () => { try { await team('/setup-guide/dismiss', { method: 'POST', body: { dismissed: !g.dismissed } }); toast(g.dismissed ? 'It will open at sign-in' : 'It won’t open at sign-in. Find it in Settings', 'ok'); VIEWS.setup(el, false); } catch (e) { toast(e.message, 'bad'); } };
+    $$('[data-sg-go]', el).forEach((b) => b.onclick = () => go(b.dataset.sgGo));
+    $$('[data-sg-tick]', el).forEach((b) => b.onclick = async () => { try { await team('/setup-guide/tick', { method: 'POST', body: { id: b.dataset.sgTick } }); toast('Ticked', 'ok'); VIEWS.setup(el, false); } catch (e) { toast(e.message, 'bad'); } });
+    $$('[data-sg-key]', el).forEach((b) => b.onclick = async () => {
+      const box = b.closest('.sg-step'), out = $('.sg-out', box), body = { kind: b.dataset.sgKey };
+      $$('[data-k]', box).forEach((i) => { body[i.dataset.k] = i.value.trim(); });
+      if (!body.token) return toast('Paste the key first', 'bad');
+      b.disabled = true; b.textContent = 'Checking...';
+      try {
+        const r = await team('/setup-guide/key', { method: 'POST', body });
+        $$('[data-k]', box).forEach((i) => { i.value = ''; });
+        if (r.telegram && r.telegram.link) { out.innerHTML = '<p class="ok">Connected. Now open Telegram and tap Start, so it knows it’s you:</p><a class="btn pri sm" href="' + esc(r.telegram.link) + '" target="_blank" rel="noopener">Open @' + esc(r.telegram.bot) + ' in Telegram</a><p class="mu xs">Or send it this code: <b>' + esc(r.telegram.code) + '</b>. Then tap Check again.</p>'; b.disabled = false; b.textContent = 'Connect'; return; }
+        toast('Connected and checked', 'ok'); VIEWS.setup(el);
+      } catch (e) { out.innerHTML = '<p class="bad">' + esc(e.message) + '</p>'; b.disabled = false; b.textContent = 'Connect'; }
+    });
+  };
   // \u2500\u2500 Connections \u2500\u2500
   VIEWS.connections = async (el) => {
     el.innerHTML = '<div class="sec"><div><h2>Systems</h2><p>Live status, checked just now.</p></div><button class="btn sm" id="cR">' + ic("refresh") + 'Re-check</button></div><div class="conns" id="cL">' + Array.from({ length: 6 }, () => '<div class="conn">' + sk(40) + "</div>").join("") + "</div>";
@@ -1640,6 +1675,20 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     const site = st && st.settings && st.settings.site;
     const ok = (b) => (b ? "ok" : "off");
     const ghlOk = ov && ov.ghl && ov.ghl.status === "connected";
+    const C132 = !!(INST && INST.custom), fix = "Not connected yet: Settings \u203A Get set up";
+    if (C132) {
+      const t2 = [
+        ["CRM \xB7 GoHighLevel", ok(ghlOk), ghlOk ? num(ov.ghl.open_opportunities) + " open opportunities" : fix],
+        ["Calendars", ok(th && th.ghl), th && th.ghl ? "Your booking calendars" : fix],
+        ["Payments \xB7 Stripe (read-only)", ok(th && th.stripe), th && th.stripe ? "Revenue, invoices and subscriptions" : fix],
+        ["Your AI team", ok(th && th.claude), th && th.claude ? "Department heads online" : "Ask us to check your AI team"],
+        ["Your data", ok(db && db.ok !== false && th && th.supabase_team_tables), "Private to your business, stored in Australia"],
+        ["Voice", "ok", "Talk to " + esc(INST.product_name || "Command") + " in this app"],
+        ["Message replies", ghlOk ? "ok" : "off", ghlOk ? "SMS, Instagram, Facebook and web chat (Autopilot \u203A Message replies)" : fix],
+      ];
+      $("#cL", el).innerHTML = '<a class="conn card warn" href="#/setup" style="padding:16px;text-decoration:none"><span class="dot warn"></span><div class="grow"><b>Get set up</b><span class="mu sm">Connect anything that is missing, step by step</span></div></a>' + t2.map(([n, s2, d], i) => '<div class="conn card ' + s2 + '" style="--d:' + i * 40 + 'ms;padding:16px"><span class="dot ' + (s2 === "off" ? "" : s2) + '"></span><div class="grow"><b>' + esc(n) + '</b><span class="mu sm">' + esc(d) + '</span></div></div>').join("");
+      return;
+    }
     const tiles = [
       ["CRM \xB7 GoHighLevel", ok(ghlOk), ghlOk ? num(ov.ghl.open_opportunities) + " open opportunities" : "Check GHL_PRIVATE_TOKEN in Cloudflare"],
       ["Calendars", ok(th && th.ghl), "Free 30-min call \xB7 audit \xB7 onboarding"],
@@ -1958,6 +2007,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
         (x.live ? '<div class="fl-stats"><div><span class="mu xs">AI cost this month</span><b>$' + esc((L.ai_spend_month_aud || 0).toFixed(2)) + '</b></div><div><span class="mu xs">Waiting for approval</span><b>' + esc(L.approvals_waiting) + '</b></div><div><span class="mu xs">People</span><b>' + esc(L.people) + '</b></div><div><span class="mu xs">Last active</span><b class="sm">' + esc(flWhen(L.last_activity_at)) + '</b></div></div>' : '<p class="mu sm">' + esc(x.error || '') + '</p>') +
         flMargin(x) +
         (x.live ? (function () { const cap = x.live.fair_use_aud, sp = x.live.ai_spend_month_aud || 0, pc = cap ? Math.round(sp / cap * 100) : null; return '<div class="fl-margin"><span class="sm">' + (cap ? 'Fair-use AI cap <b>$' + esc(cap) + '/mo</b> · used <b class="' + (pc >= 100 ? 'bad' : pc >= 80 ? 'warn' : 'good') + '">' + esc(pc) + '%</b>' + (pc >= 100 ? '<br><span class="mu xs">Their background AI work is paused until the 1st. Chat, inbox and phone keep running.</span>' : '') : '<span class="mu">No fair-use AI cap. Set one so a heavy month can’t cost more than they pay.</span>') + '</span><button class="btn sm ghost" data-fl-fair>' + (cap ? 'Edit cap' : 'Set cap') + '</button></div>'; })() : '') +
+        (x.live && x.live.setup ? '<div class="fl-margin"><span class="sm">Set up <b class="' + (x.live.setup.done >= x.live.setup.total ? 'good' : 'warn') + '">' + esc(x.live.setup.done) + ' of ' + esc(x.live.setup.total) + '</b>' + (x.live.setup.done < x.live.setup.total && x.live.setup.next ? ' · next: ' + esc(x.live.setup.next) : ' · all connected') + '</span></div>' : '') +
         '<div class="fl-acts">' + support + (sp === 'approved' ? '<button class="btn pri sm" data-fl-open>Open with support access</button>' : sp === 'pending' ? '' : '<button class="btn sm" data-fl-ask>Ask for support access</button>') + '<button class="btn sm ghost" data-fl-rm>Disconnect</button></div></article>';
     };
     const up = d.items.filter((x) => x.live).length, behind = d.items.filter((x) => x.live && !x.up_to_date).length;
@@ -3009,6 +3059,10 @@ body.has-sup{padding-top:calc(26px + env(safe-area-inset-top,0px))}
 @media(max-width:540px){.wf-glass{padding:18px;border-radius:16px}.wf-metrics{gap:10px}.wf-metrics .wf-glass{padding:16px}.wf-workitem{flex-wrap:wrap;gap:10px}.wf-type{width:100%}.wf-workitem .grow{flex-basis:100%}.wf-workitem>.btn{width:100%}.wf-intro .acts{width:100%;gap:10px}.wf-intro .acts>.btn{flex:1}.wf-directory .wf-workitem .grow{flex-basis:65%}}
 @media(prefers-reduced-transparency:reduce){.wf-glass{background:#091a30;backdrop-filter:none;-webkit-backdrop-filter:none}}
 
+.sg-list{display:grid;gap:12px;margin-top:14px}.sg-step{display:flex;gap:14px;align-items:flex-start;padding:18px}.sg-step h3{margin:0 0 4px}.sg-step.done{opacity:.82}
+.sg-n{flex:0 0 34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;border:1px solid var(--ln2);color:var(--c)}.sg-step.done .sg-n{background:var(--c);color:#fff;border-color:transparent}
+.sg-keys{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.sg-keys .in{flex:1 1 220px}.sg-out{margin-top:8px}.sg-out a{margin:6px 0}
+.sg-bar{height:8px;border-radius:99px;background:var(--s3);overflow:hidden;margin-top:14px;max-width:520px}.sg-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--c3),var(--c2));border-radius:99px}
 :root{
   --bg:#020711;--bg2:#05101f;--s1:rgba(12,28,54,.62);--s2:rgba(16,36,68,.72);--s3:rgba(24,50,92,.55);
   --ln:rgba(125,190,255,.13);--ln2:rgba(125,190,255,.24);--tx:#eaf4ff;--mu:#8ea9c6;--mu2:#5f7894;

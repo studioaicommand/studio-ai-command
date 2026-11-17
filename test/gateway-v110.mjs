@@ -37,5 +37,5 @@ r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", body:
 assert(r.status === 200 && calls.at(-1).u.startsWith("https://api.anthropic.com"), "Gateway unreachable: falls back to Anthropic directly");
 lib.aigInstall({ AI_GATEWAY: ACC + "/command" }); const w1 = globalThis.fetch; lib.aigInstall({ AI_GATEWAY: ACC + "/command" });
 assert(globalThis.fetch === w1, "Installs once (no wrapper stacking on every request)");
-assert(/out\.ai_gateway = /.test(src) && /aigInstall\(env\); return SF_APP\.scheduled/.test(src) && /aigInstall\(env\); return SF_APP\.queue/.test(src), "Switched on for requests, the hourly run and queued AI jobs; shown in /health");
+assert(/out\.ai_gateway = /.test(src) && /aigInstall\(env\);[^}]*return SF_APP\.scheduled/.test(src) && /aigInstall\(env\);[^}]*return SF_APP\.queue/.test(src), "Switched on for requests, the hourly run and queued AI jobs; shown in /health");
 console.log("gateway-v110 OK");

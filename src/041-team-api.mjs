@@ -48,6 +48,7 @@ async function route2(request, env, url, ctx) {
   if (p === "/audit/verify" && m === "GET") return json({ ok: true, ...(await auditVerify(env, url.searchParams.get("limit"))) });
   if (seg[0] === "website-demos") { const wr = await wsdRoute(p, m, body, env, url, seg); if (wr) return wr; }
   if (seg[0] === "instance") { const ir = await instRoute(p, m, body, env, request); if (ir) return ir; }
+  if (seg[0] === "setup-guide") { const sg = await setupGuideRoute(p, m, body, env, request, url); if (sg) return sg; }
   if (seg[0] === "costs" && seg[1] === "budget") { const br = await aiBudgetRoute(p, m, body, env); if (br) return br; }
   if (seg[0] === "performance") { const r50 = await v50Route(p, m, body, env); if (r50) return r50; }
   if (seg[0] === "performance") { const r49 = await v49Route(p, m, body, env); if (r49) return r49; }
@@ -777,3 +778,122 @@ async function health(env) {
 }
 var slim = ({ candidates, ...j }) => ({ ...j, candidates: (candidates || []).map((c) => ({ name: c.business_name, state: c.state })) });
 
+
+
+// ── v132 Get set up: a client's own guided onboarding. Every step is checked live (not just ticked),
+// keys are pasted in the app (checked first, stored sealed in their own copy, never shown again),
+// and Studio's console sees their progress over the fleet link (never their keys or data). ──
+var SG_STEPS = [
+  { id: "brand", title: "Your brand", why: "Your name, logo and colours on every screen.", how: "Settings › Brand & features: upload your logo and pick your colours.", go: "brand" },
+  { id: "brief", title: "What your business does", why: "Your AI team works from this: services, prices and who you help.", how: "Settings › Brand & features › What the business does. Two or three sentences is plenty.", go: "brand" },
+  { id: "faceid", title: "Face ID sign-in", why: "Signing in with your face or fingerprint, no passwords.", how: "Settings › Security › Add Face ID on this device.", go: "security" },
+  { id: "team", title: "Your team", why: "Invite the people who'll use it, each with their own sign-in.", how: "Settings › Security › Invite someone. Just you? Tap “It's just me”.", go: "security", manual: "It's just me" },
+  { id: "telegram", title: "Telegram on your phone", why: "Your morning brief, alerts and one-tap approvals.", how: "Paste your Telegram bot token below, then tap the link it gives you.", key: "telegram" },
+  { id: "ghl", title: "Your CRM (GoHighLevel)", why: "So your AI can answer enquiries, follow up and book.", how: "In GoHighLevel: Settings › Private Integrations › Create, tick contacts, conversations, calendars and opportunities, then copy the token. Your Location ID is in Settings › Business Profile.", key: "ghl" },
+  { id: "stripe", title: "Payments (Stripe)", why: "So it can see what's paid and chase what isn't. Read-only: it can never move money.", how: "In Stripe: Developers › API keys › Create restricted key, set everything to Read, then copy the key (it starts rk_).", key: "stripe" },
+  { id: "phone", title: "Phone and missed-call text-back", why: "Every missed call gets a text back in seconds.", how: "We switch this on with you on your onboarding call. Tick it once it's working.", manual: "It's working" },
+  { id: "website", title: "Chat on your website", why: "Visitors get answers and book at any hour.", how: "We add it to your website with you. Tick it once you've seen it live.", manual: "It's on my website" },
+  { id: "goal", title: "Your first goal", why: "Your team plans every week around it.", how: "Today › Goals: set what you want each week (for example 20 new bookings).", go: "goals" },
+  { id: "test", title: "Try it", why: "Send it a test enquiry and see how it answers.", how: "Talk to it like a customer would: “Hi, do you have anything Thursday?”", go: "studio", manual: "I've tried it" }
+];
+async function sgLive(env, kind) {
+  try {
+    if (kind === "ghl") { if (!env.GHL_TOKEN || !env.GHL_LOCATION_ID) return false; const r = await fetch("https://services.leadconnectorhq.com/locations/" + encodeURIComponent(env.GHL_LOCATION_ID), { headers: { Authorization: "Bearer " + env.GHL_TOKEN, Version: "2021-07-28", Accept: "application/json" }, signal: AbortSignal.timeout(8e3) }); return r.ok; }
+    if (kind === "stripe") { const k = env.STRIPE_READ_KEY; if (!k) return false; const r = await fetch("https://api.stripe.com/v1/balance", { headers: { Authorization: "Bearer " + k }, signal: AbortSignal.timeout(8e3) }); return r.ok; }
+    if (kind === "telegram") { if (!env.TELEGRAM_BOT_TOKEN) return false; const r = await fetch("https://api.telegram.org/bot" + env.TELEGRAM_BOT_TOKEN + "/getMe", { signal: AbortSignal.timeout(8e3) }); return !!(await r.json().catch(() => ({}))).ok; }
+  } catch {}
+  return false;
+}
+async function setupGuideState(env, { live = true } = {}) {
+  const st = await secGet(env, "setup_guide").catch(() => null) || {};
+  const raw = await secGet(env, "instance").catch(() => null) || {};
+  const kb = await secGet(env, "instance_kb").catch(() => null) || {};
+  const settings = await getSettings(env).catch(() => ({}));
+  const M = await memLoad(env).catch(() => ({ users: [], invites: [] }));
+  const people = (M.users || []).filter((u) => !u.disabled && u.id !== SUPPORT_ID);
+  let goal = false; try { goal = !!(await goalCfg(env)); } catch {}
+  let livec = st.live || {};
+  if (live && (!st.live_at || Date.now() - st.live_at > 10 * 6e4)) {
+    const [ghl, stripe, telegram] = await Promise.all(["ghl", "stripe", "telegram"].map((k) => sgLive(env, k)));
+    livec = { ghl, stripe, telegram };
+    await secPut(env, "setup_guide", { ...st, live: livec, live_at: Date.now() }).catch(() => {});
+  }
+  const manual = st.done || {};
+  const check = {
+    brand: !!(raw.colours?.primary || raw.assets_v),
+    brief: String(raw.brief || "").trim().length >= 40 || (Array.isArray(kb.services) && kb.services.length > 0),
+    faceid: people.some((u) => u.role === "owner" && (u.creds || []).length),
+    team: people.length > 1 || (M.invites || []).some((x) => !x.existing) || !!manual.team,
+    telegram: !!livec.telegram && !!settings.telegram?.chat_id,
+    ghl: !!livec.ghl, stripe: !!livec.stripe,
+    phone: !!manual.phone, website: !!manual.website, goal, test: !!manual.test
+  };
+  const steps = SG_STEPS.map((x) => ({ ...x, done: !!check[x.id], connected_by: x.key && st.keys_by?.[x.key] ? st.keys_by[x.key] : null }));
+  const done = steps.filter((x) => x.done).length;
+  return { ok: true, steps, done, total: steps.length, complete: done === steps.length, next: (steps.find((x) => !x.done) || {}).title || null, dismissed: !!st.dismissed, started_at: st.started_at || null, telegram_bot: settings.telegram?.bot || null, telegram_linked: !!settings.telegram?.chat_id };
+}
+async function setupGuideRoute(p, m, body, env, request, url) {
+  const J = (o, s = 200) => json(o, s);
+  const mh = request.headers.get("x-sf-member") || "", owner = !mh || mh.split("|")[1] === "owner";
+  if (p === "/setup-guide" && m === "GET") { const st = await secGet(env, "setup_guide").catch(() => null) || {}; if (!st.started_at) await secPut(env, "setup_guide", { ...st, started_at: new Date().toISOString() }).catch(() => {}); return J(await setupGuideState(env, { live: url.searchParams.get("fresh") !== "0" })); }
+  if (!owner) return J({ ok: false, error: "Only the owner can change the set-up." }, 403);
+  if (p === "/setup-guide/tick" && m === "POST") {
+    const id = String(body.id || ""); if (!SG_STEPS.some((x) => x.id === id && x.manual)) return J({ ok: false, error: "That step is checked automatically." }, 400);
+    const st = await secGet(env, "setup_guide").catch(() => null) || {};
+    await secPut(env, "setup_guide", { ...st, done: { ...(st.done || {}), [id]: body.done !== false } });
+    return J(await setupGuideState(env, { live: false }));
+  }
+  if (p === "/setup-guide/dismiss" && m === "POST") { const st = await secGet(env, "setup_guide").catch(() => null) || {}; await secPut(env, "setup_guide", { ...st, dismissed: body.dismissed !== false }); return J({ ok: true }); }
+  if (p === "/setup-guide/key" && m === "POST") {
+    const kind = String(body.kind || ""), tok = String(body.token || "").trim(), who = mh ? decodeURIComponent(mh.split("|")[2] || "") : "Owner";
+    if (!["ghl", "stripe", "telegram"].includes(kind)) return J({ ok: false, error: "Unknown connection." }, 400);
+    if (!tok || tok.length > 400 || /\s/.test(tok)) return J({ ok: false, error: "Paste the whole key, with no spaces." }, 400);
+    const set = {};
+    if (kind === "stripe") {
+      if (/^sk_live_/.test(tok)) return J({ ok: false, error: "That's your secret key, which can move money. Make a restricted key with Read access instead (it starts rk_live_)." }, 400);
+      if (!/^rk_(live|test)_/.test(tok)) return J({ ok: false, error: "That doesn't look like a Stripe restricted key (it starts rk_live_)." }, 400);
+      if (!await sgLive({ STRIPE_READ_KEY: tok }, "stripe")) return J({ ok: false, error: "Stripe didn't accept that key. Check it has Read access to Balance, then paste it again." }, 400);
+      set.STRIPE_READ_KEY = tok;
+    }
+    if (kind === "ghl") {
+      const loc = String(body.location_id || "").trim();
+      if (!/^[A-Za-z0-9]{10,40}$/.test(loc)) return J({ ok: false, error: "Add your Location ID too (Settings › Business Profile in GoHighLevel)." }, 400);
+      if (!await sgLive({ GHL_TOKEN: tok, GHL_LOCATION_ID: loc }, "ghl")) return J({ ok: false, error: "GoHighLevel didn't accept that token for that Location ID. Check the token's scopes and the ID, then try again." }, 400);
+      set.GHL_TOKEN = tok; set.GHL_LOCATION_ID = loc;
+    }
+    if (kind === "telegram") {
+      if (!/^\d{5,15}:[A-Za-z0-9_-]{30,50}$/.test(tok)) return J({ ok: false, error: "That doesn't look like a Telegram bot token (it looks like 123456789:ABC...). Get it from @BotFather." }, 400);
+      if (!await sgLive({ TELEGRAM_BOT_TOKEN: tok }, "telegram")) return J({ ok: false, error: "Telegram didn't accept that token. Copy it again from @BotFather." }, 400);
+      set.TELEGRAM_BOT_TOKEN = tok;
+    }
+    const cur = await secGet(env, "client_keys").catch(() => null) || {};
+    for (const [k, v] of Object.entries(set)) cur[k] = await seal(env, v);
+    await secPut(env, "client_keys", cur);
+    globalThis.__SF_CLIENT_KEYS = null;
+    const st = await secGet(env, "setup_guide").catch(() => null) || {};
+    await secPut(env, "setup_guide", { ...st, live_at: 0, keys_by: { ...(st.keys_by || {}), [kind]: { by: who, at: new Date().toISOString(), ends: tok.slice(-4) } } });
+    await secLog(env, { actor: who, action: "key_connected", summary: `${who} connected ${({ ghl: "GoHighLevel", stripe: "Stripe (read-only)", telegram: "Telegram" })[kind]} (key ending ${tok.slice(-4)})` }).catch(() => {});
+    const out = { ok: true, connected: kind, ends: tok.slice(-4) };
+    if (kind === "telegram") { try { out.telegram = await setupTelegram({ ...env, ...set }, url.origin); } catch (e) { out.telegram_error = String(e.message).slice(0, 160); } }
+    return J(out);
+  }
+  return null;
+}
+// For the Studio console: progress only (no keys, no data).
+async function setupProgress(env) {
+  if (!(await instGet(env).catch(() => ({}))).custom) return null;
+  const s = await setupGuideState(env, { live: false }).catch(() => null);
+  return s ? { done: s.done, total: s.total, next: s.next, started_at: s.started_at, stuck: s.steps.filter((x) => !x.done).map((x) => x.id) } : null;
+}
+// Daily: a gentle nudge to the client if set-up has stalled for 2 days, and a heads-up to Studio (via the console).
+async function setupNudge(env) {
+  if (!(await instGet(env).catch(() => ({}))).custom) return CRON_NOT_DUE;
+  const st = await secGet(env, "setup_guide").catch(() => null) || {};
+  if (!st.started_at || Date.now() - Date.parse(st.started_at) < 2 * 864e5) return CRON_NOT_DUE;
+  if (st.nudged_at && Date.now() - Date.parse(st.nudged_at) < 2 * 864e5) return CRON_NOT_DUE;
+  const s = await setupGuideState(env, { live: true });
+  if (s.complete) return { complete: true };
+  await secPut(env, "setup_guide", { ...(await secGet(env, "setup_guide").catch(() => null) || {}), nudged_at: new Date().toISOString() });
+  await notify(env, `🧭 <b>You're ${s.done} of ${s.total} steps set up</b>\nNext: ${esc2(s.next)}. Open Command › Settings › Get set up, or reply here if you're stuck and we'll help.`).catch(() => {});
+  return { nudged: true, done: s.done };
+}

@@ -128,6 +128,7 @@ async function teamScheduled(event, env) {
     ["AI budget", () => aiBudgetCheck(e)],
     ["Fair use", () => fairUseCheck(e)],
     ["Agent watch", () => agentWatch(e)],
+    ["Setup nudge", () => setupNudge(e)],
     ["Fleet fair use", out(() => fleetFairUseWatch(e))],
     ["Leak tests", out(() => leakTestExpire(e))],
     ["Leak watch", () => leakWatch(e)],

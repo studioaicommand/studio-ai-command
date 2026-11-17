@@ -33,8 +33,14 @@ Each new client:
   3. Answer the questions. Have ready: their business name, owner name, website, industry, and
      their plan (core or growth), one or two sentences on what they do (services, prices, who they help),
      and optionally their GHL sub-account token + location ID, Telegram bot token and Stripe read key.
-  4. Send the owner the sign-in link it prints (privately). They open it in Safari, set up Face ID,
-     then Share > Add to Home Screen.
+  4. Send the owner the sign-in link it prints (privately). When they first sign in, "Get set up" opens:
+     11 steps, each checked live (brand, what they do, Face ID, team, Telegram, GoHighLevel, Stripe,
+     phone, website chat, first goal, try it). They paste their own GoHighLevel, Stripe (read-only) and
+     Telegram keys there: each key is checked first, then stored sealed in their copy. You don't need
+     their keys at setup any more. Book a 30-minute onboarding call to help with anything left.
+     Their progress shows on their card in Clients > Client Commands, and you get a Telegram heads-up
+     if they're stuck for 2 days (they get a gentle nudge too).
+     They open the link in Safari, set up Face ID, then Share > Add to Home Screen.
   5. The private details are saved in "Client setups". Put them in Apple Passwords, then delete the file.
 
 Later changes for that client: open their Command > Settings > Brand & features.

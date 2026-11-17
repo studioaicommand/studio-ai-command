@@ -703,7 +703,7 @@ async function fleetGate(request, env, ctx) {
     const info = await r.json().catch(() => ({}));
     const i = await instGet(env);
     const s = await supportState(env);
-    return secJson({ ok: true, tier: ((await secGet(env, "plan_tier").catch(() => null)) || {}).tier || (i.custom ? "core" : "company"), business: i.business_name, product: i.product_name, custom: i.custom, custom_domain: i.custom_domain || null, template: i.template, ...info, support: { status: s.status || "none", until: s.until ? new Date(s.until).toISOString() : null, requested_at: s.requested_at || null } });
+    return secJson({ ok: true, tier: ((await secGet(env, "plan_tier").catch(() => null)) || {}).tier || (i.custom ? "core" : "company"), business: i.business_name, product: i.product_name, custom: i.custom, custom_domain: i.custom_domain || null, setup: info.setup || null, template: i.template, ...info, support: { status: s.status || "none", until: s.until ? new Date(s.until).toISOString() : null, requested_at: s.requested_at || null } });
   }
   if (p === "fair-use" && request.method === "POST") {
     const b = await request.json().catch(() => ({}));
@@ -1107,12 +1107,30 @@ function sfHarden(res, request) {
   if (/text\/html/i.test(ct) && !/frame-ancestors/i.test(h.get("Content-Security-Policy") || "") && !/^\/(w|demo|embed|widget)\//.test(p)) set("X-Frame-Options", "SAMEORIGIN");
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
 }
+// v132 keys a client pasted in Get set up (checked, then sealed in their own copy) are used like Cloudflare secrets.
+// Studio's own Command has none, so nothing changes there.
+var SF_CLIENT_KEY_NAMES = ["GHL_TOKEN", "GHL_LOCATION_ID", "STRIPE_READ_KEY", "TELEGRAM_BOT_TOKEN"];
+async function sfClientKeys(env) {
+  if (!env.FLEET_TOKEN) return env; // only client copies (the setup kit always gives them a fleet link); Studio's own Command never reads a vault
+  const c = globalThis.__SF_CLIENT_KEYS;
+  let keys = c && Date.now() - c.at < 6e4 ? c.v : null;
+  if (!keys) {
+    keys = {};
+    try {
+      const raw = env.SUPABASE_URL ? await secGet(env, "client_keys") : null;
+      for (const k of SF_CLIENT_KEY_NAMES) if (raw && raw[k]) { const v = await unseal(env, raw[k]).catch(() => null); if (v) keys[k] = v; }
+    } catch {}
+    globalThis.__SF_CLIENT_KEYS = { at: Date.now(), v: keys };
+  }
+  return Object.keys(keys).length ? { ...env, ...keys } : env;
+}
 export default {
   ...SF_APP,
-  async scheduled(event, env, ctx) { aigInstall(env); return SF_APP.scheduled(event, env, ctx); },
-  async queue(batch, env, ctx) { aigInstall(env); return SF_APP.queue(batch, env, ctx); },
+  async scheduled(event, env, ctx) { aigInstall(env); env = await sfClientKeys(env); return SF_APP.scheduled(event, env, ctx); },
+  async queue(batch, env, ctx) { aigInstall(env); env = await sfClientKeys(env); return SF_APP.queue(batch, env, ctx); },
   async fetch(request, env, ctx) {
     aigInstall(env);
+    env = await sfClientKeys(env);
     globalThis.__SF_TRANSCRIBE = env.TRANSCRIBE_MODEL || "";
     if (!globalThis.__sfTyMark) await tyMark(env).catch(() => {});
     if (await sfRateLimited(request).catch(() => false)) return sfHarden(new Response(JSON.stringify({ ok: false, error: "Too many requests. Please wait a few minutes and try again." }), { status: 429, headers: { "Content-Type": "application/json", "Retry-After": "600" } }), request);
