@@ -102,6 +102,11 @@ async function memCheckChallenge(env, M, b64, kind) {
   M.used.push({ n: m[4], exp: +m[3] });
   return { subject: m[2] };
 }
+// v130 the address people should use: the client's own domain once connected, otherwise this request's address
+async function instOrigin(env, request) {
+  const d = (await instGet(env).catch(() => ({}))).custom_domain;
+  return d ? "https://" + d : new URL(request.url).origin;
+}
 function memOrigin(request, env) {
   const u = new URL(request.url);
   return { origin: u.origin, rpId: u.hostname };
@@ -279,8 +284,17 @@ async function memRoute(request, env, url) {
       const inv = M.invites.find((x) => x.hash === hash && !x.used_at && x.exp > Date.now());
       if (!inv) return err("This invite link has expired or was already used. Ask for a new one.", 404);
       if (!seg[2] && request.method === "GET") return secJson({ ok: true, name: inv.name, role: inv.role, role_label: MEM_ROLES[inv.role] });
-      const u = { id: inv.user_id, name: inv.name, role: inv.role, gen: 1, creds: [], created: new Date().toISOString() };
+      // v130 an "existing" invite adds Face ID for someone already in this Command, on its new web address
+      const u0 = inv.existing ? M.users.find((x) => x.id === inv.user_id && !x.disabled) : null;
+      if (inv.existing && !u0) return err("This person is no longer in this Command.", 404);
+      const u = u0 || { id: inv.user_id, name: inv.name, role: inv.role, gen: 1, creds: [], created: new Date().toISOString() };
       if (seg[2] === "options" && request.method === "POST") return secJson({ ok: true, publicKey: await memRegOptions(env, request, M, u, "invite", inv.user_id) });
+      if (seg[2] === "verify" && request.method === "POST" && u0) {
+        await memRegister(env, request, M, u, body.credential || {}, "invite", inv.user_id);
+        inv.used_at = new Date().toISOString();
+        await secLog(env, { actor: u.name, action: "passkey_added", summary: `${u.name} set up Face ID on the new web address ${new URL(request.url).hostname}` });
+        return memIssue(env, request, M, u, "a new passkey on the new address");
+      }
       if (seg[2] === "verify" && request.method === "POST") {
         await memRegister(env, request, M, u, body.credential || {}, "invite", inv.user_id);
         inv.used_at = new Date().toISOString();
@@ -306,7 +320,18 @@ async function memRoute(request, env, url) {
         M.invites.push({ id: memHex(memRand(6)), hash: await memSha("invite|" + tok), name, role, user_id: id, exp: Date.now() + 48 * 36e5, by: who.name });
         await memSave(env, M);
         await secLog(env, { actor: who.name, action: "invite", summary: `${who.name} invited ${name} as ${MEM_ROLES[role]}` });
-        return secJson({ ok: true, link: new URL(request.url).origin + "/command-next#invite=" + tok, expires_in_hours: 48 });
+        return secJson({ ok: true, link: (await instOrigin(env, request)) + "/command-next#invite=" + tok, expires_in_hours: 48 });
+      }
+      if (p === "admin/address-link" && request.method === "POST") {
+        const host = (await instGet(env, true)).custom_domain;
+        if (!host) return err("This Command doesn't have its own web address yet.");
+        const t = body.user_id ? M.users.find((x) => x.id === body.user_id && !x.disabled && x.id !== SUPPORT_ID) : (who.id ? M.users.find((x) => x.id === who.id) : M.users.find((x) => x.role === "owner" && !x.disabled && x.id !== SUPPORT_ID));
+        if (!t) return err("Person not found.", 404);
+        const tok = memB64(memRand(24));
+        M.invites.push({ id: memHex(memRand(6)), hash: await memSha("invite|" + tok), name: t.name, role: t.role, user_id: t.id, existing: true, exp: Date.now() + 48 * 36e5, by: who.name });
+        await memSave(env, M);
+        await secLog(env, { actor: who.name, action: "address_link", summary: `${who.name} made a Face ID link for ${t.name} on ${host}` });
+        return secJson({ ok: true, name: t.name, link: "https://" + host + "/command-next#invite=" + tok, expires_in_hours: 48 });
       }
       if (p === "admin/me/options" && request.method === "POST") {
         let u = who.id ? M.users.find((x) => x.id === who.id) : M.users.find((x) => x.self);
@@ -473,9 +498,10 @@ async function instGet(env, fresh) {
     industry: custom ? String(raw.industry || "").slice(0, 60) : "AI systems studio",
     template: raw?.template || null,
     website: raw?.website || "", booking_link: raw?.booking_link || "", location: raw?.location || "",
-    colours: { primary: /^#[0-9a-f]{6}$/i.test(raw?.colours?.primary || "") ? raw.colours.primary : null, accent: /^#[0-9a-f]{6}$/i.test(raw?.colours?.accent || "") ? raw.colours.accent : null },
+    colours: { primary: /^#[0-9a-f]{6}$/i.test(raw?.colours?.primary || "") ? raw.colours.primary : null, accent: /^#[0-9a-f]{6}$/i.test(raw?.colours?.accent || "") ? raw.colours.accent : null, mode: raw?.colours?.mode === "light" ? "light" : "dark" },
     login_headline: custom ? String(raw.login_headline || "Your business, run by AI.").slice(0, 80) : null,
     assets_v: raw?.assets_v || 0,
+    custom_domain: custom && /^[a-z0-9.-]+\.[a-z]{2,}$/.test(raw?.custom_domain || "") ? raw.custom_domain : null,
     modules: mods,
     updated: raw?.updated || null
   };
@@ -677,7 +703,7 @@ async function fleetGate(request, env, ctx) {
     const info = await r.json().catch(() => ({}));
     const i = await instGet(env);
     const s = await supportState(env);
-    return secJson({ ok: true, tier: ((await secGet(env, "plan_tier").catch(() => null)) || {}).tier || (i.custom ? "core" : "company"), business: i.business_name, product: i.product_name, custom: i.custom, template: i.template, ...info, support: { status: s.status || "none", until: s.until ? new Date(s.until).toISOString() : null, requested_at: s.requested_at || null } });
+    return secJson({ ok: true, tier: ((await secGet(env, "plan_tier").catch(() => null)) || {}).tier || (i.custom ? "core" : "company"), business: i.business_name, product: i.product_name, custom: i.custom, custom_domain: i.custom_domain || null, template: i.template, ...info, support: { status: s.status || "none", until: s.until ? new Date(s.until).toISOString() : null, requested_at: s.requested_at || null } });
   }
   if (p === "fair-use" && request.method === "POST") {
     const b = await request.json().catch(() => ({}));
@@ -686,6 +712,18 @@ async function fleetGate(request, env, ctx) {
     await secPut(env, "fair_use", { monthly_aud: Math.round(v * 100) / 100, at: new Date().toISOString() });
     const r = await teamFetch(new Request(new URL(request.url).origin + "/api/v1/team/fair-use-check", { method: "POST", headers: { Authorization: "Bearer " + memSecret(env) } }), env, ctx);
     return secJson({ ok: true, monthly_aud: v, status: (await r.json().catch(() => ({}))).status || null });
+  }
+  if (p === "domain" && request.method === "POST") {
+    const b = await request.json().catch(() => ({}));
+    const host = String(b.host || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+    if (host && (!/^([a-z0-9-]+\.)+[a-z]{2,}$/.test(host) || /(^|\.)studioflowandsystems\.(app|com)$/.test(host))) return secJson({ ok: false, error: "That isn't a client web address." }, 400);
+    const raw = await secGet(env, "instance").catch(() => null) || {};
+    if (!raw.business_name || raw.is_studio) return secJson({ ok: false, error: "Only a client's copy can have its own web address." }, 400);
+    await secPut(env, "instance", { ...raw, custom_domain: host || null, updated: new Date().toISOString() });
+    INST_CACHE = { at: 0, v: null };
+    await secLog(env, { actor: "Studio Flow", action: "domain_set", summary: host ? `Own web address connected: ${host}` : "Own web address removed" });
+    if (host) await secTg(env, "🌐 <b>Your Command has its own web address</b>\nhttps://" + memEsc(host) + "/command-next\nSet up Face ID there: Settings › Brand & features › Set up Face ID on your new address.").catch(() => {});
+    return secJson({ ok: true, host: host || null });
   }
   if (p === "plan" && request.method === "POST") {
     const b = await request.json().catch(() => ({}));

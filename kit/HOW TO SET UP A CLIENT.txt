@@ -52,3 +52,19 @@ Update every client to the newest version:
   3. It updates your test client (any client with "test" in its web name) first, checks it, then asks
      before doing the rest. Every client keeps its own keys. If a check fails, that client is put back
      on its old version straight away and nobody else is touched. Backups go in "Client setups/backups".
+
+Give a client their OWN web address (e.g. command.harbourphysio.com.au):
+  Once only: Cloudflare > studioflowandsystems.app > SSL/TLS > Custom Hostnames > Enable (free for the first
+  100 clients). Your Cloudflare token also needs "SSL and Certificates: Edit" (add it to the same custom token).
+  1. Double-click "Connect client domain.command". Give it their web name and their address.
+     It finds their connect code in "Client setups" (or paste it from Apple Passwords).
+  2. It prints one CNAME record (and a TXT record). Send those to whoever manages their domain.
+  3. Run it again after they add them: it says "Live" when the address is secure (usually 5 to 30 minutes).
+  4. Their owner opens Command > Settings > Brand & features > "Set up Face ID on your new address", and
+     "Links for the team" makes a link for each staff member. The old address keeps working.
+  Their domain goes ONLY to their own Command. Running it again is safe.
+
+Their colours across the whole app:
+  Their Command > Settings > Brand & features: main colour, accent colour, and Dark or Light background.
+  Backgrounds, panels, borders, buttons and the AI orb all take on their colours. Text stays readable
+  whatever colour they pick.

@@ -73,7 +73,7 @@ async function instRoute(p, m, body, env, request) {
     const next = { ...raw };
     for (const k of ["business_name", "product_name", "owner_name", "owner_first", "industry", "website", "booking_link", "location", "login_headline"]) if (body[k] != null) next[k] = String(body[k]).trim().slice(0, k === "website" || k === "booking_link" ? 300 : 120);
     if (body.brief != null) next.brief = String(body.brief).trim().slice(0, 3000);
-    if (body.colours) next.colours = { primary: /^#[0-9a-f]{6}$/i.test(body.colours.primary || "") ? body.colours.primary : raw.colours?.primary || null, accent: /^#[0-9a-f]{6}$/i.test(body.colours.accent || "") ? body.colours.accent : raw.colours?.accent || null };
+    if (body.colours) next.colours = { primary: /^#[0-9a-f]{6}$/i.test(body.colours.primary || "") ? body.colours.primary : raw.colours?.primary || null, accent: /^#[0-9a-f]{6}$/i.test(body.colours.accent || "") ? body.colours.accent : raw.colours?.accent || null , mode: body.colours.mode === "light" ? "light" : body.colours.mode === "dark" ? "dark" : raw.colours?.mode || "dark" };
     if (body.modules && typeof body.modules === "object") next.modules = Object.fromEntries(Object.keys(INST_MODULES).map((k) => [k, k === "outreach" ? false : body.modules[k] === true]));
     if (next.modules && !body.is_studio) next.modules.outreach = false;
     if (body.is_studio != null) next.is_studio = !!body.is_studio;
