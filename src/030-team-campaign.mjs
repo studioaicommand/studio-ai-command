@@ -335,7 +335,7 @@ function offersPageHtml(data,{preview=false,nonce=''}={}) {
     return '<div class="o-price"><strong>Quoted</strong><span>Scoped on a free call</span></div>';
   };
   const card=i=>{
-    const go=i.payment_link?btn(i.payment_link,i.id==='chat'?'Start the chat pilot':'Start the Front Desk pilot',true):i.cta==='audit'?btn(audit,'Book the audit',true):btn(book,i.price?'Book a call to start':'Book a call',!!i.featured);
+    const go=i.payment_link?btn(i.payment_link,i.id==='chat'?'Start the chat plan':'Set up my AI Front Desk',true):i.cta==='audit'?btn(audit,'Book the audit',true):btn(book,i.price?'Book a call to start':'Book a call',!!i.featured);
     return '<article class="o-card'+(i.featured?' feat':'')+'" id="'+esc(i.id)+'">'+(i.featured?'<span class="o-badge">'+(i.group==='receptionist'?'Most popular':i.group==='website'?'Most chosen':'Flagship')+'</span>':'')+'<h3>'+esc(i.title)+'</h3><p>'+esc(i.description)+'</p>'+priceHtml(i)+'<ul>'+i.features.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul><div class="o-go">'+go+'</div></article>';
   };
   const groups=OFFER_GROUPS.filter(([g])=>data.items.some(i=>i.group===g&&i.enabled));

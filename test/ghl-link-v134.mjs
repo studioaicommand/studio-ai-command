@@ -12,3 +12,4 @@ assert(!f("https://evil.example/payment-link/abc"), "other hosts refused");
 const hub = readFileSync(new URL("../src/044-team-hub.mjs", import.meta.url), "utf8");
 const ok = new Function("return " + hub.match(/const okLink = (\(u\) => [^\n]*?);\n/)[1])();
 assert(ok("https://links.studioflowandsystems.com/payment-link/6afc3493906a8b62055d72ac") && ok("https://buy.stripe.com/x") && !ok("https://evil.example/payment-link/x"), "site assistant checkout accepts GHL and Stripe links only");
+assert(!/Start the Front Desk pilot/.test(camp), "offers page button no longer says pilot");
