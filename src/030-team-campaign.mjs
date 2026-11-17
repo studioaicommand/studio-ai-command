@@ -443,10 +443,14 @@ async function workflowToday(env) {
   const callsVerified=results.every(r=>r.status==="fulfilled") && prospects.length<500 && pending.length<500 && recent.length<500 && clients.length<200;
   for(const c of (callsVerified ? callData.calls||[] : [])) {
     const p=pmap.get(c.id);if(!p || !(c.ready || c.demo) || workflowClosed(p) || workflowRecent(p,actions,at) || workflowClient(p,clients) || pending.some(a=>a.params?.prospect_id===p.id && a.type!=="owner_task"))continue;
-    put({kind:"call",priority:3,prospect_id:p.id,business_name:p.business_name,title:"Call this business",reason:c.demo?.chats?"They tried their front desk. Review the timeline before calling.":c.observation||"A researched call is ready.",cta:"Open call card",href:"business/"+p.id});
+    const hot=!!c.demo?.hot, views=c.demo?.views||0;
+    put({kind:"call",priority:3,hot,prospect_id:p.id,business_name:p.business_name,phone:onePhone(p.phone)||"",title:"Call this business",reason:c.demo?.chats?"They tried their front desk. Review the timeline before calling.":hot?"They looked at their demo"+(views>1?" "+views+" times":"")+". Warm call.":c.observation||"A researched call is ready.",cta:"Open call card",href:"business/"+p.id});
   }
   const items=[...list.values()].sort((a,b)=>a.priority-b.priority || (Date.parse(a.due_at)||Infinity)-(Date.parse(b.due_at)||Infinity) || String(a.business_name || "").localeCompare(String(b.business_name || "")));
-  return {ok:true,complete:!warnings.length,warnings,as_of:now(),items,automatic,counts:{calls:items.filter(i=>i.kind==="call").length,demos:items.filter(i=>i.kind==="demo").length,followups:items.filter(i=>i.kind==="followup").length,setup:items.filter(i=>i.kind==="setup").length},
+  // v135 focus: the few things to do today (warm calls first), so the owner is not faced with the whole list.
+  const calls=items.filter(i=>i.kind==="call").sort((a,b)=>(b.hot?1:0)-(a.hot?1:0));
+  const focus={calls:calls.slice(0,2),followups:items.filter(i=>["followup","task","check"].includes(i.kind)).slice(0,3),demos:items.filter(i=>i.kind==="demo").slice(0,5),setup:items.filter(i=>i.kind==="setup").slice(0,2)};
+  return {ok:true,complete:!warnings.length,warnings,as_of:now(),items,automatic,focus,counts:{calls:items.filter(i=>i.kind==="call").length,demos:items.filter(i=>i.kind==="demo").length,followups:items.filter(i=>i.kind==="followup").length,setup:items.filter(i=>i.kind==="setup").length},
     businesses:prospects.map(p=>{const c=workflowClient(p,clients);return {id:p.id,business_name:p.business_name,decision_maker:p.decision_maker,email:p.email,phone:onePhone(p.phone),status:p.status,stage:workflowStage(p,c,null),client_id:c?.id};})};
 }
 async function workflowRecord(env,id) {
