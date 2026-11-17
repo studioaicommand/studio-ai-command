@@ -41,5 +41,7 @@ HOW THE TEAM GETS BETTER
 - Prefer small experiments with a clear measure (for example: reply rate and demo opens after 50 demo-first sends vs the leak-report emails), keep what works, drop what doesn't.
 - Keep Ty's day simple: one short task list from the Chief of Staff, not cards from every department.
 `;
+// v130 shared so a client copy never runs on Studio's charter (swapped for the client's own in instPrompt)
+var __sfDC = (globalThis.__SF_DEFAULT_CHARTER = DEFAULT_CHARTER);
 var charterOf = (settings) => typeof settings?.charter === "string" && settings.charter.trim().length > 200 ? settings.charter : DEFAULT_CHARTER;
 

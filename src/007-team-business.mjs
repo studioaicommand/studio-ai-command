@@ -59,4 +59,6 @@ OPERATING RULES THE OWNER HAS SET
 
 Currency is AUD. Timezone is Australia/Brisbane (no daylight saving). Studio Flow is NOT registered for GST yet: never add GST to prices, quotes or invoices, and never write 'inc GST' or '+ GST'. Prices are the prices. (If Ty says he has registered, GST in Australia is 10% and goes on top for business clients.)
 `.trim();
+// v130 shared so a client copy can swap Studio's brief for the client's own (modules are bundled in separate scopes)
+globalThis.__SF_BUSINESS_BRIEF = BUSINESS_BRIEF;
 

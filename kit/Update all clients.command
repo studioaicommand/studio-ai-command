@@ -12,15 +12,26 @@ ok() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 warn() { printf '  \033[33m!\033[0m %s\n' "$*"; }
 die() { printf '\n\033[1;31m✗ %s\033[0m\n' "$*"; exit 1; }
 for t in curl jq; do command -v "$t" >/dev/null || die "$t is missing. Update macOS or run: brew install $t"; done
-WORKER="${WORKER_FILE:-$(ls -t "$ROOT/1 Deploy Now"/worker-*.js 2>/dev/null | head -1 || true)}"
-[ -f "$WORKER" ] || die "Couldn't find the newest Command file in '1 Deploy Now'."
-tail -c 5 "$WORKER" | grep -q '};' || die "That Command file looks incomplete (it should end with };)."
-NEWV="$(grep -o 'var APP = { "v": "[0-9a-f]*"' "$WORKER" | head -1 | grep -o '[0-9a-f]\{10\}"$' | tr -d '"')"
-[ -n "$NEWV" ] || die "Couldn't read the version from the Command file."
-say "Update client Commands to $(basename "$WORKER") (version $NEWV)"
+STUDIO_WORKER="${STUDIO_WORKER:-studio-intelligence-core-cb9c}"
+say "Update client Commands to the version your own Command runs"
 read -r -s -p "  Cloudflare API token: " CFT; echo
 cf() { curl -sS -H "Authorization: Bearer $CFT" "$@"; }
 ACC="$(cf "$CF_API/accounts" | jq -r '.result[0].id // empty')"; [ -n "$ACC" ] || die "Cloudflare didn't accept that token."
+LIVE_TMP="$(mktemp -d)"; chmod 700 "$LIVE_TMP"
+if [ -n "${WORKER_FILE:-}" ]; then WORKER="$WORKER_FILE"
+else
+  WORKER="$LIVE_TMP/live.mjs"
+  cf "$CF_API/accounts/$ACC/workers/scripts/$STUDIO_WORKER/content/v2" -o "$WORKER" || true
+  if ! { [ -s "$WORKER" ] && tail -c 5 "$WORKER" | grep -q '};' && [ "$(wc -c < "$WORKER")" -gt 500000 ]; }; then
+    WORKER="$(ls -t "$ROOT/1 Deploy Now"/worker-*.js 2>/dev/null | head -1 || true)"
+    [ -f "$WORKER" ] || die "Couldn't copy your live Command from Cloudflare, and there's no file in '1 Deploy Now'."
+    warn "Couldn't copy your live Command, so using $(basename "$WORKER") from 1 Deploy Now (it may be older)."
+  fi
+fi
+tail -c 5 "$WORKER" | grep -q '};' || die "That Command file looks incomplete (it should end with };)."
+NEWV="$(grep -o 'var APP = { "v": "[0-9a-f]*"' "$WORKER" | head -1 | grep -o '[0-9a-f]\{10\}"$' | tr -d '"')"
+[ -n "$NEWV" ] || die "Couldn't read the version from the Command file."
+ok "Your live version: $NEWV"
 NAMES="$(cf "$CF_API/accounts/$ACC/workers/scripts" | jq -r '.result[]?.id | select(startswith("command-"))')"
 [ -n "$NAMES" ] || die "No client Commands found (their Workers are named command-<name>)."
 DOMAINS="$(cf "$CF_API/accounts/$ACC/workers/domains" | jq -c '[.result[]? | {s:.service, h:.hostname}]')"
@@ -34,7 +45,7 @@ echo
 echo "  Clients found:"
 while read -r n; do h="$(host_of "$n")"; v="$( [ -n "$h" ] && version_of "$h" || true)"; printf '   - %-32s %-45s %s\n' "$n" "${h:-no web address}" "$( [ "$v" = "$NEWV" ] && echo "already up to date" || echo "on ${v:-unknown}")"; done <<< "$ORDER"
 BK="$ROOT/Client setups/backups/$(date +%Y-%m-%d-%H%M)"; mkdir -p "$BK"; chmod 700 "$ROOT/Client setups" "$ROOT/Client setups/backups" 2>/dev/null || true
-TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
+TMP="$(mktemp -d)"; trap 'rm -rf "$TMP" "$LIVE_TMP"' EXIT
 printf '%s' '{"main_module":"worker.mjs","compatibility_date":"2026-11-01","keep_bindings":["secret_text","plain_text","secret_key"]}' > "$TMP/metadata.json"
 upload() { cf -X PUT "$CF_API/accounts/$ACC/workers/scripts/$1" -F "metadata=@$TMP/metadata.json;type=application/json" -F "worker.mjs=@$2;type=application/javascript+module"; }
 update_one() {

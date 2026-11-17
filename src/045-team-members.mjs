@@ -498,18 +498,59 @@ function instRewrite(t, i) {
 function instBanner(i) {
   return `THIS COMMAND BELONGS TO ${i.business_name}${i.industry ? " (" + i.industry + ")" : ""}${i.location ? ", " + i.location : ""}. Owner: ${i.owner_name || i.owner_first}. You are ${i.product_name}, working only for ${i.business_name}${i.website ? " (" + i.website + ")" : ""}. Older instructions may describe an AI agency's own sales work (selling AI receptionists, websites, audits or demos to clinics): that is NOT this business. Never offer or mention those services; apply the same skills to ${i.business_name}'s own customers, enquiries, bookings, reviews and growth. This AI system is included in ${i.business_name}'s plan: never state, estimate or report what the AI, tokens or this software cost to run, and never count AI spend as one of their business costs. If asked, say AI usage is included in their plan.${i.booking_link ? " Their booking link: " + i.booking_link + "." : ""}\n\n`;
 }
+// v130 a client's copy never sees Studio's company brief (Studio's services and prices). It gets its OWN brief:
+// the profile, the brief the owner wrote, and what Command learned from their website.
+var INST_BRIEF_CACHE = { at: 0, v: "" };
+async function instBrief(env, i) {
+  if (INST_BRIEF_CACHE.v && Date.now() - INST_BRIEF_CACHE.at < 3e5) return INST_BRIEF_CACHE.v;
+  const raw = await secGet(env, "instance").catch(() => null) || {};
+  const kb = await secGet(env, "instance_kb").catch(() => null) || {};
+  const nm = (x) => typeof x === "string" ? x : [x?.name, x?.price, x?.description].filter(Boolean).join(" · ");
+  const svc = (Array.isArray(kb.services) ? kb.services : []).slice(0, 25).map((x) => "- " + nm(x).slice(0, 200)).filter((x) => x.length > 2);
+  const faqs = (Array.isArray(kb.faqs) ? kb.faqs : []).slice(0, 12).map((f) => "- " + (typeof f === "string" ? f : [f?.q || f?.question, f?.a || f?.answer].filter(Boolean).join(" ")).slice(0, 260)).filter((x) => x.length > 2);
+  const v = ["COMPANY", `${i.business_name}${i.industry ? " (" + i.industry + ")" : ""}${i.location ? ", " + i.location : ""}. Owner: ${i.owner_name || i.owner_first}.${i.website ? " Website: " + i.website + "." : ""}${i.booking_link ? " Booking link: " + i.booking_link + "." : ""}`,
+    raw.brief ? "\nWHAT THE BUSINESS DOES (from the owner)\n" + String(raw.brief).slice(0, 3000) : "",
+    svc.length ? "\nSERVICES (from their website)\n" + svc.join("\n") : "",
+    faqs.length ? "\nCOMMON QUESTIONS (from their website)\n" + faqs.join("\n") : "",
+    `\nThis is ${i.business_name}'s own private Command. It is not Studio Flow & Systems. Never offer or quote websites, AI receptionists, Command plans or any other Studio Flow product or price unless ${i.business_name} sells it. If you don't know a price or detail, say so and ask the owner.`].filter(Boolean).join("\n");
+  let ch = ""; try { ch = globalThis.__SF_INST_CHARTER ? globalThis.__SF_INST_CHARTER({ ...raw, business_name: i.business_name, product_name: i.product_name, owner_name: i.owner_name, owner_first: i.owner_first }) : ""; } catch {}
+  INST_BRIEF_CACHE = { at: Date.now(), v, charter: ch };
+  return v;
+}
+// v130 Studio's own offers with prices (in playbooks written for Studio) never reach a client's AI team
+var INST_STUDIO_OFFER = /(AI Front Desk|Front Desk|Leak Report|Systems Audit|Studio AI Command|Command (Core|Growth|Full Company)|White-label add-on|Founding Command|Chat Receptionist|Phone AI receptionist)[^\n]{0,240}\$\s?\d|\$\s?\d[\d,]*[^\n]{0,160}(AI Front Desk|Leak Report|Studio AI Command|Command (Core|Growth)|White-label add-on)/i;
+function instScrubOffers(t) { return String(t).split("\n").filter((l) => !INST_STUDIO_OFFER.test(l)).join("\n"); }
+function instSwapCharter(t) {
+  const D = globalThis.__SF_DEFAULT_CHARTER, ch = INST_BRIEF_CACHE.charter;
+  if (typeof D !== "string" || !D || !ch) return t;
+  t = String(t);
+  if (t.includes(D)) t = t.split(D).join(ch);
+  const cut = D.slice(0, 6e3);
+  if (t.includes(cut)) t = t.split(cut).join(ch.slice(0, 6e3));
+  return t;
+}
+function instSwapBrief(t, brief) {
+  const B = globalThis.__SF_BUSINESS_BRIEF;
+  if (typeof B !== "string" || !B) return t;
+  t = String(t);
+  if (t.includes(B)) t = t.split(B).join("\n" + brief + "\n");
+  const cut = B.slice(0, 3500);
+  if (t.includes(cut)) t = t.split(cut).join(brief);
+  return instScrubOffers(instSwapCharter(t));
+}
 async function instPrompt(env, body) {
   const i = await instGet(env).catch(() => null);
   if (!i || !i.custom || !body) return body;
+  const br = await instBrief(env, i), rw = (t) => instRewrite(instSwapBrief(t, br), i);
   const out = { ...body };
-  if (typeof out.system === "string") out.system = instBanner(i) + instRewrite(out.system, i);
-  else if (Array.isArray(out.system)) out.system = [{ type: "text", text: instBanner(i) }, ...out.system.map((b) => b && b.type === "text" ? { ...b, text: instRewrite(b.text, i) } : b)];
+  if (typeof out.system === "string") out.system = instBanner(i) + rw(out.system);
+  else if (Array.isArray(out.system)) out.system = [{ type: "text", text: instBanner(i) }, ...out.system.map((b) => b && b.type === "text" ? { ...b, text: rw(b.text) } : b)];
   else out.system = instBanner(i).trim();
   return out;
 }
 async function instText(env, text) {
   const i = await instGet(env).catch(() => null);
-  return i && i.custom ? instBanner(i) + instRewrite(text, i) : text;
+  return i && i.custom ? instBanner(i) + instRewrite(instSwapBrief(text, await instBrief(env, i)), i) : text;
 }
 // Features that are switched off for this copy answer "not found", on the API and in public.
 var INST_RULES = [
@@ -600,6 +641,7 @@ async function instSetup(request, env, ctx) {
     invites.push({ name, role, link: origin + "/command-next#invite=" + tok });
   }
   await memSave(env, M);
+  if (b.tier === "core" || b.tier === "company") await secPut(env, "plan_tier", { tier: b.tier, at: new Date().toISOString(), by: "Setup" });
   await secPut(env, "setup_done", { at: new Date().toISOString() });
   await secLog(env, { actor: "Setup", action: "setup", summary: `Command set up for ${inst.profile?.business_name || "a client"} with ${invites.length} invite(s)` });
   return json2({ ok: true, business: inst.profile?.business_name, applied: inst.applied || null, learned: inst.learned || null, learn_error: inst.learn_error || null, invites });

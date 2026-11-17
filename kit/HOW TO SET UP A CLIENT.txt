@@ -1,11 +1,19 @@
 SET UP A CLIENT'S OWN COMMAND (white-label)
 
+Every white-label client gets their OWN separate Command. Never rebrand your own Command for a client
+(your own Command now refuses to). Their copy has its own database, keys, web address, brand, AI name,
+charter and company brief. None of your data, prices or offers are in it, and none of theirs are in yours.
+
 What it makes, in about 5 minutes:
   - Their own database in Sydney (Supabase), 22 tables, all locked down
   - Their own Command at  <name>.studioflowandsystems.app  with its own keys
   - Their brand, industry template (charter, daily shifts) and features
   - Command reads their website so inbox replies know their services and FAQs
   - A Face ID sign-in link for the owner (and any staff you add)
+  - Their plan (Core or Growth) and a short brief of what their business does, so their AI team
+    works on THEIR services and prices, never Studio Flow's
+  - It copies the exact version your own Command is running right now (straight from Cloudflare),
+    so you no longer need to put a file in "1 Deploy Now" first
 
 Before the first one (once only):
   1. Supabase: supabase.com > your avatar > Account > Access Tokens > Generate.
@@ -19,11 +27,12 @@ Before the first one (once only):
   Keep both tokens in Apple Passwords. You paste them into the setup window each time (they are never saved).
 
 Each new client:
-  1. Make sure the newest Command file is in "1 Deploy Now" (the client gets the same version as you).
+  1. Deploy your own Command first if you have an update waiting (the client gets what you run).
   2. Double-click "New client Command.command". If macOS blocks it: right-click > Open > Open.
      (Or in Terminal: zsh ~/Desktop/"Studio AI Intelligence/Client setup kit/New client Command.command")
   3. Answer the questions. Have ready: their business name, owner name, website, industry, and
-     optionally their GHL sub-account token + location ID, Telegram bot token and Stripe read key.
+     their plan (core or growth), one or two sentences on what they do (services, prices, who they help),
+     and optionally their GHL sub-account token + location ID, Telegram bot token and Stripe read key.
   4. Send the owner the sign-in link it prints (privately). They open it in Safari, set up Face ID,
      then Share > Add to Home Screen.
   5. The private details are saved in "Client setups". Put them in Apple Passwords, then delete the file.
@@ -38,7 +47,7 @@ See all clients in your Studio console:
   messages, take payments, see money or delete anything).
 
 Update every client to the newest version:
-  1. Put the new Command file in "1 Deploy Now" (deploy it to your own Command first).
+  1. Deploy your own Command first. The update copies whatever version your own Command is running.
   2. Double-click "Update all clients.command" and paste your Cloudflare token.
   3. It updates your test client (any client with "test" in its web name) first, checks it, then asks
      before doing the rest. Every client keeps its own keys. If a check fails, that client is put back

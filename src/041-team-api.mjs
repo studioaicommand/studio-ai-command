@@ -310,6 +310,7 @@ async function route2(request, env, url, ctx) {
   if (p === "/telegram/test" && m === "POST") return json({ ok: true, ...await notify(env, await digest(env), { urgent: true }) });
   if (p === "/charter" && m === "GET") {
     const st = await getSettings(env);
+    { const i130 = await instGet(env).catch(() => null); if (i130?.custom && charterOf(st) === DEFAULT_CHARTER) { await instBrief(env, i130).catch(() => ""); return json({ ok: true, charter: instSwapCharter(DEFAULT_CHARTER), is_default: true, command_auto: st.command?.auto !== false }); } }
     return json({ ok: true, charter: charterOf(st), is_default: charterOf(st) === DEFAULT_CHARTER, command_auto: st.command?.auto !== false });
   }
   if (p === "/rescan" && m === "GET") return json({ ok: true, ...await rescanStatus(env), renderer: rendererReady(env) });

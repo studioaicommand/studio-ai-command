@@ -16,13 +16,13 @@ die() { printf '\n\033[1;31m✗ %s\033[0m\n\nNothing secret was saved. Fix that 
 ask() { local v; read -r -p "  $1: " v; printf '%s' "$v"; }
 asks() { local v; read -r -s -p "  $1: " v; echo >&2; printf '%s' "$v"; }
 for t in curl jq openssl; do command -v "$t" >/dev/null || die "$t is missing. Update macOS (Sequoia includes jq) or run: brew install $t"; done
-WORKER="${WORKER_FILE:-$(ls -t "$ROOT/1 Deploy Now"/worker-*.js 2>/dev/null | head -1 || true)}"
-[ -f "$WORKER" ] || die "Couldn't find the latest Command file in '1 Deploy Now'."
+STUDIO_WORKER="${STUDIO_WORKER:-studio-intelligence-core-cb9c}"
 [ -f "$KIT/install.sql" ] || die "install.sql is missing from the setup kit folder."
-tail -c 5 "$WORKER" | grep -q '};' || die "The Command file looks incomplete (it should end with };)."
+TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT; chmod 700 "$TMP"
 
 say "New client Command"
-echo "  Using: $(basename "$WORKER")"
+echo "  Every client gets their OWN separate Command: own database, own keys, own web address."
+echo "  It starts on exactly the version your own Command is running now."
 BUSINESS="$(ask 'Business name (e.g. Harbour Physio)')"; [ -n "$BUSINESS" ] || die "Business name is needed."
 SUGGEST="$(printf '%s' "$BUSINESS" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-|-$//g' | cut -c1-30)"
 SLUG="$(ask "Web name [$SUGGEST]")"; SLUG="${SLUG:-$SUGGEST}"
@@ -38,6 +38,9 @@ LOCATION="$(ask 'Location (e.g. Noosa QLD)')"
 COLOUR="$(ask 'Main brand colour hex (optional, e.g. #1f7a8c)')"
 TARGET="$(ask 'Monthly revenue goal in AUD (optional)')"
 STAFF="$(ask 'Staff to invite now, as Name:role, comma separated (optional, e.g. Jess:manager,Tom:staff)')"
+PLAN="$(ask 'Plan: core or growth [core]')"; PLAN="$(printf '%s' "${PLAN:-core}" | tr '[:upper:]' '[:lower:]')"
+case "$PLAN" in core) TIER=core ;; growth|company|full) TIER=company ;; *) die "Plan must be core or growth." ;; esac
+BRIEF="$(ask 'What the business does, in one or two sentences (services, prices, who they help)')"
 
 say "Keys (typed here, hidden, never saved in this window)"
 SBT="$(asks 'Supabase access token (Account > Access Tokens)')"; [ -n "$SBT" ] || die "Supabase token is needed."
@@ -52,6 +55,22 @@ STRIPE="$(asks 'Their Stripe restricted read key (optional)')"
 sb() { curl -sS -f -H "Authorization: Bearer $SBT" -H "Content-Type: application/json" "$@"; }
 cf() { curl -sS -H "Authorization: Bearer $CFT" "$@"; }
 cfok() { echo "$1" | jq -e '.success == true' >/dev/null || die "Cloudflare said: $(echo "$1" | jq -r '[.errors[]?.message] | join("; ")' 2>/dev/null)"; }
+
+say "Your live Command version"
+ACC="$(cf "$CF_API/accounts" | jq -r '.result[0].id // empty')"; [ -n "$ACC" ] || die "Cloudflare didn't accept that token."
+if [ -n "${WORKER_FILE:-}" ]; then WORKER="$WORKER_FILE"
+else
+  WORKER="$TMP/live.mjs"
+  cf "$CF_API/accounts/$ACC/workers/scripts/$STUDIO_WORKER/content/v2" -o "$WORKER" || true
+  if ! { [ -s "$WORKER" ] && tail -c 5 "$WORKER" | grep -q '};' && [ "$(wc -c < "$WORKER")" -gt 500000 ]; }; then
+    WORKER="$(ls -t "$ROOT/1 Deploy Now"/worker-*.js 2>/dev/null | head -1 || true)"
+    [ -f "$WORKER" ] || die "Couldn't copy your live Command from Cloudflare (does the token have Workers Scripts: Edit?)."
+    printf '  \033[33m!\033[0m Could not copy your live Command, so using %s from 1 Deploy Now (it may be older).\n' "$(basename "$WORKER")"
+  fi
+fi
+tail -c 5 "$WORKER" | grep -q '};' || die "The Command file looks incomplete (it should end with };)."
+LIVEV="$(grep -o 'var APP = { "v": "[0-9a-f]*"' "$WORKER" | head -1 | grep -o '[0-9a-f]\{10\}"$' | tr -d '"' || true)"
+ok "Copying version ${LIVEV:-unknown} (the same one you run)"
 
 say "1/5 Database in Sydney"
 ORG="$(sb "$SB_API/v1/organizations" | jq -r '.[0].slug // .[0].id // empty')" || die "Supabase didn't accept that token."
@@ -75,14 +94,12 @@ SVC="$(echo "$KEYS" | jq -r '([.[] | select(.name=="service_role")][0].api_key) 
 SB_URL="${SB_URL_OVERRIDE:-https://$REF.supabase.co}"
 
 say "2/5 Their Command"
-ACC="$(cf "$CF_API/accounts" | jq -r '.result[0].id // empty')"; [ -n "$ACC" ] || die "Cloudflare didn't accept that token."
 KEY="$(openssl rand -hex 24)"; SEAL="$(openssl rand -hex 32)"; SETUP="$(openssl rand -hex 24)"; FLEET="$(openssl rand -hex 24)"
 HOST="$SLUG.$ZONE_NAME"; BASE="${CLIENT_URL_BASE:-https://$HOST}"
 META="$(jq -n --arg o "https://$HOST" --arg k "$KEY" --arg s "$SEAL" --arg st "$SETUP" --arg u "$SB_URL" --arg sv "$SVC" --arg a "$ANTH" --arg oa "$OPENAI" --arg tg "$TG" --arg g "$GHL" --arg gl "$GHL_LOC" --arg sr "$STRIPE" --arg fl "$FLEET" '
   def sec($n; $v): if $v == "" then empty else {type:"secret_text", name:$n, text:$v} end;
   {main_module:"worker.mjs", compatibility_date:"2026-11-01",
    bindings: [ {type:"plain_text", name:"PUBLIC_ORIGIN", text:$o}, sec("STUDIO_TEST_KEY";$k), sec("SEAL_KEY";$s), sec("SETUP_TOKEN";$st), sec("FLEET_TOKEN";$fl), sec("SUPABASE_URL";$u), sec("SUPABASE_SECRET_KEY";$sv), sec("ANTHROPIC_API_KEY";$a), sec("OPENAI_API_KEY";$oa), sec("TELEGRAM_BOT_TOKEN";$tg), sec("GHL_TOKEN";$g), (if $gl == "" then empty else {type:"plain_text", name:"GHL_LOCATION_ID", text:$gl} end), sec("STRIPE_READ_KEY";$sr) ] }')"
-TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT; chmod 700 "$TMP"
 printf '%s' "$META" > "$TMP/metadata.json"; cp "$WORKER" "$TMP/worker.mjs"
 R="$(cf -X PUT "$CF_API/accounts/$ACC/workers/scripts/command-$SLUG" -F "metadata=@$TMP/metadata.json;type=application/json" -F "worker.mjs=@$TMP/worker.mjs;type=application/javascript+module")"; cfok "$R"
 ok "Command uploaded as command-$SLUG with its own keys"
@@ -96,11 +113,11 @@ ok "https://$HOST (SSL is automatic)"
 for i in $(seq 1 40); do curl -sS -o /dev/null -w '%{http_code}' "$BASE/health" 2>/dev/null | grep -q 200 && break; sleep "${POLL_SECONDS:-5}"; done
 
 say "4/5 Brand, industry template and invites"
-INV="$(printf '%s' "$STAFF" | jq -R 'split(",") | map(select(length>0) | split(":") | {name:(.[0]|gsub("^ +| +$";"")), role:((.[1] // "staff")|gsub(" ";""))})')"
-BODY="$(jq -n --arg b "$BUSINESS" --arg p "$PRODUCT" --arg o "$OWNER" --arg t "$TEMPLATE" --arg i "$INDUSTRY" --arg w "$WEBSITE" --arg bk "$BOOKING" --arg l "$LOCATION" --arg c "$COLOUR" --arg tg "${TARGET//[^0-9]/}" --argjson inv "$INV" '
-  {instance:{business_name:$b, product_name:$p, owner_name:$o, owner_first:($o|split(" ")[0]), template:$t, industry:$i, website:$w, booking_link:$bk, location:$l,
+INV="$(printf '%s' "$STAFF" | jq -Rs 'split(",") | map(select(length>0) | split(":") | {name:(.[0]|gsub("^ +| +$";"")), role:((.[1] // "staff")|gsub(" ";""))})')"
+BODY="$(jq -n --arg b "$BUSINESS" --arg p "$PRODUCT" --arg o "$OWNER" --arg t "$TEMPLATE" --arg i "$INDUSTRY" --arg w "$WEBSITE" --arg bk "$BOOKING" --arg l "$LOCATION" --arg c "$COLOUR" --arg tg "${TARGET//[^0-9]/}" --arg br "$BRIEF" --arg tier "$TIER" --argjson inv "$INV" '
+  {tier:$tier, instance:{business_name:$b, product_name:$p, owner_name:$o, owner_first:($o|split(" ")[0]), template:$t, industry:$i, website:$w, booking_link:$bk, location:$l, brief:$br,
     colours:{primary:(if ($c|test("^#[0-9a-fA-F]{6}$")) then $c else null end)}, mission_target:(($tg|tonumber?) // 0), apply_template:true, learn_website:($w != ""),
-    modules:{outreach:false, receptionist_product:false, offers_page:false, site_assistant:false}},
+    modules:{outreach:false, social_outreach:false, receptionist_product:false, offers_page:false, site_assistant:false}},
    owner:{name:$o}, invites:$inv}')"
 R="$(curl -sS -X POST "$BASE/api/v1/setup" -H "Authorization: Bearer $SETUP" -H "Content-Type: application/json" -d "$BODY")"
 echo "$R" | jq -e '.ok == true' >/dev/null || die "Setup call failed: $(echo "$R" | jq -r '.error // .' 2>/dev/null | head -c 300)"
@@ -115,7 +132,8 @@ mkdir -p "$ROOT/Client setups"; OUT="$ROOT/Client setups/$SLUG (KEEP PRIVATE).tx
   echo "$BUSINESS: Command copy (set up $(date '+%d %b %Y %H:%M'))"
   echo
   echo "Command:            https://$HOST/command-next"
-  echo "Cloudflare Worker:  command-$SLUG"
+  echo "Cloudflare Worker:  command-$SLUG (version ${LIVEV:-unknown})"
+  echo "Plan:               $( [ "$TIER" = company ] && echo Growth || echo Core )"
   echo "Supabase project:   command-$SLUG ($REF, Sydney)"
   echo
   echo "Sign-in links (Face ID / passkey, each works once, 7 days):"

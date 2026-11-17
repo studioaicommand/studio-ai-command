@@ -12,6 +12,7 @@ var INDUSTRY_TEMPLATES = {
   other: { label: "Other local business", customers: "customers", services: "enquiries and bookings", wins: ["Answer every enquiry fast, day and night", "Turn enquiries into bookings and sales", "Follow up everyone who didn't book", "Grow 5-star reviews", "Win back past customers"], compliance: ["Never invent prices, availability or guarantees", "Respect do-not-contact requests"], urgent: "a hot enquiry, an unhappy customer, a big opportunity" }
 };
 var INST_SHIFTS_ON = ["morning_briefing", "sales_am", "sales_pm", "weekly_reports", "marketing_review", "finance_check", "client_health", "content_plan", "brand_radar", "authority_content", "email_nurture", "systems_review", "ops_health"];
+globalThis.__SF_INST_CHARTER = (p) => instCharter(p, INDUSTRY_TEMPLATES[p.template] || INDUSTRY_TEMPLATES.other, +p.mission_target || 0);
 function instCharter(p, t, target) {
   const owner = p.owner_name || p.owner_first || "the owner", first = p.owner_first || String(owner).split(" ")[0];
   return `${p.product_name || p.business_name + " Command"} CHARTER (owner: ${owner}, ${p.business_name}${p.location ? ", " + p.location : ""})
@@ -55,33 +56,42 @@ async function instApplyTemplate(env, p, key, target) {
   await insert(env, "team_memory", facts.map((fact) => ({ category: "business", fact }))).catch(() => {});
   return { template: key, label: t.label, shifts_on: INST_SHIFTS_ON.length };
 }
+// v130 Studio's main Command lives at studioflowandsystems.app; every client copy has its own <name>.studioflowandsystems.app or domain.
+function instStudioMain(env, request) {
+  let h = ""; try { h = new URL(env.PUBLIC_ORIGIN || request?.url || "").hostname.toLowerCase(); } catch {}
+  return h === "studioflowandsystems.app" || h === "www.studioflowandsystems.app";
+}
 async function instRoute(p, m, body, env, request) {
   const raw = await secGet(env, "instance").catch(() => null) || {};
   if (p === "/instance" && m === "GET") {
     const clientModules = Object.fromEntries(Object.entries(INST_MODULES).filter(([k]) => k !== "outreach"));
     const assets = await secGet(env, "instance_assets").catch(() => null) || {};
     const kb = await secGet(env, "instance_kb").catch(() => null);
-    return json({ ok: true, profile: raw, computed: await instGet(env, true), modules: clientModules, templates: Object.fromEntries(Object.entries(INDUSTRY_TEMPLATES).map(([k, t]) => [k, t.label])), assets: Object.fromEntries(Object.entries(assets).map(([k, a]) => [k, { type: a.type, kb: Math.round((a.b64 || "").length * 0.75 / 1024) }])), knows_business: !!kb, knows: kb ? { services: (kb.services || []).length, faqs: (kb.faqs || []).length } : null });
+    return json({ ok: true, profile: raw, studio_main: instStudioMain(env, request), computed: await instGet(env, true), modules: clientModules, templates: Object.fromEntries(Object.entries(INDUSTRY_TEMPLATES).map(([k, t]) => [k, t.label])), assets: Object.fromEntries(Object.entries(assets).map(([k, a]) => [k, { type: a.type, kb: Math.round((a.b64 || "").length * 0.75 / 1024) }])), knows_business: !!kb, knows: kb ? { services: (kb.services || []).length, faqs: (kb.faqs || []).length } : null });
   }
   if (p === "/instance" && m === "POST") {
     const next = { ...raw };
     for (const k of ["business_name", "product_name", "owner_name", "owner_first", "industry", "website", "booking_link", "location", "login_headline"]) if (body[k] != null) next[k] = String(body[k]).trim().slice(0, k === "website" || k === "booking_link" ? 300 : 120);
+    if (body.brief != null) next.brief = String(body.brief).trim().slice(0, 3000);
     if (body.colours) next.colours = { primary: /^#[0-9a-f]{6}$/i.test(body.colours.primary || "") ? body.colours.primary : raw.colours?.primary || null, accent: /^#[0-9a-f]{6}$/i.test(body.colours.accent || "") ? body.colours.accent : raw.colours?.accent || null };
     if (body.modules && typeof body.modules === "object") next.modules = Object.fromEntries(Object.keys(INST_MODULES).map((k) => [k, k === "outreach" ? false : body.modules[k] === true]));
     if (next.modules && !body.is_studio) next.modules.outreach = false;
     if (body.is_studio != null) next.is_studio = !!body.is_studio;
     if (next.is_studio) next.modules = Object.fromEntries(Object.keys(INST_MODULES).map((k) => [k, true]));
     if (!next.is_studio && !next.business_name) return json({ ok: false, error: "Add the business name." }, 400);
+    // v130 white-label clients are always separate: Studio's own Command can never be rebranded into a client's copy
+    // (it would put the client inside Studio's data). New clients get their own copy from the Client setup kit.
+    if (!next.is_studio && instStudioMain(env, request) && !(raw.business_name && !raw.is_studio)) return json({ ok: false, error: "This is your own Studio Command, so it can't become a client's copy. White-label clients get their own separate Command (own database, keys and web address): run Client setup kit > New client Command." }, 400);
     next.updated = new Date().toISOString();
     if (body.template && INDUSTRY_TEMPLATES[body.template]) next.template = body.template;
     await secPut(env, "instance", next);
-    INST_CACHE = { at: 0, v: null };
+    INST_CACHE = { at: 0, v: null }; INST_BRIEF_CACHE = { at: 0, v: "" };
     const out = { ok: true, profile: next };
     if (body.apply_template && next.template && !next.is_studio) out.applied = await instApplyTemplate(env, next, next.template, +body.mission_target || 0);
     if (body.learn_website && next.website && !next.is_studio) {
       try {
         const d = await buildDemo(env, { website: next.website, business_name: next.business_name, vertical: "other" }, { force: true });
-        await secPut(env, "instance_kb", { ...d.kb, built: new Date().toISOString() });
+        await secPut(env, "instance_kb", { ...d.kb, built: new Date().toISOString() }); INST_BRIEF_CACHE = { at: 0, v: "" };
         out.learned = { services: (d.kb?.services || []).length, faqs: (d.kb?.faqs || []).length, quality: d.quality };
       } catch (e) { out.learn_error = String(e.message).slice(0, 160); }
     }
