@@ -135,6 +135,7 @@ async function teamScheduled(event, env) {
     ["Monday report", () => mondayReport(e)],
     ["DM desk", () => (instMods.outreach || instMods.social_outreach ? dmDaily(e) : CRON_NOT_DUE)],
     // 3. The team's AI work (each job is also queued and retried on its own).
+    ["Task doer", ai(() => taskDoer(e)), { ms: 300000 }],
     ["Team shifts", ai(() => runDueShifts(e, when)), { ms: 360000 }],
     ["Arena", () => (key && brisbaneNow().hour === 2 && !bg102.held ? leanState(e).catch(() => ({})).then((ls) => arenaRun(e, { n: ls.lean ? 6 : 10 })) : CRON_NOT_DUE), { ms: 300000 }],
     ["No-show rebooker", ai(() => noShowWatch(e))],
@@ -154,6 +155,59 @@ async function teamScheduled(event, env) {
     ["Archive index", () => backfillExistingArchive(e)],
     ["Telegram digest", k(() => cronNotify(e)), { always: true, ms: 60000 }]
   ]);
+}
+// v137 Task doer: the AI does the to-dos it would otherwise leave on Ty's list (checking GHL, a website, a contact,
+// tags, history). Only what truly needs Ty (a call he must make, a decision, a login, money) stays, rewritten as one line.
+var TASK_DOER_HOURS = [9, 12, 15];
+async function taskDoer(env, { force = false, limit = 4 } = {}) {
+  const t = brisbaneNow();
+  if (!force && !TASK_DOER_HOURS.includes(t.hour)) return CRON_NOT_DUE;
+  const st = (await select(env, "team_settings", "key=eq.task_doer&select=value&limit=1").catch(() => []))?.[0]?.value || {};
+  if (!force && st.slot === t.slot) return CRON_NOT_DUE;
+  await saveSetting(env, "task_doer", { slot: t.slot, at: new Date().toISOString() }).catch(() => {});
+  const cutoff = new Date(Date.now() - 2 * 36e5).toISOString();
+  const rows = await select(env, "team_actions", "type=eq.owner_task&status=eq.pending&created_at=lte." + encodeURIComponent(cutoff) + "&select=id,title,department,params,created_at&order=created_at.asc&limit=40").catch(() => []);
+  const todo = rows.filter((r) => !(r.params && r.params.ai_tried)).slice(0, limit);
+  const out = { done: 0, needs_ty: 0, failed: 0, items: [] };
+  for (const a of todo) {
+    const p = a.params || {};
+    const dept = DEPARTMENTS[a.department] && a.department !== "chief_of_staff" ? a.department : "head_of_sales";
+    let reply = "", stopped = null;
+    try {
+      ({ reply, stopped } = await runAgent(env, dept, { source: "task_doer", maxSteps: 10, messages: [{ role: "user", content: `[Task doer] This to-do was left on Ty's list on ${String(a.created_at).slice(0, 10)}:
+TITLE: ${a.title}
+DETAILS: ${String(p.details || p.reason || "").slice(0, 2500)}
+
+Ty is overwhelmed. Do this yourself now with your tools (GHL contact search and history, tags, notes, prospects, websites, web search). Queue anything client-facing for approval as usual. Only hand it back if it truly needs Ty in person: a phone call he must make, a decision only he can make, a login or password, or money.
+End with exactly one final line, either
+RESULT: DONE - what you did or found, in one sentence
+or
+RESULT: NEEDS_TY - the one thing Ty must do, in one short sentence (for a call: business, phone and why now).` }] }));
+    } catch (e) { stopped = String(e.message || e); }
+    const m = /RESULT:\s*(DONE|NEEDS_TY)\s*[-:\u2013\u2014]?\s*(.+)/i.exec(reply || "");
+    const params = { ...p, ai_tried: new Date().toISOString(), ai_reply: String(reply || "").slice(-1500) };
+    if (m && m[1].toUpperCase() === "DONE") {
+      await update(env, "team_actions", "id=eq." + a.id + "&status=eq.pending", { status: "done", decided_at: new Date().toISOString(), params, result: { note: "Done by the AI: " + m[2].trim().slice(0, 400) } }).catch(() => {});
+      out.done++; out.items.push({ id: a.id, done: m[2].trim().slice(0, 200) });
+    } else if (m) {
+      await update(env, "team_actions", "id=eq." + a.id + "&status=eq.pending", { title: m[2].trim().slice(0, 160), params: { ...params, details: m[2].trim(), original_title: a.title } }).catch(() => {});
+      out.needs_ty++; out.items.push({ id: a.id, needs_ty: m[2].trim().slice(0, 200) });
+    } else {
+      await update(env, "team_actions", "id=eq." + a.id + "&status=eq.pending", { params }).catch(() => {});
+      out.failed++; out.items.push({ id: a.id, error: stopped || "no clear result" });
+    }
+  }
+  if (out.done) await audit(env, { actor: "Task doer", action: "tasks_done", target_type: "owner_task", target_id: "batch", summary: ("Did " + out.done + " of Ty's to-dos: " + out.items.filter((x) => x.done).map((x) => x.done).join(" | ")).slice(0, 500) }).catch(() => {});
+  if (out.done || out.needs_ty) {
+    const e7 = (x) => String(x).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+    const lines = ["\u2705 <b>Done for you</b>" + (out.done ? "" : ": nothing this round")];
+    for (const x of out.items.filter((x) => x.done)) lines.push("\u2022 " + e7(x.done));
+    if (out.needs_ty) { lines.push("", "\u{1F449} <b>Needs you</b>"); for (const x of out.items.filter((x) => x.needs_ty)) lines.push("\u2022 " + e7(x.needs_ty)); }
+    const text = lines.join("\n");
+    await notify(env, text).catch(() => {});
+    await voiceBriefing(env, text.replace(/<[^>]+>/g, "")).catch(() => {});
+  }
+  return { ok: true, ...out, waiting: rows.length };
 }
 async function leakReport(request, env, url) {
   const token = url.pathname.split("/")[2] || "";
@@ -729,6 +783,9 @@ async function inboxVoiceSet(env, contactId, on, name) {
 
 // ── v106 Update Announcer: every release teaches the whole team ──
 var RELEASE_NOTES = [
+  { v: 137, studio_only: true, voice_on: true, title: "The AI does the to-dos itself and tells Ty what it did", rules: [
+    { rule: "Never give Ty homework the team can do with its tools: checking GHL, a contact, its history or tags, a website, an email address, a campaign hold. Do it yourself. propose_owner_task is only for what needs Ty in person: a call he makes, a decision only he can make, a login or password, money.", applies_to: ["all"] },
+    { rule: "Three times a weekday (9am, 12pm, 3pm) the Task doer works through the to-dos on Ty's list, does what it can, and sends Ty one Telegram (and voice note) saying what was done and the few things that need him.", applies_to: ["all"] }] },
   { v: 136, studio_only: true, lean_off: true, title: "Simpler team: Command, Sales, Clients and a quiet back office",
     shifts_set: { off: ["market_research", "marketing_review", "finance_check", "content_plan", "prospect_hunt_pm", "prospect_hunt_eve", "brand_radar", "authority_content", "email_nurture", "systems_review", "evolve_research", "ops_health", "weekly_reports"], on: ["back_office"] },
     rules: [
@@ -809,6 +866,11 @@ async function releaseAnnounce(env, { force = false } = {}) {
         await saveSetting(env, "shifts", cs.shifts.map((x) => ({ id: x.id, enabled: off.has(x.id) ? false : on.has(x.id) ? true : x.enabled, hour: x.hour, days: x.days, last_run: x.last_run || null })));
         shiftNote = "Turned off " + off.size + " back-office shifts" + (on.size ? " and turned on " + [...on].join(", ").replace(/_/g, " ") : "") + ".";
       }
+    }
+    if (n.voice_on) {
+      const vr = await select(env, "team_settings", "key=eq.voice_style&select=value&limit=1").catch(() => []);
+      await saveSetting(env, "voice_style", { ...(vr?.[0]?.value || {}), briefing_voice_note: true }).catch(() => {});
+      shiftNote = (shiftNote ? shiftNote + " " : "") + "Voice notes on: the morning brief and Done-for-you updates come as Telegram voice notes too.";
     }
     if (n.lean_off) {
       const lr = await select(env, "team_settings", "key=eq.ai_lean&select=value&limit=1").catch(() => []);

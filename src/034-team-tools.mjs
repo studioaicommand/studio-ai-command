@@ -424,7 +424,7 @@ var TOOL_DEFS = {
     input_schema: { type: "object", properties: { count: { type: "integer", description: "How many (1-25, default 10)." }, channel: { type: "string", enum: ["dms", "linkedin_connections"] } } }
   },
   propose_owner_task: {
-    description: "Put a to-do on the owner's approval queue (for things only the owner can do: a call, a decision, a login, a review).",
+    description: "Put a to-do on Ty's list. ONLY for things Ty must do in person: a phone call he makes, a decision only he can make, a login or password, money. NEVER for checking GHL, a contact, its history or tags, a website, an email address or a campaign: do those yourself with your tools (Ty is overwhelmed by homework). One short title; for a call include business, phone and why now.",
     input_schema: {
       type: "object",
       properties: { title: { type: "string" }, details: { type: "string" }, due_date: { type: "string", description: "YYYY-MM-DD" }, reason },
