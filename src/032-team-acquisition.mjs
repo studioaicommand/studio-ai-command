@@ -68,16 +68,39 @@ async function findReplies(env, settings, { hours = 72 } = {}) {
   }
   return out;
 }
+// v138: automatic replies (out of office, "thanks, we'll get back to you", ticket receipts, unmonitored inbox) are not
+// real replies: no draft, no "replied" status, the follow-up sequence carries on until a person writes back.
+var AUTO_REPLY_RES = [
+  /\b(out of (the )?office|automatic reply|auto[- ]?reply|autoreply|auto[- ]?response|automated (response|reply|message)|away from (the|my) (office|desk)|on (annual |parental |maternity |sick )?leave|currently (away|out of the office|unavailable|on leave))\b/i,
+  /\bthank(s| you)( so much)? for (taking the time to )?(your (email|message|enquiry|inquiry|e-mail)|contact(ing)?|getting in touch|reaching out|emailing|writing)\b[\s\S]{0,400}\b(we|i|our team|someone)(\s+\w+){0,3}\s+(will|'ll|aim to|endeavou?r to|try to)\b[\s\S]{0,80}\b(respond|reply|get back|be in touch|contact you|answer)\b[\s\S]{0,80}\b(as soon as (possible|we can)|within \d+|(business|working) (day|hour)s?|shortly|in due course|no longer than)/i,
+  /\bwe('ve| have) received your (email|message|enquiry|inquiry)\b[\s\S]{0,200}\b(will|shortly|as soon as|within)\b/i,
+  /\b(this|the) (mailbox|inbox|email address) is (not monitored|unmonitored|no longer (in use|monitored|active))\b/i,
+  /\b(ticket|case|reference|request) (number|no\.?|#|id)\b[\s\S]{0,120}\b(received|created|logged|assigned)\b|\b(received|created|logged)\b[\s\S]{0,80}\b(ticket|case) (number|no\.?|#)/i,
+  /\b(i('m| am)|we('re| are)) (currently )?(out|away|travelling|traveling)\b[\s\S]{0,120}\b(return|back)\b/i
+];
+function isAutoReply(text, subject = "") {
+  const t = String(subject || "") + "\n" + String(text || "");
+  if (!t.trim()) return false;
+  if (/^\s*(automatic reply|auto(matic)?[- ]?reply|out of office|autoreply)\b/i.test(String(subject || ""))) return true;
+  const head = t.slice(0, 3000);
+  if (AUTO_REPLY_RES.some((re, i) => (i === 0 || i >= 3) && re.test(head))) return true;
+  // Softer signs ("thanks, we'll get back to you within 24 hours") only count when the person isn't actually engaging.
+  if (/\?|\binterested\b|call me|give me a (call|ring)|\bbook\b|sounds (good|great)|let'?s (chat|talk)|tell me more|\bdemo\b/i.test(String(text || ""))) return false;
+  return AUTO_REPLY_RES.slice(1, 3).some((re) => re.test(head));
+}
 async function checkReplies(env, runAgent2, { force = false } = {}) {
   const t = brisbaneNow();
   if (!force && (t.hour < 7 || t.hour > 20)) return { skipped: "outside hours" };
   const settings = await getSettings(env);
-  const fresh = await findReplies(env, settings);
+  let fresh = await findReplies(env, settings);
   const seen = { ...settings.replies?.seen || {} };
   for (const r of fresh) seen[r.conversation_id] = r.at;
   const keep = Object.entries(seen).sort((a, b) => b[1] - a[1]).slice(0, 300);
   if (fresh.length) await saveSetting(env, "replies", { seen: Object.fromEntries(keep), last_check: now() });
-  if (!fresh.length) return { checked: true, new: 0 };
+  const autos = fresh.filter((r) => isAutoReply(r.text));
+  for (const r of autos) { await addNote(env, r.contact_id, "Command: automatic reply (out of office or 'we got your message'). Not treated as a reply; no response drafted, follow-ups continue until a person writes back: " + String(r.text).slice(0, 300)).catch(() => {}); await addTags(env, r.contact_id, ["auto-reply-received"]).catch(() => {}); }
+  if (autos.length) fresh = fresh.filter((r) => !autos.includes(r));
+  if (!fresh.length) return { checked: true, new: 0, auto_replies: autos.length };
   await Promise.all(fresh.map((r) => update(env, "agent_prospects", `id=eq.${r.prospect.id}`, { status: "replied", updated_at: now() }).catch(() => {
   })));
   const origin = env.PUBLIC_ORIGIN || DEFAULT_ORIGIN;

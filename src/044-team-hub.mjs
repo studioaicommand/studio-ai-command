@@ -688,6 +688,7 @@ async function inboxHandle(env, body) {
   const text = inboxTxt(inbound.body || payloadMsg.body, 1500);
   if (!text) return { skipped: 'empty' };
   if (inboxIsOptOut(text)) return inboxOptOut(env, contactId, text, channel);
+  if (isAutoReply(text, inbound.subject || payloadMsg.subject || body.subject || "")) return inboxQuiet(env, contactId, inbound.id || ('p-' + contactId + '-' + text.slice(0, 40)), INBOX_CHANNELS[channel].label, text, "automatic reply (out of office or 'we got your message'); no reply drafted, waiting for a real person");
   const msgId = inbound.id || ('p-' + contactId + '-' + text.slice(0, 40));
   if (body.event === 'sweep') { const lq = (await v101Get(env, 'inbox_quiet').catch(() => null)) || { items: [] }; if ((lq.items || []).some((x) => x.message_id === msgId)) return { skipped: 'already seen' }; }
 
@@ -783,6 +784,8 @@ async function inboxVoiceSet(env, contactId, on, name) {
 
 // ── v106 Update Announcer: every release teaches the whole team ──
 var RELEASE_NOTES = [
+  { v: 138, title: "Automatic replies are not replies", rules: [
+    { rule: "An automatic reply (out of office, 'thanks for contacting us, we'll get back to you within 24 hours', a ticket number, an unmonitored inbox) is not a reply. Never draft a response to it, never mark the prospect as replied, and let the follow-ups carry on until a real person writes back.", applies_to: ["all"] }] },
   { v: 137, studio_only: true, voice_on: true, title: "The AI does the to-dos itself and tells Ty what it did", rules: [
     { rule: "Never give Ty homework the team can do with its tools: checking GHL, a contact, its history or tags, a website, an email address, a campaign hold. Do it yourself. propose_owner_task is only for what needs Ty in person: a call he makes, a decision only he can make, a login or password, money.", applies_to: ["all"] },
     { rule: "Three times a weekday (9am, 12pm, 3pm) the Task doer works through the to-dos on Ty's list, does what it can, and sends Ty one Telegram (and voice note) saying what was done and the few things that need him.", applies_to: ["all"] }] },
