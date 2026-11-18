@@ -83,6 +83,6 @@ x = await call("/performance/review", {});
 assert(x.s === 403 && /Full Company/.test(x.j.error), "On Core Team the Team Leader review is a Full Company feature");
 const app = await (await w.fetch(new Request("https://studioflowandsystems.app/app/app.js"), env, ctx)).text();
 try { new Function(app); console.log("\u2713 Command app script parses"); } catch (e) { console.error("FAIL: app.js", e.message); process.exit(1); }
-assert(/VIEWS.performance/.test(app) && /\["performance", "Performance"\]/.test(app) && /data-fl-tier/.test(app), "Performance page and the plan switch in Client Commands are in the app");
+assert(/VIEWS.performance/.test(app) && /href="#\/performance">Performance/.test(app) && /data-fl-tier/.test(app), "Performance page and the plan switch in Client Commands are in the app");
 console.log("v49 performance system: all passed");
 process.exit(0);
