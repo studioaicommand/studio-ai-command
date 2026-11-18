@@ -163,18 +163,18 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
   }
 
   // \u2500\u2500 Navigation model \u2500\u2500
+  // v139 simpler menu: 5 menus. Performance sits inside Team, Reports and History open from links (Studio can still use them).
   const HUBS = [
-    ["today", "Today", "home", [["today", "Today"], ["performance", "Performance"], ["reports", "Reports"]]],
-    ["inbox", "Inbox", "check", [["approvals", "Waiting for you"], ["calls", "Phone calls"], ["records", "History"]]],
-    ["clients", "Clients", "shop", [["clients", "Clients"], ["fleet", "Client Commands"], ["money", "Money"], ["offers", "Products & prices"]]],
-    ["growth", "Growth", "growth", [["outreach", "Outreach today"], ["dms", "DM Desk"], ["growth", "Pipeline"], ["demos", "Website demos"]]],
+    ["today", "Today", "home", [["today", "Today"], ["approvals", "Waiting for you"], ["calls", "Phone calls"]]],
+    ["growth", "Sales", "growth", [["outreach", "Outreach today"], ["dms", "DM Desk"], ["growth", "Pipeline"], ["demos", "Website demos"]]],
+    ["clients", "Clients", "shop", [["clients", "Clients"], ["fleet", "Client Commands"], ["money", "Money"]]],
     ["studio", "Studio AI", "studio", [["studio", "Talk to Studio"], ["chrome", "Do it for me"], ["team", "Team"], ["knowledge", "Knowledge"]]],
-    ["settings", "Settings", "sliders", [["setup", "Get set up"], ["connections", "Connections"], ["autopilot", "Autopilot"], ["brand", "Brand & features"], ["security", "Security"]]],
+    ["settings", "Settings", "sliders", [["setup", "Get set up"], ["connections", "Connections"], ["autopilot", "Autopilot"], ["offers", "Products & prices"], ["brand", "Brand & features"], ["security", "Security"]]],
   ];
-  const VIEW_HOST = { home: "today", goals: "today", business: "growth", jobs: "team", brain: "knowledge", memory: "knowledge", systems: "autopilot", scout: "team" };
+  const VIEW_HOST = { home: "today", goals: "today", reports: "today", records: "today", business: "growth", jobs: "team", performance: "team", brain: "knowledge", memory: "knowledge", systems: "autopilot", scout: "team" };
   const hubOf = (view) => HUBS.find((h) => h[3].some((t) => t[0] === view || t[0] === VIEW_HOST[view])) || HUBS[0];
   const HUB_ALIAS = { inbox: "approvals", settings: "autopilot" };
-  const TABS = [["today", "Today", "home"], ["inbox", "Inbox", "check"], ["clients", "Clients", "shop"], ["growth", "Growth", "growth"], ["more", "More", "more"]];
+  const TABS = [["today", "Today", "home"], ["growth", "Sales", "growth"], ["clients", "Clients", "shop"], ["studio", "Studio", "studio"], ["more", "More", "more"]];
   const TITLES = {
     today: ["Today", "Your calls, follow-ups and client setup in one workspace"],
     jobs:["AI jobs","Saved assignments, scheduled work and results"],
@@ -188,7 +188,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     studio: ["Studio AI", "Talk or type. Studio sees your whole business and runs the team"],
     approvals: ["Inbox", "Replies, invoices and outreach waiting for your yes. Nothing reaches a client without it"],
     growth: ["Growth", "Prospects, outreach, calls and how we show up online"],
-    team: ["Executive team", "Chief of Staff and seven department heads"],
+    team: ["Team", "Command, Sales and Clients lead; the back office works quietly"],
     reports: ["Reports", "Briefings, weekly reports and documents from the team"],
     money: ["Money", "Profit, invoices and what to set aside, this month"],
     clients: ["Clients", "Every client: who bought what, what they pay, and what to sell them next"],
@@ -213,12 +213,12 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     const app = $("#app");
     app.innerHTML =
       '<aside class="side" aria-label="Main menu"><div class="brand"><img class="logo" src="/app/logo.webp?v=4438983cff" alt="Studio Flow &amp; Systems" width="640" height="100"><img class="mark" src="/app/mark.webp?v=4438983cff" alt="Studio Flow &amp; Systems" width="38" height="38"></div>' +
-      '<nav class="nav"><div class="grp">Command</div>' + HUBS.map(([id, label, i, subs]) => '<a href="#/' + subs[0][0] + '" data-nav="' + id + '" title="' + label + '">' + ic(i) + '<span class="t">' + label + "</span>" + (id === "inbox" ? '<span class="badge" data-badge hidden></span>' : "") + "</a>").join("") + "</nav>" +
+      '<nav class="nav"><div class="grp">Command</div>' + HUBS.map(([id, label, i, subs]) => '<a href="#/' + subs[0][0] + '" data-nav="' + id + '" title="' + label + '">' + ic(i) + '<span class="t">' + label + "</span>" + (id === "today" ? '<span class="badge" data-badge hidden></span>' : "") + "</a>").join("") + "</nav>" +
       '<div class="foot"><button class="btn ghost sm" data-act="privacy">' + ic("eye") + '<span class="t">Hide numbers</span></button><button class="btn ghost sm" data-act="motion">' + ic("pause") + '<span class="t">Pause motion</span></button><button class="btn ghost sm" data-act="lock">' + ic("lock") + '<span class="t">Lock</span></button></div></aside>' +
       '<div class="main"><header class="topbar"><button class="btn icon ghost mobile-only" data-act="privacy" aria-label="Hide numbers">' + ic("eye") + '</button><img class="mlogo" src="/app/logo.webp?v=4438983cff" alt="Studio Flow &amp; Systems" width="640" height="100"><div class="tl"><h1 id="vTitle"></h1><div class="sub" id="vSub"></div></div>' +
       '<span class="live" id="live"><span class="dot ok"></span><span class="t">Live</span></span><button class="btn icon ghost" data-act="lock" aria-label="Lock command centre" title="Lock">' + ic("lock") + "</button></header>" +
       '<main class="view" id="view" tabindex="-1"></main></div>' +
-      '<nav class="tabs" aria-label="Tabs">' + TABS.map(([id, label, i]) => '<a href="#/' + (HUB_ALIAS[id] || id) + '" data-tab="' + id + '">' + ic(i) + label + (id === "inbox" ? '<span class="badge" data-badge hidden></span>' : "") + "</a>").join("") + "</nav>" +
+      '<nav class="tabs" aria-label="Tabs">' + TABS.map(([id, label, i]) => '<a href="#/' + (HUB_ALIAS[id] || id) + '" data-tab="' + id + '">' + ic(i) + label + (id === "today" ? '<span class="badge" data-badge hidden></span>' : "") + "</a>").join("") + "</nav>" +
       '<div class="toasts" aria-live="polite"></div><div id="vpillHost"></div>';
     app.addEventListener("click", (e) => {
       const a = e.target.closest("[data-act]");
@@ -344,7 +344,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     document.title = t + " \xB7 " + (INST && INST.custom ? INST.product_name : "Studio AI");
     const hub = hubOf(ROUTE.view);
     $$("[data-nav]").forEach((a) => a.classList.toggle("on", a.dataset.nav === hub[0]));
-    $$("[data-tab]").forEach((a) => a.classList.toggle("on", a.dataset.tab === hub[0] || (a.dataset.tab === "more" && !["today", "inbox", "clients", "growth"].includes(hub[0]))));
+    $$("[data-tab]").forEach((a) => a.classList.toggle("on", a.dataset.tab === hub[0] || (a.dataset.tab === "more" && !["today", "growth", "clients", "studio"].includes(hub[0]))));
     const v = $("#view");
     v.style.animation = "none"; void v.offsetWidth; v.style.animation = "";
     v.innerHTML = '<div class="vt"><h1>' + esc(t) + "</h1><p>" + esc(s) + "</p></div>" + (hub[3].length > 1 ? '<nav class="subnav" aria-label="' + esc(hub[1]) + '">' + hub[3].map((x) => '<a href="#/' + x[0] + '"' + (x[0] === ROUTE.view ? ' class="on" aria-current="page"' : "") + ">" + esc(x[1]) + "</a>").join("") + "</nav>" : "");
@@ -352,6 +352,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     v.append(body);
     scrollTo({ top: 0 });
     lookSync();
+    try { const uk = ROUTE.view, un = Date.now(); if (!window.__uiSeen || window.__uiSeen[0] !== uk || un - window.__uiSeen[1] > 60000) { window.__uiSeen = [uk, un]; team('/ui-usage', { method: 'POST', body: { view: uk } }).catch(() => {}); } } catch (e) {}
     (VIEWS[ROUTE.view] || VIEWS.home)(body).catch((e) => { body.innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
   }
   addEventListener("hashchange", render);
@@ -387,7 +388,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
       '<div class="wf-metrics">'+totals.map(([name,n])=>'<div class="wf-glass"><span class="mu sm">'+esc(name)+'</span><strong>'+ (d.complete?'':'≥ ')+esc(n)+'</strong></div>').join('')+'</div>'+
       '<section class="wf-glass"><div class="wf-section-head"><div><h3>Today’s work</h3><p class="mu sm">Updated '+esc(workflowDate(d.as_of))+' · Brisbane time · one suggested action per business</p></div><span class="chip c">'+esc(d.items.length)+' shown</span></div><div class="wf-filters" role="group" aria-label="Filter today’s work">'+kinds.map(([k,l])=>'<button class="btn sm '+(filter===k?'pri':'ghost')+'" data-wf-filter="'+k+'" aria-pressed="'+(filter===k)+'">'+l+'</button>').join('')+'</div><div class="wf-worklist">'+(rows.length?rows.map(i=>'<article class="wf-workitem"><div class="wf-type">'+esc(i.kind==='check'?'Review':i.kind.replace(/_/g,' '))+'</div><div class="grow"><h4>'+esc(i.business_name)+'</h4><p class="sm">'+esc(i.title)+'</p><p class="mu sm">'+esc(i.reason)+'</p>'+(i.due_at?'<span class="chip '+(Date.parse(i.due_at)<Date.now()?'warn':'')+'">Due '+esc(workflowDate(i.due_at))+'</span>':'')+'</div><a class="btn" href="#/'+esc(i.href)+'">'+esc(i.cta)+'</a></article>').join(''):'<div class="empty">'+(d.complete?'No items in this view. You can find a business and save its next step.':'No items loaded in this view. Check the warnings and refresh before assuming everything is clear.')+'</div>')+'</div></section>'+
       '<section class="wf-glass"><div class="wf-section-head"><div><h3>Automatic follow-ups</h3><p class="mu sm">These are scheduled emails, separate from your personal reminders. Opens alone do not trigger them.</p></div><a class="btn sm" href="#/growth/followups">Manage &amp; pause</a></div>'+(d.automatic.length?d.automatic.slice(0,5).map(a=>'<div class="wf-auto"><b>'+esc(a.business_name)+'</b><span class="mu sm">'+esc(a.status)+' · '+esc(workflowDate(a.due_at))+'</span></div>').join(''):'<p class="mu sm">No automatic follow-ups shown'+(d.complete?'.':'; some records could not load.')+'</p>')+'</section>';
-    return workflowFocusHtml(d)+'<details class="wf-more"'+(open?' open':'')+'><summary class="btn ghost">Everything else ('+esc(d.items.length)+' items, numbers and settings)</summary>'+everything+'</details>';
+    return workflowFocusHtml(d)+'<details class="wf-more"'+(open?' open':'')+'><summary class="btn ghost">Everything else ('+esc(d.items.length)+' items, numbers and settings)</summary>'+everything+'<p class="mu sm" style="margin-top:12px"><a href="#/reports">Reports</a> \u00b7 <a href="#/records">History</a></p></details>';
   }
   // v135 Today focus: only today's few actions, warm calls first. Everything else is folded away below.
   function workflowFocusHtml(d) {
@@ -2164,7 +2165,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     if (d.shape) {
     const shp = d.shape || [], leads = shp.filter((x) => x.group === 'lead'), back = shp.filter((x) => x.group !== 'lead');
     box = document.createElement('section'); box.className = 'wf-glass v69-plan';
-    box.innerHTML = '<span class="wf-eyebrow">YOUR TEAM</span><h3 style="margin:4px 0">' + (leads.length ? esc(leads.map((x) => x.team).join(', ')) + ', plus a quiet back office' : 'Your AI team') + '</h3><p class="mu sm">You talk to Command. Sales finds and follows up the people worth calling. Clients looks after everyone who has paid. The back office (' + esc(back.map((x) => x.short || x.name).join(', ')) + ') works weekly in the background and only tells you when something needs you.' + (sp ? ' The leads also have ' + esc(d.spec_count) + ' specialist skills they use when a job needs one.' : '') + '</p>';
+    box.innerHTML = '<div class="row sp" style="gap:10px;flex-wrap:wrap"><span class="wf-eyebrow">YOUR TEAM</span><a class="btn sm ghost" href="#/performance">Performance</a></div><h3 style="margin:4px 0">' + (leads.length ? esc(leads.map((x) => x.team).join(', ')) + ', plus a quiet back office' : 'Your AI team') + '</h3><p class="mu sm">You talk to Command. Sales finds and follows up the people worth calling. Clients looks after everyone who has paid. The back office (' + esc(back.map((x) => x.short || x.name).join(', ')) + ') works weekly in the background and only tells you when something needs you.' + (sp ? ' The leads also have ' + esc(d.spec_count) + ' specialist skills they use when a job needs one.' : '') + '</p>';
     } else {
     const n = (d.scorecards || []).length || 8;
     const all = n + (d.spec_count || 0);

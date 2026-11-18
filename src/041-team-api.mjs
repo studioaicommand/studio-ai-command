@@ -62,6 +62,12 @@ async function route2(request, env, url, ctx) {
   if (seg[0] === "outreach-plan" && m === "GET") return json(await outreachPlan(env));
   if (seg[0] === "growth-pack" && seg[1] === "run" && m === "POST") return json(await packReengage(env, { force: true }));
   if (seg[0] === "cron-health" && m === "GET") { const ch = (await secGet(env, "cron_health").catch(() => null)) || {}; return json({ ok: true, last_run: ch.at || null, took_seconds: ch.took_ms ? Math.round(ch.took_ms / 1000) : null, failing: Object.entries(ch.streaks || {}).map(([job, runs]) => ({ job, runs_in_a_row: runs, last_error: ch.steps?.[job]?.err || "" })), skipped: ch.skipped || [], steps: ch.steps || {}, history: (ch.history || []).slice(0, 24), ai_gateway: Boolean(aigTarget(env)) }); }
+  if (seg[0] === "ui-usage") {
+    const r = await select(env, "team_settings", "key=eq.ui_usage&select=value&limit=1").catch(() => []);
+    const st = r?.[0]?.value || { since: new Date().toISOString(), views: {} };
+    if (m === "POST") { const v = String((body || {}).view || "").replace(/[^a-z_]/g, "").slice(0, 30); if (v) { const x = st.views[v] || { n: 0 }; st.views[v] = { n: x.n + 1, last: new Date().toISOString() }; await saveSetting(env, "ui_usage", st).catch(() => {}); } return json({ ok: true }); }
+    return json({ ok: true, since: st.since, views: Object.entries(st.views || {}).map(([view, x]) => ({ view, opens: x.n, last: x.last })).sort((a, b) => b.opens - a.opens) });
+  }
   if (seg[0] === "task-doer" && m === "POST") return json(await taskDoer(env, { force: true, limit: Math.max(1, Math.min(10, Number((body || {}).limit) || 4)) }));
   if (seg[0] === "release-announce" && m === "POST") return json(await releaseAnnounce(env, { force: true }));
   if (seg[0] === "lean") {
