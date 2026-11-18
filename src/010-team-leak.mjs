@@ -12,6 +12,12 @@ var VALUE = {
   multi: { value: 200, unit: "new customer (first visit)", who: "customers" },
   other: { value: 150, unit: "new customer (first job)", who: "customers" }
 };
+// v140 words that fit the business: an agency is not a clinic, a landlord is not a patient.
+var BIZ_WORDS = {
+  allied: ["clinic", "patient", "bookings"], dental: ["practice", "patient", "bookings"], medical: ["practice", "patient", "bookings"],
+  aesthetics: ["clinic", "client", "bookings"], psychology: ["practice", "client", "bookings"], property: ["agency", "landlord or vendor", "enquiries"],
+  trades: ["business", "customer", "jobs"], coaching: ["business", "client", "enquiries"], multi: ["business", "customer", "bookings"], other: ["business", "customer", "enquiries"]
+};
 var LOSS = { booking: [2, 5], after_hours: [2, 5], mobile: [1, 3], capture: [2, 5], reviews: [1, 3], stale: [0, 1] };
 var SCALE = { property: 0.25, coaching: 0.3, trades: 0.5, other: 0.6 };
 var siteKey = (u) => {
@@ -68,7 +74,7 @@ function scoreLeaks(rep, { vertical = "allied", google_rating, google_reviews } 
       "Mobile experience",
       !h.viewport ? "fail" : slow ? "warn" : "pass",
       !h.viewport ? "The site isn't set up for phones." : slow ? `The homepage took ${(rep.load_ms / 1e3).toFixed(1)}s to load from Australia.` : `Mobile-ready and loaded in ${((rep.load_ms || 0) / 1e3).toFixed(1)}s.`,
-      "Most clinic searches happen on a phone; slow or awkward pages lose people before they enquire.",
+      "Most searches happen on a phone; slow or awkward pages lose people before they enquire.",
       "A fast, mobile-first site.",
       LOSS.mobile
     );
@@ -247,10 +253,12 @@ function updatingHtml(p, origin) {
 }
 function reportV2(p, origin, L) {
   const date = new Date(L.scanned_at || p.updated_at || Date.now()).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Brisbane" });
+  const [bizWord, personWord, winWord] = BIZ_WORDS[L.vertical] || BIZ_WORDS.other;
+  const fixWords = (t) => String(t || "").replace(/\bMost clinic searches\b/g, "Most searches").replace(/\bclinics?\b/gi, (m) => /^C/.test(m) ? bizWord[0].toUpperCase() + bizWord.slice(1) : bizWord).replace(/\bpatients\b/gi, personWord + "s").replace(/\bpatient\b/gi, personWord);
   const conf = (L.checks || []).filter((c) => c.confidence === "confirmed");
   const unc = (L.checks || []).filter((c) => c.confidence !== "confirmed" && c.finding);
-  const strengths = (L.strengths || []).map((s) => `<div class="item"><span class="dot" style="background:var(--good)">\u2713</span><div><b>${esc(s.label)}</b><p>${esc(s.finding)}</p></div></div>`).join("");
-  const opps = conf.map((c) => `<div class="item"><span class="dot" style="background:${c.status === "fail" ? "var(--blue)" : "var(--warn)"}">\u2192</span><div><b>${esc(c.label)}</b><p>${esc(c.finding)}</p>${c.why ? `<p class="why">${esc(c.why)}</p>` : ""}${c.fix ? `<div class="fix"><b style="display:inline">What we'd set up:</b> ${esc(c.fix)}</div>` : ""}${c.evidence?.page ? `<div class="src">Seen on ${esc(String(c.evidence.page).replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, ""))}</div>` : ""}</div></div>`).join("");
+  const strengths = (L.strengths || []).map((s) => `<div class="item"><span class="dot" style="background:var(--good)">\u2713</span><div><b>${esc(s.label)}</b><p>${esc(fixWords(s.finding))}</p></div></div>`).join("");
+  const opps = conf.map((c) => `<div class="item"><span class="dot" style="background:${c.status === "fail" ? "var(--blue)" : "var(--warn)"}">\u2192</span><div><b>${esc(c.label)}</b><p>${esc(fixWords(c.finding))}</p>${c.why ? `<p class="why">${esc(fixWords(c.why))}</p>` : ""}${c.fix ? `<div class="fix"><b style="display:inline">What we'd set up:</b> ${esc(c.fix)}</div>` : ""}${c.evidence?.page ? `<div class="src">Seen on ${esc(String(c.evidence.page).replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, ""))}</div>` : ""}</div></div>`).join("");
   const est = L.estimate;
   const pagesTxt = (L.pages_checked || [p.website]).map((u) => String(u || "").replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")).join(", ");
   return shell(`Revenue Leak Review \xB7 ${p.business_name}`, `
@@ -258,8 +266,8 @@ function reportV2(p, origin, L) {
 <h1>${esc(p.business_name)}</h1><p class="mu">${esc([p.location, String(p.website || "").replace(/^https?:\/\//, "")].filter(Boolean).join(" \xB7 "))}</p>
 ${strengths ? `<section class="card"><h2>What's already working</h2>${strengths}</section>` : ""}
 <section class="card"><h2>${conf.length ? "Where enquiries can slip through" : "Where enquiries can slip through"}</h2>${opps || `<p class="mu">We didn't find clear gaps on your website. The bigger wins are usually in follow-up, recalls and reactivation, which a short call can map.</p>`}</section>
-${est ? `<div class="est"><div class="mu">If these gaps cost even a few bookings, that's roughly</div><div class="big">${est.missed_per_month[0]}\u2013${est.missed_per_month[1]} new ${esc(est.unit.split(" (")[0].replace("new ", ""))}s a month</div><div class="mu">about ${money(est.monthly_aud[0])}\u2013${money(est.monthly_aud[1])} a month at ${money(est.value_per)} per ${esc(est.unit)}. This is an estimate from typical numbers, not a measurement of your clinic.</div></div>` : ""}
+${est ? `<div class="est"><div class="mu">If these gaps cost even a few ${winWord}, that's roughly</div><div class="big">${est.missed_per_month[0]}\u2013${est.missed_per_month[1]} new ${esc(est.unit.split(" (")[0].replace("new ", ""))}s a month</div><div class="mu">about ${money(est.monthly_aud[0])}\u2013${money(est.monthly_aud[1])} a month at ${money(est.value_per)} per ${esc(est.unit)}. This is an estimate from typical numbers, not a measurement of your ${esc(bizWord)}.</div></div>` : ""}
 <div class="cta"><h2 style="color:#fff;margin:0">Want to see what it would look like for you?</h2><p>A free 30-minute call: we'll walk through this and map what's worth fixing (and what isn't).</p><a class="btn" href="${esc(FREE_CALL)}">Book a free 30-minute call</a></div>
-<p class="fine">How this was made: we viewed ${esc(pagesTxt)} ${L.rendered ? "in a real browser, the way a patient would," : ""} on ${esc(date)}, using only public information.${unc.length ? ` We couldn't confirm: ${esc(unc.map((c) => c.label.toLowerCase()).join(", "))}, so they're not included.` : ""} Studio Flow &amp; Systems, Brisbane \xB7 studioflowandsystems.com</p>`);
+<p class="fine">How this was made: we viewed ${esc(pagesTxt)} ${L.rendered ? "in a real browser, the way a " + esc(personWord) + " would," : ""} on ${esc(date)}, using only public information.${unc.length ? ` We couldn't confirm: ${esc(unc.map((c) => c.label.toLowerCase()).join(", "))}, so they're not included.` : ""} Studio Flow &amp; Systems, Brisbane \xB7 studioflowandsystems.com</p>`);
 }
 
