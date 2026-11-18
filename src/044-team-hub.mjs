@@ -136,6 +136,7 @@ async function teamScheduled(event, env) {
     ["DM desk", () => (instMods.outreach || instMods.social_outreach ? dmDaily(e) : CRON_NOT_DUE)],
     // 3. The team's AI work (each job is also queued and retried on its own).
     ["Task doer", ai(() => taskDoer(e)), { ms: 300000 }],
+    ["Leak report tidy", ai(() => leakTidy(e)), { ms: 120000 }],
     ["Team shifts", ai(() => runDueShifts(e, when)), { ms: 360000 }],
     ["Arena", () => (key && brisbaneNow().hour === 2 && !bg102.held ? leanState(e).catch(() => ({})).then((ls) => arenaRun(e, { n: ls.lean ? 6 : 10 })) : CRON_NOT_DUE), { ms: 300000 }],
     ["No-show rebooker", ai(() => noShowWatch(e))],
@@ -155,6 +156,50 @@ async function teamScheduled(event, env) {
     ["Archive index", () => backfillExistingArchive(e)],
     ["Telegram digest", k(() => cronNotify(e)), { always: true, ms: 60000 }]
   ]);
+}
+// v141 Leak report tidy: the AI checks every saved leak report's business type (an agency is not a clinic) and fixes it,
+// so the wording, the people and the dollar estimate fit the business. 40 an hour until every report has been checked.
+async function leakTidy(env, { limit = 40, force = false } = {}) {
+  const st = (await select(env, "team_settings", "key=eq.leak_tidy&select=value&limit=1").catch(() => []))?.[0]?.value || {};
+  if (st.done && !force) return CRON_NOT_DUE;
+  const rows = await select(env, "agent_prospects", "leak_report=not.is.null&select=id,business_name,website,vertical,leak_report&order=created_at.desc&limit=2000").catch(() => []);
+  const todo = rows.filter((r) => r.leak_report && typeof r.leak_report === "object" && !r.leak_report.words_v).slice(0, limit);
+  if (!todo.length) { await saveSetting(env, "leak_tidy", { ...st, done: true, at: new Date().toISOString() }).catch(() => {}); return { ok: true, checked: 0, remaining: 0 }; }
+  const types = ALL_V.map((v) => v + ": " + OUTREACH[v].label).join("\n");
+  let picks = [];
+  try {
+    const r = await callClaude(env, { model: leanFast(env), max_tokens: 3000, messages: [{ role: "user", content: `For each business below, pick the business type that fits best from this list (use the key before the colon):
+${types}
+"property" is property management (rentals and landlords); "realestate" is sales agents (vendors and buyers). If a business does both, use "realestate".
+Answer with JSON only: [{"i":0,"type":"key","sure":true}]. Set sure to false if the name and website don't make it clear.
+
+${todo.map((r, i) => i + ". " + r.business_name + " | " + String(r.website || "").replace(/^https?:\/\/(www\.)?/, "") + " | now: " + (r.vertical || "none")).join("\n")}` }] });
+    const txt = (r.content || []).map((c) => c.text || "").join("");
+    picks = JSON.parse((txt.match(/\[[\s\S]*\]/) || ["[]"])[0]);
+  } catch (e) { return { ok: false, error: String(e.message || e) }; }
+  let changed = 0; const changes = [];
+  for (const [i, r] of todo.entries()) {
+    const pk = picks.find((x) => +x.i === i);
+    const L = { ...r.leak_report, words_v: 1 };
+    let nv = r.vertical;
+    if (pk && pk.sure && OUTREACH[pk.type] && pk.type !== r.vertical) {
+      nv = pk.type;
+      const was = L.vertical || r.vertical, VV = VALUE[nv] ? nv : "other";
+      if (L.estimate && Array.isArray(L.estimate.missed_per_month)) {
+        const f = (SCALE[VV] || 1) / (SCALE[VALUE[was] ? was : "other"] || 1), val = VALUE[VV].value;
+        const lo = Math.max(1, Math.round(L.estimate.missed_per_month[0] * f)), hi = Math.max(lo, Math.round(L.estimate.missed_per_month[1] * f));
+        L.estimate = { missed_per_month: [lo, hi], monthly_aud: [lo * val, hi * val], yearly_aud: [lo * val * 12, hi * val * 12], value_per: val, unit: VALUE[VV].unit };
+      }
+      L.vertical = VV; L.vertical_was = was;
+      changed++; changes.push(r.business_name + ": " + (OUTREACH[was]?.name || was) + " to " + OUTREACH[nv].name);
+    }
+    await update(env, "agent_prospects", "id=eq." + r.id, { vertical: nv, leak_report: L }).catch(() => {});
+  }
+  const remaining = rows.filter((r) => r.leak_report && typeof r.leak_report === "object" && !r.leak_report.words_v).length - todo.length;
+  const all = { ...st, checked: (st.checked || 0) + todo.length, changed: (st.changed || 0) + changed, changes: [...(st.changes || []), ...changes].slice(-60) };
+  if (remaining <= 0) { all.done = true; if (all.checked) await notify(env, "\u2705 <b>Leak reports checked</b>\n" + all.checked + " reports checked by the AI; " + all.changed + " had the wrong business type and now fit the business" + (all.changes.length ? ":\n\u2022 " + all.changes.slice(-12).join("\n\u2022 ").replace(/[<>&]/g, "") : ".")).catch(() => {}); }
+  await saveSetting(env, "leak_tidy", all).catch(() => {});
+  return { ok: true, checked: todo.length, changed, remaining: Math.max(0, remaining), changes };
 }
 // v137 Task doer: the AI does the to-dos it would otherwise leave on Ty's list (checking GHL, a website, a contact,
 // tags, history). Only what truly needs Ty (a call he must make, a decision, a login, money) stays, rewritten as one line.
@@ -215,7 +260,7 @@ async function leakReport(request, env, url) {
   if (request.method !== "GET" || !/^[a-f0-9]{16,40}$/.test(token)) return notFound2();
   let rows = [];
   try {
-    rows = await select(env, "agent_prospects", `report_token=eq.${token}&select=business_name,website,location,leak_report,updated_at&limit=1`);
+    rows = await select(env, "agent_prospects", `report_token=eq.${token}&select=business_name,website,location,vertical,leak_report,updated_at&limit=1`);
   } catch {
     return notFound2();
   }

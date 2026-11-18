@@ -9,6 +9,12 @@ var VALUE = {
   property: { value: 1500, unit: "new landlord (first-year fees)", who: "landlords" },
   trades: { value: 450, unit: "new customer (first job)", who: "customers" },
   coaching: { value: 1200, unit: "new client (first program)", who: "clients" },
+  realestate: { value: 5000, unit: "new vendor (one listing)", who: "vendors" },
+  fitness: { value: 400, unit: "new member (first 3 months)", who: "members" },
+  beauty: { value: 150, unit: "new client (first visit)", who: "clients" },
+  accounting: { value: 1500, unit: "new client (first year)", who: "clients" },
+  legal: { value: 3000, unit: "new client (first matter)", who: "clients" },
+  hospitality: { value: 300, unit: "new function or group booking", who: "guests" },
   multi: { value: 200, unit: "new customer (first visit)", who: "customers" },
   other: { value: 150, unit: "new customer (first job)", who: "customers" }
 };
@@ -16,10 +22,12 @@ var VALUE = {
 var BIZ_WORDS = {
   allied: ["clinic", "patient", "bookings"], dental: ["practice", "patient", "bookings"], medical: ["practice", "patient", "bookings"],
   aesthetics: ["clinic", "client", "bookings"], psychology: ["practice", "client", "bookings"], property: ["agency", "landlord", "enquiries"],
+  realestate: ["agency", "vendor", "enquiries"], fitness: ["studio", "member", "bookings"], beauty: ["salon", "client", "bookings"],
+  accounting: ["firm", "client", "enquiries"], legal: ["firm", "client", "enquiries"], hospitality: ["venue", "guest", "bookings"],
   trades: ["business", "customer", "jobs"], coaching: ["business", "client", "enquiries"], multi: ["business", "customer", "bookings"], other: ["business", "customer", "enquiries"]
 };
 var LOSS = { booking: [2, 5], after_hours: [2, 5], mobile: [1, 3], capture: [2, 5], reviews: [1, 3], stale: [0, 1] };
-var SCALE = { property: 0.25, coaching: 0.3, trades: 0.5, other: 0.6 };
+var SCALE = { property: 0.25, realestate: 0.2, accounting: 0.3, legal: 0.3, coaching: 0.3, trades: 0.5, other: 0.6 };
 var siteKey = (u) => {
   try {
     const x = new URL(/^https?:/i.test(u) ? u : "https://" + u);
@@ -253,8 +261,9 @@ function updatingHtml(p, origin) {
 }
 function reportV2(p, origin, L) {
   const date = new Date(L.scanned_at || p.updated_at || Date.now()).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Brisbane" });
-  const [bizWord, personWord, winWord] = BIZ_WORDS[L.vertical] || BIZ_WORDS.other;
-  const healthy = ["allied", "dental", "medical", "aesthetics", "psychology"].includes(L.vertical);
+  const vv = BIZ_WORDS[p.vertical] && p.vertical !== L.vertical && !BIZ_WORDS[L.vertical] ? p.vertical : L.vertical;
+  const [bizWord, personWord, winWord] = BIZ_WORDS[vv] || BIZ_WORDS.other;
+  const healthy = ["allied", "dental", "medical", "aesthetics", "psychology"].includes(vv);
   const keepCase = (m, w) => /^[A-Z]/.test(m) ? w[0].toUpperCase() + w.slice(1) : w;
   const fixWords = (t) => healthy ? String(t || "") : String(t || "").replace(/\bMost clinic searches\b/g, "Most searches").replace(/\(cost, health fund, availability\)/g, "(price, availability, how it works)").replace(/anything clinical/g, "anything complex").replace(/wins the booking/g, "wins the work").replace(/\b(all \d+ |one |across )clinics?\b/gi, (m, a) => a + (/s$/i.test(m) ? "locations" : "location")).replace(/\bclinic locations\b/gi, "locations").replace(/\bclinics?\b/gi, (m) => keepCase(m, bizWord + (/s$/i.test(m) ? "s" : ""))).replace(/\bpatients\b/gi, (m) => keepCase(m, personWord + "s")).replace(/\bpatient\b/gi, (m) => keepCase(m, personWord));
   const conf = (L.checks || []).filter((c) => c.confidence === "confirmed");
