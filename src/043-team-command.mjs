@@ -198,7 +198,7 @@ async function todaysPriorities(env, settings) {
   const warm = demos.filter((d) => d.last_chat_at && d.last_chat_at > since48 || d.last_view_at && d.last_view_at > since48).slice(0, 5);
   for (const d of warm) add(weekend ? 50 : 82, weekend ? `Follow up ${d.business_name} on Monday` : `Call ${d.business_name}`, `${d.chats ? `Chatted to their demo receptionist ${d.chats}\xD7` : `Opened their demo ${d.views || 1}\xD7`} in the last 48h: they're warm.`, "call");
   if (!weekend) add(50, "Founder calls from the call list", "Ask Studio for today's call list: openers and questions are ready.", "call");
-  if (mission?.connected && mission.gap_to_target > 0) add(40, "Close the revenue gap", `${Math.round(mission.percent_of_target || 0)}% of the $${Math.round(mission.target).toLocaleString("en-AU")} target with ${mission.days_left} days left: about $${Math.round(mission.needed_per_remaining_day || 0).toLocaleString("en-AU")} a day needed. Every pilot is $497\u2013697.`, "money");
+  if (mission?.connected && mission.gap_to_target > 0) add(40, "Close the revenue gap", `${Math.round(mission.percent_of_target || 0)}% of the $${Math.round(mission.target).toLocaleString("en-AU")} target with ${mission.days_left} days left: about $${Math.round(mission.needed_per_remaining_day || 0).toLocaleString("en-AU")} a day needed. Every AI Front Desk is $2,197 to start, then $697 a month.`, "money");
   out.sort((a, b) => b.score - a.score);
   return { ok: true, today: now5.date, weekend, note: weekend ? "It's the weekend: no calling, prep only." : void 0, priorities: out.slice(0, 10).map((p, i) => ({ n: i + 1, ...p, score: void 0 })) };
 }

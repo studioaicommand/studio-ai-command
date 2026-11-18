@@ -17,3 +17,4 @@ for (const t of real) assert(!isAutoReply(t), "Real reply kept: " + t.slice(0, 5
 assert(/isAutoReply\(text, inbound\.subject/.test(src), "The inbox never drafts a reply to an automatic reply");
 assert(/autos\.length\) fresh = fresh\.filter/.test(src), "Outreach Reply watch ignores automatic replies (no 'replied' status, follow-ups continue)");
 for (const t of ["Thanks for your email Ty, I'll get back to you tomorrow after I talk to my partner.", "We have received your email and we're interested, can you send pricing?", "Thanks for reaching out, I will respond properly next week, want to see the demo"]) assert(!isAutoReply(t), "A real person saying they'll get back is kept: " + t.slice(0, 50));
+assert(!/pilot is \$497|\$497 \(chat\)|\$497 for chat/.test(src) && /AI Front Desk is \$1,500 to set up, then \$697 a month/.test(src), "Call notes quote today's price (no old $497 chat pilot)");
