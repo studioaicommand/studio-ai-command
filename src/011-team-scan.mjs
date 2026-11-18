@@ -309,6 +309,7 @@ function failedLeak(url, vertical) {
 function buildFindings(S, { vertical = "allied", google_rating, google_reviews, url }) {
   const v = VALUE[vertical] ? vertical : "other";
   const who = VALUE[v].who;
+  const [bw, pw] = BIZ_WORDS[v] || BIZ_WORDS.other, health = ["allied", "dental", "medical", "aesthetics", "psychology"].includes(v), Pw = pw[0].toUpperCase() + pw.slice(1);
   const strengths = [], checks = [];
   const names = (S.pages || []).map((p) => {
     const path = new URL(p.url).pathname.replace(/\/$/, "");
@@ -318,12 +319,12 @@ function buildFindings(S, { vertical = "allied", google_rating, google_reviews, 
   const R = S.rendered;
   const opp = (key, label, status, finding, evidence, why, fix, angle, weight2, loss) => checks.push({ key, label, status, confidence: status === "unverified" ? "unverified" : "confirmed", finding, evidence, why, fix, angle, weight: weight2, loss: status === "unverified" ? null : loss });
   const hasBooking = S.bookingSystems.length > 0 || S.extBook.length > 0;
-  if (S.bookingSystems.length) strengths.push({ label: "Online booking", finding: `Patients can book online (${S.bookingSystems.join(", ")})${S.bookingPage ? ` on ${short(S.bookingPage)}` : ""}.`, evidence: { page: S.bookingPage } });
-  else if (S.extBook.length) strengths.push({ label: "Online booking", finding: `A "${S.extBook[0].text || "Book"}" button takes patients to ${host(S.extBook[0].href)} to book.`, evidence: { page: S.extBook[0].href } });
+  if (S.bookingSystems.length) strengths.push({ label: "Online booking", finding: `${Pw}s can book online (${S.bookingSystems.join(", ")})${S.bookingPage ? ` on ${short(S.bookingPage)}` : ""}.`, evidence: { page: S.bookingPage } });
+  else if (S.extBook.length) strengths.push({ label: "Online booking", finding: `A "${S.extBook[0].text || "Book"}" button takes ${pw}s to ${host(S.extBook[0].href)} to book.`, evidence: { page: S.extBook[0].href } });
   if (S.chat.length) strengths.push({ label: "Live chat", finding: `Visitors can chat on the site (${S.chat.join(", ")}). Pitch it as an upgrade: voice, booking the next step, and brand-matched answers from their own site.`, evidence: {} });
   const rating = +google_rating || S.reviewsClaim?.rating || 0, count2 = +google_reviews || S.reviewsClaim?.count || 0;
   if (rating >= 4.5 && count2 >= 50) strengths.push({ label: "Reputation", finding: `${rating.toFixed(1)}\u2605 from ${count2.toLocaleString("en-AU")} reviews.`, evidence: {} });
-  if (S.locations >= 2) strengths.push({ label: "Locations", finding: `${S.locations} clinic locations${S.locationNames.length ? ` (${S.locationNames.slice(0, 6).map((n) => n.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())).join(", ")})` : ""}.`, evidence: {} });
+  if (S.locations >= 2) strengths.push({ label: "Locations", finding: `${S.locations} locations${S.locationNames.length ? ` (${S.locationNames.slice(0, 6).map((n) => n.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())).join(", ")})` : ""}.`, evidence: {} });
   const hv = S.highValue.length ? ` That includes enquiries about ${S.highValue.slice(0, 2).join(" and ")}, where a fast reply matters most.` : "";
   if (S.promise && !S.chat.length) opp(
     "form_callback",
@@ -331,7 +332,7 @@ function buildFindings(S, { vertical = "allied", google_rating, google_reviews, 
     "fail",
     `Your website tells people: "${S.promise.replace(/[.!?]+$/, "")}." Until someone replies, a new ${who.replace(/s$/, "")} is still free to book elsewhere.${hv}`,
     { page: S.promisePage, quote: S.promise },
-    "The first clinic to reply usually wins the booking; replies within minutes book far more often than replies the next day.",
+    `The first ${bw} to reply usually wins ${health ? "the booking" : "the work"}; replies within minutes book far more often than replies the next day.`,
     "An instant SMS and email reply to every enquiry, with a booking link and follow-up until they book.",
     "speed to lead on enquiries",
     25,
@@ -339,11 +340,11 @@ function buildFindings(S, { vertical = "allied", google_rating, google_reviews, 
   );
   if (S.locations >= 3 && S.phones.length === 1) opp(
     "shared_number",
-    "Phone load across clinics",
+    "Phone load across locations",
     "warn",
-    `All ${S.locations} clinics share one phone number (${S.phones[0].replace(/^(1[38]00)(\d{3})(\d{3})$/, "$1 $2 $3")}), so busy periods at one clinic can mean missed calls for all of them.`,
+    `All ${S.locations} locations share one phone number (${S.phones[0].replace(/^(1[38]00)(\d{3})(\d{3})$/, "$1 $2 $3")}), so busy periods at one location can mean missed calls for all of them.`,
     { page: url, quote: S.phones[0] },
-    "Missed calls during busy periods are often new patients who don't leave a voicemail.",
+    `Missed calls during busy periods are often new ${pw}s who don't leave a voicemail.`,
     "Missed-call text-back on the main number, so every unanswered call gets an instant reply with a booking link.",
     "missed calls on a shared number",
     15,
@@ -354,7 +355,7 @@ function buildFindings(S, { vertical = "allied", google_rating, google_reviews, 
       "phone_only_booking",
       "Online booking",
       "fail",
-      S.callToBook ? `The site asks patients to "${S.callToBook}", and we couldn't find online booking on ${pages}.` : `We couldn't find a way to book online on ${pages}: booking is by phone${S.forms ? " or enquiry form" : ""}.`,
+      S.callToBook ? `The site asks people to "${S.callToBook}", and we couldn't find online booking on ${pages}.` : `We couldn't find a way to book online on ${pages}: booking is by phone${S.forms ? " or enquiry form" : ""}.`,
       { page: S.callToBookPage || url, quote: S.callToBook || null },
       `Many ${who} book after hours on their phone; if they can't book in a few taps, they often book elsewhere.`,
       "Online booking on every page, connected to your existing system.",
@@ -362,7 +363,7 @@ function buildFindings(S, { vertical = "allied", google_rating, google_reviews, 
       30,
       [2, 5]
     );
-    else opp("phone_only_booking", "Online booking", "unverified", "We couldn't confirm how patients book online: parts of this site load in a way our quick check can't see.", { page: url }, "", "", null, 30, null);
+    else opp("phone_only_booking", "Online booking", "unverified", "We couldn't confirm how people book online: parts of this site load in a way our quick check can't see.", { page: url }, "", "", null, 30, null);
   }
   if (!S.chat.length) {
     if (R && (S.forms || S.formEmbeds.length || S.phones.length)) opp(
@@ -371,8 +372,8 @@ function buildFindings(S, { vertical = "allied", google_rating, google_reviews, 
       "warn",
       `We didn't see live chat or an instant-reply assistant on ${pages}, so questions outside opening hours wait for the team.`,
       { page: url },
-      "Patients with a quick question (cost, health fund, availability) often move on if nobody answers.",
-      "An AI assistant that answers common questions 24/7 and hands anything clinical to your team.",
+      health ? "Patients with a quick question (cost, health fund, availability) often move on if nobody answers." : `${Pw}s with a quick question (price, availability, how it works) often move on if nobody answers.`,
+      `An AI assistant that answers common questions 24/7 and hands anything ${health ? "clinical" : "complex"} to your team.`,
       "instant answers after hours",
       15,
       [1, 3]
@@ -380,7 +381,7 @@ function buildFindings(S, { vertical = "allied", google_rating, google_reviews, 
     else if (!R) opp("no_instant_reply", "After-hours enquiries", "unverified", "We couldn't confirm whether there's live chat: some chat tools only load in a full browser.", { page: url }, "", "", null, 15, null);
   }
   if (!hasBooking && S.bookButtons.length && !R) opp("booking_unknown", "Online booking", "unverified", `There's a "${S.bookButtons[0]}" button, but we couldn't see where it leads without a full browser.`, { page: url }, "", "", null, 0, null);
-  if (!S.viewport) opp("not_mobile", "Mobile experience", "fail", "The site isn't set up for phones (no mobile viewport).", { page: url }, "Most clinic searches happen on a phone.", "A fast, mobile-first site.", "mobile visitors", 10, [1, 2]);
+  if (!S.viewport) opp("not_mobile", "Mobile experience", "fail", "The site isn't set up for phones (no mobile viewport).", { page: url }, "Most searches happen on a phone.", "A fast, mobile-first site.", "mobile visitors", 10, [1, 2]);
   const weight = { fail: 1, warn: 0.6, unverified: 0.15 };
   const score = Math.min(100, Math.round(checks.reduce((s, c) => s + (c.weight || 0) * (weight[c.status] || 0), 0) * 1.4));
   const conf = checks.filter((c) => c.confidence === "confirmed" && c.loss);

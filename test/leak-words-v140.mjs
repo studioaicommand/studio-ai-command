@@ -9,11 +9,14 @@ const esc = (x) => String(x ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const money = (n) => "$" + Math.round(n).toLocaleString("en-AU");
 const reportV2 = fns(esc, money, "https://x");
 const L = (v) => ({ vertical: v, rendered: true, scanned_at: "2026-11-18", pages_checked: ["https://x.com.au"], strengths: [], estimate: { missed_per_month: [1, 2], monthly_aud: [1500, 3000], value_per: 1500, unit: "new landlord (first-year fees)" },
-  checks: [{ confidence: "confirmed", status: "fail", label: "Mobile experience", finding: "The site isn't set up for phones.", why: "Most clinic searches happen on a phone; slow or awkward pages lose people before they enquire." }] });
+  checks: [{ confidence: "confirmed", status: "fail", label: "Mobile experience", finding: "The site isn't set up for phones.", why: "Most clinic searches happen on a phone; slow or awkward pages lose people before they enquire." },
+    { confidence: "confirmed", status: "fail", label: "After-hours enquiries", finding: "No live chat.", why: "Patients with a quick question (cost, health fund, availability) often move on if nobody answers.", fix: "An AI assistant that answers common questions 24/7 and hands anything clinical to your team." }] });
 const html = reportV2({ business_name: "Coast Realty", website: "https://x.com.au", location: "Sunshine Coast" }, "https://studioflowandsystems.app", L("property"));
 assert(!/clinic|patient/i.test(html), "A real estate report never says clinic or patient");
-assert(/not a measurement of your agency/.test(html) && /the way a landlord or vendor would/.test(html) && /a few enquiries/.test(html), "It says agency, landlord or vendor, and enquiries");
+assert(/not a measurement of your agency/.test(html) && /the way a landlord would/.test(html) && /a few enquiries/.test(html), "It says agency, landlord or vendor, and enquiries");
 const dent = reportV2({ business_name: "Smile Co", website: "https://x.com.au" }, "https://studioflowandsystems.app", L("dental"));
 assert(/your practice/.test(dent) && /the way a patient would/.test(dent), "A dental report still talks about the practice and patients");
 const tr = reportV2({ business_name: "Fix It Plumbing", website: "https://x.com.au" }, "https://studioflowandsystems.app", L("trades"));
 assert(/your business/.test(tr) && /a customer would/.test(tr) && !/clinic|patient/i.test(tr), "A trades report says business and customer");
+assert(/Landlords with a quick question \(price, availability, how it works\)/.test(html) && !/health fund|anything clinical/.test(html), "Saved real estate reports lose the health wording (health fund, clinical)");
+assert(/health fund/.test(dent), "Health reports keep the health fund line");

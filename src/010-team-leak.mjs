@@ -15,7 +15,7 @@ var VALUE = {
 // v140 words that fit the business: an agency is not a clinic, a landlord is not a patient.
 var BIZ_WORDS = {
   allied: ["clinic", "patient", "bookings"], dental: ["practice", "patient", "bookings"], medical: ["practice", "patient", "bookings"],
-  aesthetics: ["clinic", "client", "bookings"], psychology: ["practice", "client", "bookings"], property: ["agency", "landlord or vendor", "enquiries"],
+  aesthetics: ["clinic", "client", "bookings"], psychology: ["practice", "client", "bookings"], property: ["agency", "landlord", "enquiries"],
   trades: ["business", "customer", "jobs"], coaching: ["business", "client", "enquiries"], multi: ["business", "customer", "bookings"], other: ["business", "customer", "enquiries"]
 };
 var LOSS = { booking: [2, 5], after_hours: [2, 5], mobile: [1, 3], capture: [2, 5], reviews: [1, 3], stale: [0, 1] };
@@ -254,11 +254,13 @@ function updatingHtml(p, origin) {
 function reportV2(p, origin, L) {
   const date = new Date(L.scanned_at || p.updated_at || Date.now()).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Brisbane" });
   const [bizWord, personWord, winWord] = BIZ_WORDS[L.vertical] || BIZ_WORDS.other;
-  const fixWords = (t) => String(t || "").replace(/\bMost clinic searches\b/g, "Most searches").replace(/\bclinics?\b/gi, (m) => /^C/.test(m) ? bizWord[0].toUpperCase() + bizWord.slice(1) : bizWord).replace(/\bpatients\b/gi, personWord + "s").replace(/\bpatient\b/gi, personWord);
+  const healthy = ["allied", "dental", "medical", "aesthetics", "psychology"].includes(L.vertical);
+  const keepCase = (m, w) => /^[A-Z]/.test(m) ? w[0].toUpperCase() + w.slice(1) : w;
+  const fixWords = (t) => healthy ? String(t || "") : String(t || "").replace(/\bMost clinic searches\b/g, "Most searches").replace(/\(cost, health fund, availability\)/g, "(price, availability, how it works)").replace(/anything clinical/g, "anything complex").replace(/wins the booking/g, "wins the work").replace(/\b(all \d+ |one |across )clinics?\b/gi, (m, a) => a + (/s$/i.test(m) ? "locations" : "location")).replace(/\bclinic locations\b/gi, "locations").replace(/\bclinics?\b/gi, (m) => keepCase(m, bizWord + (/s$/i.test(m) ? "s" : ""))).replace(/\bpatients\b/gi, (m) => keepCase(m, personWord + "s")).replace(/\bpatient\b/gi, (m) => keepCase(m, personWord));
   const conf = (L.checks || []).filter((c) => c.confidence === "confirmed");
   const unc = (L.checks || []).filter((c) => c.confidence !== "confirmed" && c.finding);
   const strengths = (L.strengths || []).map((s) => `<div class="item"><span class="dot" style="background:var(--good)">\u2713</span><div><b>${esc(s.label)}</b><p>${esc(fixWords(s.finding))}</p></div></div>`).join("");
-  const opps = conf.map((c) => `<div class="item"><span class="dot" style="background:${c.status === "fail" ? "var(--blue)" : "var(--warn)"}">\u2192</span><div><b>${esc(c.label)}</b><p>${esc(fixWords(c.finding))}</p>${c.why ? `<p class="why">${esc(fixWords(c.why))}</p>` : ""}${c.fix ? `<div class="fix"><b style="display:inline">What we'd set up:</b> ${esc(c.fix)}</div>` : ""}${c.evidence?.page ? `<div class="src">Seen on ${esc(String(c.evidence.page).replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, ""))}</div>` : ""}</div></div>`).join("");
+  const opps = conf.map((c) => `<div class="item"><span class="dot" style="background:${c.status === "fail" ? "var(--blue)" : "var(--warn)"}">\u2192</span><div><b>${esc(c.label)}</b><p>${esc(fixWords(c.finding))}</p>${c.why ? `<p class="why">${esc(fixWords(c.why))}</p>` : ""}${c.fix ? `<div class="fix"><b style="display:inline">What we'd set up:</b> ${esc(fixWords(c.fix))}</div>` : ""}${c.evidence?.page ? `<div class="src">Seen on ${esc(String(c.evidence.page).replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, ""))}</div>` : ""}</div></div>`).join("");
   const est = L.estimate;
   const pagesTxt = (L.pages_checked || [p.website]).map((u) => String(u || "").replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")).join(", ");
   return shell(`Revenue Leak Review \xB7 ${p.business_name}`, `
