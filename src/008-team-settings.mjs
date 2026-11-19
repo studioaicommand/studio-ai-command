@@ -29,7 +29,7 @@ var DEFAULT_SHIFTS = [
     days: WEEKDAYS,
     hour: 8,
     enabled: true,
-    prompt: "Run your DAILY SWEEP. Check today's and upcoming bookings on all calendars first, so you never nudge someone who's already booked. Queue follow-ups for anyone going cold, and give me a ranked list of what to do in sales today."
+    prompt: "Run your DAILY SWEEP. Check today's and upcoming bookings on all calendars first, so you never nudge someone who's already booked. Start with Ty's calls (demo openers not yet called, owner's name if known) and any quotes out that are due a follow-up. Queue follow-ups for anyone going cold, and give me a ranked list of what to do in sales today: at most 5 lines."
   },
   {
     id: "sales_pm",

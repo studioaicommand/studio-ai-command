@@ -652,7 +652,10 @@ async function runShiftInner(env, shift, settings, slot) {
 
 Waiting now (from manual_imports): ${JSON.stringify(imp.pending)}`;
     }
-    const { reply, stopped } = await runAgent(env, shift.department, { source: shift.id, messages: [{ role: "user", content: `[Scheduled shift: ${shift.label}] ${shift.prompt}${extra}` }] });
+    let sp = shift.prompt;
+    const ic = await instGet(env).catch(() => null);
+    if (ic && ic.custom) sp = String(sp).replace(/www\.studioflowandsystems\.com|studioflowandsystems\.com/g, ic.website || "our website").replace(/ and our public Studio AI page/g, "").replace(/the \$20k\/month mission/g, "this month's target").replace(/Studio AI Command \(our own software\)/g, "our business").replace(/\bTy's\b/g, (ic.owner_first || "the owner") + "'s").replace(/\bTy\b/g, ic.owner_first || "the owner");
+    const { reply, stopped } = await runAgent(env, shift.department, { source: shift.id, messages: [{ role: "user", content: `[Scheduled shift: ${shift.label}] ${sp}${extra}` }] });
     const date = (/* @__PURE__ */ new Date()).toLocaleDateString("en-AU", { timeZone: "Australia/Brisbane", weekday: "short", day: "numeric", month: "short" });
     [report] = await insert(env, "team_reports", [{ department: d.id, kind: "shift", subkind: shift.id, title: `${shift.label}${stopped ? " (stopped early)" : ""} \u2014 ${date}`, body: reply }]);
     if(stopped)return {id:report.id,title:report.title,failed:true,error:stopped};

@@ -1708,7 +1708,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
       ["CRM \xB7 GoHighLevel", ok(ghlOk), ghlOk ? num(ov.ghl.open_opportunities) + " open opportunities" : "Check GHL_PRIVATE_TOKEN in Cloudflare"],
       ["Calendars", ok(th && th.ghl), "Free 30-min call \xB7 audit \xB7 onboarding"],
       ["Payments \xB7 Stripe", ok(th && th.stripe), th && th.stripe ? "Read-only key \xB7 revenue, invoices, subscriptions" : "Check STRIPE_READ_KEY"],
-      ["Executive team \xB7 Claude", ok(th && th.claude), th && th.claude ? "7 department heads online" + (th.web_search ? " \xB7 web search on" : "") : "Add ANTHROPIC_API_KEY"],
+      ["Executive team \xB7 Claude", ok(th && th.claude), th && th.claude ? "Your AI team is online" + (th.web_search ? " \xB7 web search on" : "") : "Add ANTHROPIC_API_KEY"],
       ["Database \xB7 Supabase", ok(db && db.ok !== false && th && th.supabase_team_tables), "Memory, reports, approvals, goals"],
       ["Voice \xB7 OpenAI realtime", "ok", "Private voice in this command centre"],
       ["Public page", site && site.public_v2 ? "ok" : "warn", site && site.public_v2 ? "Upgraded page is live" : "Upgrade ready: switch it on in Autopilot"],
@@ -1804,7 +1804,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     $("#cAdd", el).onclick = async () => {
       const v = await modal({ title: "Add a client", text: "We'll build their receptionist from their website (about 40 seconds). Nothing goes live until it passes the safety test and you say go.", ok: "Add client",
         fields: [{ id: "name", label: "Business name", required: true }, { id: "website", label: "Website", type: "url", placeholder: "https://\u2026", required: true }, { id: "vertical", label: "Type of business", type: "select", options: VTYPES, value: "allied" },
-          { id: "plan_monthly", label: "Monthly price ($)", type: "number", value: 297, min: 0 }, { id: "pilot_price", label: "Pilot price ($)", type: "number", value: 497, min: 0 }, { id: "paid", label: "Pilot paid?", type: "select", options: [["no", "Not yet / free (friendly first install)"], ["yes", "Yes, paid"]], value: "no" }] });
+          { id: "plan_monthly", label: "Monthly price ($)", type: "number", value: 697, min: 0 }, { id: "pilot_price", label: "Setup price ($)", type: "number", value: 1500, min: 0 }, { id: "paid", label: "Pilot paid?", type: "select", options: [["no", "Not yet / free (friendly first install)"], ["yes", "Yes, paid"]], value: "no" }] });
       if (!v) return;
       toast("Building " + v.name + "'s receptionist from their website\u2026", "");
       try { const r = await team("/clients", { method: "POST", body: { ...v, paid: v.paid === "yes" } }); toast(v.name + " added \u2713", "ok"); go("clients/" + r.client.id); } catch (e) { toast(e.message, "bad"); }

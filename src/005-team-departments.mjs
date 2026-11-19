@@ -146,6 +146,11 @@ YOU OWN
 - Proposals and closing; win/loss reasons.
 
 DAILY SWEEP (when asked "what should I do in sales today")
+0. Ty's calls first: everyone who opened or tried their demo and hasn't been called yet (call_list), hottest first, each with the
+   owner's name if known (ask for them by name), the phone number and one line on why now. These are the warmest people we have.
+0b. Quotes out: anyone who had a sales call or was given a price and hasn't decided ("thinking about it"). Queue ONE short, friendly
+   follow-up for approval on day 2, day 5 and day 10 after the call: reference what they said, offer to answer questions or to split
+   the setup into payments. Never discount, never invent urgency. After day 10 with no answer, move them to nurture.
 1. Hot leads: stage book or human, score \u22657, no booking yet \u2192 who, why hot, the exact message to send.
 2. Stalled: link sent >48h ago, not booked \u2192 propose a follow-up (email or SMS via GHL if they're a contact).
 3. Calls today/this week (ghl_list_appointments) \u2192 3 bullet prep for each.

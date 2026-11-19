@@ -136,8 +136,8 @@ async function teamScheduled(event, env) {
     ["DM desk", () => (instMods.outreach || instMods.social_outreach ? dmDaily(e) : CRON_NOT_DUE)],
     // 3. The team's AI work (each job is also queued and retried on its own).
     ["Task doer", ai(() => taskDoer(e)), { ms: 300000 }],
-    ["Leak report tidy", ai(() => leakTidy(e)), { ms: 120000 }],
-    ["Owner finder", ai(() => ownerFind(e)), { ms: 240000 }],
+    ["Leak report tidy", out(ai(() => leakTidy(e))), { ms: 120000 }],
+    ["Owner finder", out(ai(() => ownerFind(e))), { ms: 240000 }],
     ["Team shifts", ai(() => runDueShifts(e, when)), { ms: 360000 }],
     ["Arena", () => (key && brisbaneNow().hour === 2 && !bg102.held ? leanState(e).catch(() => ({})).then((ls) => arenaRun(e, { n: ls.lean ? 6 : 10 })) : CRON_NOT_DUE), { ms: 300000 }],
     ["No-show rebooker", ai(() => noShowWatch(e))],
@@ -178,16 +178,16 @@ async function ceoHome(env) {
   const g = goal;
   const mine = (a) => /^ty\b|owner|^you$/i.test(String(a || ""));
   const doneToday = aud.filter((a) => !mine(a.actor));
-  const replied = P.filter((p) => p.status === "replied").length, viewed = Dm.filter((d) => +d.views > 0).length;
+  const replied = P.filter((p) => ["replied", "interested"].includes(p.status) || p.call_status === "replied").length, viewed = Dm.filter((d) => +d.views > 0).length;
   const shape = publicDepartments();
   const busy = new Map(); for (const u of usage) if (!busy.has(u.department)) busy.set(u.department, u.source);
   const waitBy = {}; for (const a of pend) waitBy[a.department || "chief_of_staff"] = (waitBy[a.department || "chief_of_staff"] || 0) + 1;
-  const what = (src) => String(src || "").replace(/^shift:/, "").replace(/_/g, " ");
+  const what = (src) => { const k = String(src || "").replace(/^shift:/, ""); return ({ sales_am: "morning sales run", sales_pm: "afternoon sales run", task_doer: "your to-dos", back_office: "weekly back office", owner_finder: "finding owner names" })[k] || k.replace(/_/g, " "); };
   const leads = shape.filter((x) => x.group === "lead").map((x) => ({ id: x.id, team: x.team, status: waitBy[x.id] ? "needs_you" : busy.has(x.id) ? "working" : "quiet", note: waitBy[x.id] ? waitBy[x.id] + " waiting for your OK" : busy.has(x.id) ? "Working on " + what(busy.get(x.id)) : "Ready" }));
   const backBusy = shape.filter((x) => x.group !== "lead" && (busy.has(x.id) || waitBy[x.id]));
   return {
     ok: true,
-    greeting: t.hour < 12 ? "Good morning" : t.hour < 17 ? "Good afternoon" : "Good evening",
+    greeting: (t.hour < 12 ? "Good morning" : t.hour < 17 ? "Good afternoon" : "Good evening") + ", " + ((await instGet(env).catch(() => null))?.owner_first || "Ty"),
     money: mission && mission.connected !== false ? { mtd: Math.round(+mission.revenue_month_to_date || 0), target: +mission.target || 0, pct: Math.min(100, +mission.percent_of_target || 0), days_left: mission.days_in_month && mission.day_of_month ? mission.days_in_month - mission.day_of_month : null } : null,
     calls: g ? { booked: +g.booked || 0, goal: +g.goal || 0, label: g.label || "booked calls" } : null,
     warm: { total: viewed + replied, viewed, replied },
