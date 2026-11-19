@@ -137,6 +137,7 @@ async function teamScheduled(event, env) {
     // 3. The team's AI work (each job is also queued and retried on its own).
     ["Task doer", ai(() => taskDoer(e)), { ms: 300000 }],
     ["Leak report tidy", ai(() => leakTidy(e)), { ms: 120000 }],
+    ["Owner finder", ai(() => ownerFind(e)), { ms: 240000 }],
     ["Team shifts", ai(() => runDueShifts(e, when)), { ms: 360000 }],
     ["Arena", () => (key && brisbaneNow().hour === 2 && !bg102.held ? leanState(e).catch(() => ({})).then((ls) => arenaRun(e, { n: ls.lean ? 6 : 10 })) : CRON_NOT_DUE), { ms: 300000 }],
     ["No-show rebooker", ai(() => noShowWatch(e))],
@@ -196,6 +197,58 @@ async function ceoHome(env) {
     pipeline: P.length ? [["Found", P.length], ["Demo sent", P.filter((p) => p.demo_token).length], ["Interested", viewed + replied], ["Call booked", P.filter((p) => p.call_status === "booked").length], ["Won", P.filter((p) => p.status === "won").length]] : null,
     feed: doneToday.slice(0, 6).map((a) => ({ at: a.created_at, text: String(a.summary || a.action || "").slice(0, 140) }))
   };
+}
+// v143 Owner finder: before Ty calls, find the owner's name from free public sources (their website's About/Team page,
+// owners replying to Google reviews, ABN Lookup for sole traders, LinkedIn, Facebook) so he can ask for them by name.
+// Demo openers first, then the rest of the call list. Never guesses: no clear owner means no name.
+var OWNER_TOOL = {
+  name: "save_owner",
+  description: "Save the owner or decision maker you found for this business, or found=false if nothing clear.",
+  input_schema: { type: "object", properties: {
+    found: { type: "boolean" },
+    name: { type: "string", description: "Full name as published, e.g. 'Sarah Nguyen'. Only a real person clearly tied to THIS business." },
+    role: { type: "string", description: "Their role as published: Owner, Director, Founder, Principal, Practice Manager, etc." },
+    source: { type: "string", description: "Where you saw it, short: 'their website', 'Google review replies', 'ABN Lookup', 'LinkedIn', 'Facebook'." }
+  }, required: ["found"] }
+};
+async function ownerFind(env, { limit = 8, force = false, ids = null } = {}) {
+  const st = (await select(env, "team_settings", "key=eq.owner_find&select=value&limit=1").catch(() => []))?.[0]?.value || {};
+  const tried = st.tried || {}, found = st.found || {};
+  const h = brisbaneNow().hour;
+  if (!force && (h < 7 || h > 21)) return CRON_NOT_DUE;
+  const rows = await select(env, "agent_prospects", "phone=not.is.null&decision_maker=is.null&status=in.(sent,to_send,nurture)&select=id,business_name,website,location,vertical,demo_token,score&order=score.desc.nullslast&limit=300").catch(() => []);
+  const toks = rows.map((r) => r.demo_token).filter((t) => /^[a-f0-9]{40}$/.test(t || ""));
+  const views = {};
+  for (let i = 0; i < toks.length; i += 100) for (const d of await select(env, "agent_demos", "token=in.(" + toks.slice(i, i + 100).join(",") + ")&select=token,views,chats").catch(() => [])) views[d.token] = (d.views || 0) + (d.chats || 0) * 5;
+  const fresh = (r) => !tried[r.id] || Date.now() - Date.parse(tried[r.id]) > 30 * 864e5;
+  let todo = rows.filter((r) => (ids ? ids.includes(r.id) : true) && (force && ids ? true : fresh(r)));
+  todo.sort((a, b) => (views[b.demo_token] || 0) - (views[a.demo_token] || 0) || (b.demo_token ? 1 : 0) - (a.demo_token ? 1 : 0) || (b.score || 0) - (a.score || 0));
+  const openers = todo.filter((r) => views[r.demo_token] > 0).length;
+  if (!force && !openers && h % 3) return CRON_NOT_DUE;
+  todo = todo.slice(0, force ? limit : openers ? 12 : 6);
+  if (!todo.length) return { ok: true, checked: 0, found: 0, remaining: 0 };
+  const u = wsdUsage(), names = [];
+  const one = async (r) => {
+    let out = {};
+    try {
+      out = await wsdAsk(env, u, "fast", { max_tokens: 1200, system: "You find the owner or main decision maker of a small Australian business so the founder of a local web studio can ask for them by name on a sales call. Use only free public sources: the business's own website (About, Team, Meet the team, footer), the owner's replies to Google reviews (often signed with a first name), ABN Lookup (abr.business.gov.au; for sole traders and partnerships the entity name is the owner), LinkedIn, Facebook. Prefer the owner, director, founder or principal; a practice or office manager is fine if no owner is shown. Never guess or combine names from different businesses. If it isn't clear, save found=false.", tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 4, user_location: { type: "approximate", country: "AU", timezone: "Australia/Brisbane" } }, OWNER_TOOL], messages: [{ role: "user", content: "Business: " + r.business_name + "\nWebsite: " + (r.website || "none") + "\nArea: " + (r.location || "Australia") + "\nWho owns or runs it?" }] }, "save_owner");
+    } catch (e) { out = { found: false }; }
+    tried[r.id] = new Date().toISOString();
+    const nm = String(out.name || "").replace(/\s+/g, " ").trim();
+    if (out.found && /^[A-Za-z][A-Za-z'\-\.]+( [A-Za-z][A-Za-z'\-\.]+){0,3}$/.test(nm) && nm.length <= 60 && !/pty|ltd|clinic|team|reception|admin/i.test(nm)) {
+      await update(env, "agent_prospects", "id=eq." + r.id, { decision_maker: nm }).catch(() => {});
+      found[r.id] = { name: nm, role: String(out.role || "").slice(0, 40) || null, source: String(out.source || "").slice(0, 40) || null, at: tried[r.id] };
+      names.push({ business: r.business_name, name: nm, role: found[r.id].role, opened: views[r.demo_token] > 0 });
+    }
+  };
+  for (let i = 0; i < todo.length; i += 4) await Promise.all(todo.slice(i, i + 4).map(one));
+  await wsdLog(env, u, "owner_finder").catch(() => {});
+  const keep = Object.fromEntries(Object.entries(tried).sort((a, b) => b[1] < a[1] ? -1 : 1).slice(0, 1500));
+  await saveSetting(env, "owner_find", { tried: keep, found, last: { at: new Date().toISOString(), checked: todo.length, found: names.length } }).catch(() => {});
+  if (names.length) await audit(env, { actor: "Owner finder", action: "owners_found", target_type: "prospect", target_id: "batch", summary: ("Found " + names.length + " owner names: " + names.map((n) => n.business + " (" + n.name + ")").join(", ")).slice(0, 500) }).catch(() => {});
+  const left = Math.max(0, openers - todo.length);
+  if (!force && openers && !left) { const all = Object.values(found).length; await notify(env, "\u{1F4DE} <b>Owner names ready for your calls</b>\nThe AI looked up everyone who opened their demo. " + all + " owner names are now on your call list, so you can ask for them by name. Anyone without a name: ask reception who looks after the website and marketing.").catch(() => {}); }
+  return { ok: true, checked: todo.length, found: names.length, names, remaining_openers: left };
 }
 // v141 Leak report tidy: the AI checks every saved leak report's business type (an agency is not a clinic) and fixes it,
 // so the wording, the people and the dollar estimate fit the business. 40 an hour until every report has been checked.

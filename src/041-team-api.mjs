@@ -69,6 +69,7 @@ async function route2(request, env, url, ctx) {
     return json({ ok: true, since: st.since, views: Object.entries(st.views || {}).map(([view, x]) => ({ view, opens: x.n, last: x.last })).sort((a, b) => b.opens - a.opens) });
   }
   if (seg[0] === "ceo-home" && m === "GET") return json(await ceoHome(env));
+  if (seg[0] === "owner-find" && m === "POST") return json(await ownerFind(env, { force: true, limit: Math.max(1, Math.min(40, Number((body || {}).limit) || 8)), ids: Array.isArray((body || {}).ids) ? body.ids.map(String).slice(0, 40) : null }));
   if (seg[0] === "leak-tidy" && m === "POST") return json(await leakTidy(env, { force: true, limit: Math.max(1, Math.min(60, Number((body || {}).limit) || 40)) }));
   if (seg[0] === "task-doer" && m === "POST") return json(await taskDoer(env, { force: true, limit: Math.max(1, Math.min(10, Number((body || {}).limit) || 4)) }));
   if (seg[0] === "release-announce" && m === "POST") return json(await releaseAnnounce(env, { force: true }));

@@ -201,6 +201,7 @@ async function callList(env, limit = 20) {
   const tokens = rows.map((r) => r.demo_token).filter((t) => /^[a-f0-9]{40}$/.test(t || ""));
   const demos = Object.fromEntries((tokens.length ? await select(env, "agent_demos", `token=in.(${tokens.join(",")})&select=token,quality,views,chats,last_chat_at,last_view_at`).catch(() => []) : []).map((d) => [d.token, d]));
   const origin = env.PUBLIC_ORIGIN || DEFAULT_ORIGIN;
+  const ofound = ((await select(env, "team_settings", "key=eq.owner_find&select=value&limit=1").catch(() => []))?.[0]?.value || {}).found || {};
   const due = rows.filter((r) => (!r.call_status || r.call_status === "no_answer" || r.call_status === "voicemail") && (!r.last_call_at || now5 - Date.parse(r.last_call_at) >= 864e5)).map((r) => {
     const sentAt = r.enrolled_at || (r.status === "sent" ? r.updated_at || r.created_at : null);
     const days = sentAt ? (now5 - Date.parse(sentAt)) / 864e5 : null;
@@ -218,7 +219,7 @@ async function callList(env, limit = 20) {
       vertical: r.vertical,
       location: r.location,
       score: r.score,
-      decision_maker: r.decision_maker || null, contact_name:r.contact_name||null,contact_role:r.contact_role||null,
+      decision_maker: r.decision_maker || null, owner_role: ofound[r.id]?.role || null, owner_source: ofound[r.id]?.source || null, contact_name:r.contact_name||null,contact_role:r.contact_role||null,
       emailed_days_ago: days == null ? null : Math.floor(days),
       ready,
       phone_only: !r.email,
