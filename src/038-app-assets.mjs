@@ -2478,6 +2478,71 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
       try { const d = await team('/voice-style'); if (d.away && d.cfg.away) { const b = document.createElement('div'); b.className = 'v52-away'; b.innerHTML = '\\u{1F3DD} <b>Away mode is on</b> until ' + esc(new Date(d.cfg.away.until).toLocaleString('en-AU', { timeZone: 'Australia/Brisbane', weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })) + '. Command is holding non-urgent messages for you. <a href="#/brand">Change</a>'; el.prepend(b); } } catch (e) {}
     };
   });
+  // v142 CEO home: the Command orb inside money and calls rings, ring cards, team status, pipeline and a done-for-you feed.
+  // Uses the copy's own brand colours (--c, --c2) and theme text colours, so every client copy looks like its brand.
+  const v142css = () => {
+    if (document.getElementById('v142css')) return;
+    const st = document.createElement('style'); st.id = 'v142css';
+    st.textContent = '@keyframes v142draw{from{stroke-dashoffset:var(--len)}to{stroke-dashoffset:var(--off)}}@keyframes v142ping{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.6);opacity:0}}@keyframes v142grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}@keyframes v142spin{to{transform:rotate(360deg)}}'
+      + '.v142{display:flex;flex-direction:column;gap:18px;margin-bottom:18px}.v142-hero{display:flex;flex-wrap:wrap;gap:24px;align-items:center;padding:26px 28px}.v142-hello{flex:999 1 420px;min-width:0;display:flex;flex-direction:column;gap:10px}.v142-hello h1{margin:0;font-size:clamp(30px,4vw,48px);line-height:1.05}.v142-hello h1 b{color:var(--c)}.v142-hello p{margin:0;color:var(--mu);font-size:16px;line-height:1.5}'
+      + '.v142-dial{flex:1 1 300px;display:flex;flex-direction:column;align-items:center;gap:10px}.v142-dial-box{position:relative;width:300px;height:300px;max-width:78vw;max-height:78vw}.v142-dial-box svg{position:absolute;inset:0;width:100%;height:100%}.v142-dial-box .orb-slot{position:absolute;inset:16%;border-radius:50%;cursor:pointer}'
+      + '.v142-ring{stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:v142draw 1.8s cubic-bezier(.2,.8,.2,1) forwards}.v142-orbit{transform-origin:50% 50%;animation:v142spin 18s linear infinite}.v142-key{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;font-size:12px;color:var(--mu)}.v142-key i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}'
+      + '.v142-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}.v142-card{display:flex;align-items:center;gap:12px;padding:14px 16px}.v142-card svg{flex:none}.v142-card b{display:block;font-size:11px;letter-spacing:.08em;line-height:1.3;color:var(--mu);margin-bottom:4px}.v142-card span{font-size:14px;line-height:1.4}.v142-card.warn{box-shadow:0 0 0 1px #f5b54a inset}'
+      + '.v142-row{display:flex;flex-wrap:wrap;gap:14px}.v142-team,.v142-pipe,.v142-feed{padding:20px 22px;display:flex;flex-direction:column;gap:10px}.v142-team{flex:1 1 320px}.v142-pipe{flex:999 1 420px;min-width:0}.v142-feed{flex:1 1 320px}.v142 h3{margin:0;font-size:18px}'
+      + '.v142-lead{display:flex;align-items:center;gap:10px;font-size:14px}.v142-lead em{font-style:normal;color:var(--mu);margin-left:auto;text-align:right}.v142-dot{position:relative;width:9px;height:9px;border-radius:50%;flex:none;background:var(--mu)}.v142-dot.working{background:var(--c)}.v142-dot.needs_you{background:#f5b54a}.v142-dot.working::after,.v142-dot.needs_you::after{content:"";position:absolute;inset:0;border-radius:50%;background:inherit;animation:v142ping 2s ease-out infinite}'
+      + '.v142-bars{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;align-items:end;height:170px}.v142-bars div{display:flex;flex-direction:column;justify-content:flex-end;gap:4px;height:100%}.v142-bars i{display:block;border-radius:10px;background:var(--c);transform-origin:bottom;animation:v142grow 1.2s cubic-bezier(.2,.8,.2,1) both}.v142-bars strong{font-size:20px}.v142-bars small{font-size:12px;color:var(--mu)}'
+      + '.v142-feed div{display:flex;gap:10px;font-size:14px;line-height:1.4}.v142-feed time{color:var(--mu);flex:0 0 46px}'
+      + '@media (prefers-reduced-motion:reduce){.v142-ring,.v142-orbit,.v142-bars i,.v142-dot::after{animation:none!important}.v142-ring{stroke-dashoffset:var(--off)}}';
+    document.head.appendChild(st);
+  };
+  const v142ring = (size, r, w, pct, colour, label, inner, delay) => {
+    const len = Math.round(2 * Math.PI * r), off = Math.round(len * (1 - Math.max(0, Math.min(100, pct || 0)) / 100));
+    return '<svg viewBox="0 0 ' + size + ' ' + size + '" width="' + size + '" height="' + size + '" role="img" aria-label="' + esc(label) + '"><circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" fill="none" stroke="currentColor" stroke-opacity=".12" stroke-width="' + w + '"></circle>'
+      + '<circle class="v142-ring" cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" fill="none" stroke="' + colour + '" stroke-width="' + w + '" stroke-linecap="round" transform="rotate(-90 ' + size / 2 + ' ' + size / 2 + ')" style="--len:' + len + ';--off:' + off + ';animation-delay:' + (delay || 0) + 's"></circle>'
+      + (inner ? '<text x="' + size / 2 + '" y="' + (size / 2 + 7) + '" text-anchor="middle" fill="currentColor" font-size="20" font-weight="800">' + esc(inner) + '</text>' : '') + '</svg>';
+  };
+  const v142money = (n) => '$' + Math.round(n || 0).toLocaleString('en-AU');
+  const v142hero = async (el) => {
+    let d; try { d = await team('/ceo-home'); } catch (e) { return; }
+    if (!d || !d.ok || !el.isConnected || el.querySelector('.v142')) return;
+    v142css();
+    const who = (typeof ME !== 'undefined' && ME && ME.name) ? String(ME.name).split(' ')[0] : '';
+    const m = d.money, c = d.calls;
+    const line = [d.done_today ? 'Command handled ' + d.done_today + ' job' + (d.done_today === 1 ? '' : 's') + ' today.' : 'Command is ready.', d.waiting.total ? d.waiting.total + ' thing' + (d.waiting.total === 1 ? ' is' : 's are') + ' waiting for your OK.' : 'Nothing is waiting on you.'].join(' ');
+    const big = m ? v142ring(300, 140, 12, m.pct, 'var(--c)', 'Money this month ' + v142money(m.mtd) + ' of ' + v142money(m.target)) : '';
+    const small = c && c.goal ? v142ring(300, 116, 8, 100 * c.booked / c.goal, 'var(--c2)', c.booked + ' of ' + c.goal + ' ' + c.label + ' this week', '', 0.25) : '';
+    const dial = '<div class="v142-dial"><div class="v142-dial-box">' + (big ? big.replace('<svg ', '<svg style="position:absolute;inset:0" ') : '') + (small ? small.replace('<svg ', '<svg style="position:absolute;inset:0" ') : '')
+      + '<svg viewBox="0 0 300 300" aria-hidden="true" class="v142-orbit"><circle cx="150" cy="6" r="3" fill="var(--c)"></circle><circle cx="294" cy="150" r="2" fill="var(--c2)"></circle></svg>'
+      + '<div class="orb-slot" id="ceoOrb" role="button" tabindex="0" aria-label="Talk to Command"><div class="orb-fallback"></div></div></div>'
+      + (m ? '<div style="font-size:15px"><b style="font-size:22px">' + v142money(m.mtd) + '</b> <span class="mu">of ' + v142money(m.target) + ' this month</span></div>' : '')
+      + '<div class="v142-key">' + (m ? '<span><i style="background:var(--c)"></i>Money to target ' + Math.round(m.pct) + '%</span>' : '') + (c && c.goal ? '<span><i style="background:var(--c2)"></i>' + esc(c.label) + ' ' + c.booked + '/' + c.goal + '</span>' : '') + '</div>'
+      + '<a class="btn pri" href="#/studio">Talk to Command</a></div>';
+    const card = (title, text, ringHtml, warn, href) => '<a class="wf-glass v142-card' + (warn ? ' warn' : '') + '" href="' + (href || '#/today') + '" style="text-decoration:none;color:inherit">' + ringHtml + '<div><b>' + esc(title) + '</b><span>' + esc(text) + '</span></div></a>';
+    const cards = [
+      c && c.goal ? card(c.label.toUpperCase(), (c.goal - c.booked > 0 ? (c.goal - c.booked) + ' more to hit this week' : 'Goal hit this week'), v142ring(88, 36, 8, 100 * c.booked / c.goal, 'var(--c)', c.booked + ' of ' + c.goal, c.booked + '/' + c.goal), false, '#/growth') : '',
+      card('WARM LEADS', d.warm.viewed + ' viewed a demo · ' + d.warm.replied + ' replied', v142ring(88, 36, 8, d.warm.total ? 100 : 0, 'var(--c2)', d.warm.total + ' warm leads', String(d.warm.total), false, 0.1), false, '#/growth'),
+      card('DONE FOR YOU', 'Jobs the AI finished today', v142ring(88, 36, 8, d.done_today ? 100 : 0, 'var(--c)', d.done_today + ' done today', String(d.done_today), false, 0.2), false, '#/records'),
+      card('WAITING ON YOU', d.waiting.total ? 'Tap to approve' : 'All clear', v142ring(88, 36, 8, d.waiting.total ? 100 : 0, '#f5b54a', d.waiting.total + ' waiting', String(d.waiting.total), false, 0.3), d.waiting.total > 0, '#/approvals')
+    ].join('');
+    const teamBox = '<div class="wf-glass v142-team"><div class="row" style="justify-content:space-between"><h3>Your team right now</h3><a href="#/team" class="sm">See all</a></div>'
+      + d.team.leads.map((x) => '<div class="v142-lead"><span class="v142-dot ' + x.status + '"></span><b>' + esc(x.team) + '</b><em>' + esc(x.note) + '</em></div>').join('')
+      + '<div class="v142-lead"><span class="v142-dot"></span><span class="mu">Back office: ' + esc(d.team.back_office) + '</span></div></div>';
+    const maxP = d.pipeline ? Math.max(1, ...d.pipeline.map((x) => x[1])) : 1;
+    const pipe = d.pipeline ? '<div class="wf-glass v142-pipe"><h3>Your pipeline</h3><div class="v142-bars">' + d.pipeline.map((x, i) => '<div><i style="height:' + Math.max(6, Math.round(110 * x[1] / maxP)) + 'px;opacity:' + (0.35 + i * 0.16) + ';animation-delay:' + (i * 0.1) + 's"></i><strong>' + x[1] + '</strong><small>' + esc(x[0]) + '</small></div>').join('') + '</div></div>' : '';
+    const feed = '<div class="wf-glass v142-feed"><h3>Done for you today</h3>' + (d.feed.length ? d.feed.map((f) => '<div><time>' + esc(new Date(f.at).toLocaleTimeString('en-AU', { timeZone: 'Australia/Brisbane', hour: 'numeric', minute: '2-digit' })) + '</time><span>' + esc(f.text) + '</span></div>').join('') : '<p class="mu sm" style="margin:0">Nothing yet today.</p>') + '</div>';
+    const box = document.createElement('section'); box.className = 'v142';
+    box.innerHTML = '<div class="wf-glass v142-hero"><div class="v142-hello"><span class="wf-eyebrow">' + esc(new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Brisbane', weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()) + '</span><h1>' + esc(d.greeting) + (who ? ', <b>' + esc(who) + '.</b>' : '.') + '</h1><p>' + esc(line) + '</p></div>' + dial + '</div>'
+      + '<div class="v142-cards">' + cards + '</div><div class="v142-row">' + teamBox + pipe + feed + '</div>';
+    el.prepend(box);
+    const slot = box.querySelector('#ceoOrb');
+    if (slot) { if (window.SFOrb && window.SFOrb.attach) window.SFOrb.attach(slot); const talk = () => { location.hash = '#/studio'; }; slot.onclick = talk; slot.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); talk(); } }; }
+  };
+  const T142 = VIEWS.today;
+  VIEWS.today = async (el) => {
+    await T142(el);
+    if (el.dataset.embed || !still('today', el)) return;
+    v142hero(el);
+  };
   // v54 Command Link card (Settings > Brand & features)
   const linkCard = async (host) => {
     let d; try { d = await team('/mac-link'); } catch (e) { return; }

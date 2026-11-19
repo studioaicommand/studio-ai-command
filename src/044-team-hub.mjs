@@ -157,6 +157,46 @@ async function teamScheduled(event, env) {
     ["Telegram digest", k(() => cronNotify(e)), { always: true, ms: 60000 }]
   ]);
 }
+// v142 CEO home: one call with the numbers the new home screen shows (money vs target, calls vs goal, warm leads,
+// done for you today, waiting on you, team status, pipeline, a short feed). Every part is optional: a copy without
+// Stripe, GHL calendars or outreach simply leaves that part out.
+async function ceoHome(env) {
+  const t = brisbaneNow();
+  const b = new Date(Date.now() + 10 * 36e5); b.setUTCHours(0, 0, 0, 0);
+  const dayStart = new Date(b.getTime() - 10 * 36e5).toISOString();
+  const settings = await getSettings(env).catch(() => ({}));
+  const [mission, goal, P, Dm, pend, aud, usage] = await Promise.all([
+    computeMission(env, settings).catch(() => null),
+    goalStatus(env).catch(() => null),
+    select(env, "agent_prospects", "select=status,call_status,demo_token&limit=5000").catch(() => []),
+    select(env, "agent_demos", "select=views&limit=2000").catch(() => []),
+    select(env, "team_actions", "status=eq.pending&select=type,department,title&limit=500").catch(() => []),
+    select(env, "team_audit", "created_at=gte." + encodeURIComponent(dayStart) + "&order=created_at.desc&select=actor,action,summary,created_at&limit=200").catch(() => []),
+    select(env, "team_usage", "created_at=gte." + encodeURIComponent(new Date(Date.now() - 20 * 6e4).toISOString()) + "&select=department,source,created_at&order=created_at.desc&limit=50").catch(() => [])
+  ]);
+  const g = goal;
+  const mine = (a) => /^ty\b|owner|^you$/i.test(String(a || ""));
+  const doneToday = aud.filter((a) => !mine(a.actor));
+  const replied = P.filter((p) => p.status === "replied").length, viewed = Dm.filter((d) => +d.views > 0).length;
+  const shape = publicDepartments();
+  const busy = new Map(); for (const u of usage) if (!busy.has(u.department)) busy.set(u.department, u.source);
+  const waitBy = {}; for (const a of pend) waitBy[a.department || "chief_of_staff"] = (waitBy[a.department || "chief_of_staff"] || 0) + 1;
+  const what = (src) => String(src || "").replace(/^shift:/, "").replace(/_/g, " ");
+  const leads = shape.filter((x) => x.group === "lead").map((x) => ({ id: x.id, team: x.team, status: waitBy[x.id] ? "needs_you" : busy.has(x.id) ? "working" : "quiet", note: waitBy[x.id] ? waitBy[x.id] + " waiting for your OK" : busy.has(x.id) ? "Working on " + what(busy.get(x.id)) : "Ready" }));
+  const backBusy = shape.filter((x) => x.group !== "lead" && (busy.has(x.id) || waitBy[x.id]));
+  return {
+    ok: true,
+    greeting: t.hour < 12 ? "Good morning" : t.hour < 17 ? "Good afternoon" : "Good evening",
+    money: mission && mission.connected !== false ? { mtd: Math.round(+mission.revenue_month_to_date || 0), target: +mission.target || 0, pct: Math.min(100, +mission.percent_of_target || 0), days_left: mission.days_in_month && mission.day_of_month ? mission.days_in_month - mission.day_of_month : null } : null,
+    calls: g ? { booked: +g.booked || 0, goal: +g.goal || 0, label: g.label || "booked calls" } : null,
+    warm: { total: viewed + replied, viewed, replied },
+    done_today: doneToday.length,
+    waiting: { total: pend.length },
+    team: { leads, back_office: backBusy.length ? backBusy.map((x) => x.short || x.name).join(", ") + " busy" : "All quiet" },
+    pipeline: P.length ? [["Found", P.length], ["Demo sent", P.filter((p) => p.demo_token).length], ["Interested", viewed + replied], ["Call booked", P.filter((p) => p.call_status === "booked").length], ["Won", P.filter((p) => p.status === "won").length]] : null,
+    feed: doneToday.slice(0, 6).map((a) => ({ at: a.created_at, text: String(a.summary || a.action || "").slice(0, 140) }))
+  };
+}
 // v141 Leak report tidy: the AI checks every saved leak report's business type (an agency is not a clinic) and fixes it,
 // so the wording, the people and the dollar estimate fit the business. 40 an hour until every report has been checked.
 async function leakTidy(env, { limit = 40, force = false } = {}) {

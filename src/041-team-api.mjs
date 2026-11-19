@@ -68,6 +68,7 @@ async function route2(request, env, url, ctx) {
     if (m === "POST") { const v = String((body || {}).view || "").replace(/[^a-z_]/g, "").slice(0, 30); if (v) { const x = st.views[v] || { n: 0 }; st.views[v] = { n: x.n + 1, last: new Date().toISOString() }; await saveSetting(env, "ui_usage", st).catch(() => {}); } return json({ ok: true }); }
     return json({ ok: true, since: st.since, views: Object.entries(st.views || {}).map(([view, x]) => ({ view, opens: x.n, last: x.last })).sort((a, b) => b.opens - a.opens) });
   }
+  if (seg[0] === "ceo-home" && m === "GET") return json(await ceoHome(env));
   if (seg[0] === "leak-tidy" && m === "POST") return json(await leakTidy(env, { force: true, limit: Math.max(1, Math.min(60, Number((body || {}).limit) || 40)) }));
   if (seg[0] === "task-doer" && m === "POST") return json(await taskDoer(env, { force: true, limit: Math.max(1, Math.min(10, Number((body || {}).limit) || 4)) }));
   if (seg[0] === "release-announce" && m === "POST") return json(await releaseAnnounce(env, { force: true }));
