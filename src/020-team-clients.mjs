@@ -8,6 +8,7 @@ var CHECKLIST = [
   ["safety_passed", "Safety test passed"],
   ["installed", "Receptionist installed on their website"],
   ["missed_call", "Missed-call text-back set up in GHL"],
+  ["booking_reminders", "Their calendar: phone required, SMS reminders 24h, 2h and 10 min before (with the meeting link), consent box covers reminders"],
   ["sms_followup", "Front Desk: SMS follow-up for new enquiries switched on in GHL"],
   ["reviews", "Front Desk: Google review requests switched on in GHL"],
   ["monthly_report", "Front Desk: monthly results report scheduled"],
