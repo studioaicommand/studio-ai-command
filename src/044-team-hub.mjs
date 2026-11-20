@@ -105,7 +105,12 @@ async function teamScheduled(event, env) {
   const bg102 = await bgHeld(e).catch(() => ({ held: false }));
   const aiHold = (await aiBackgroundPaused(e).catch(() => false)) || bg102.held;
   const when = new Date(event.scheduledTime || Date.now());
-  const ai = (fn) => (key && !aiHold ? fn : () => CRON_NOT_DUE);
+  // v145 Weekends off for Studio's own background AI (Saturday, and Sunday until 6pm). Sunday evening preps Monday:
+  // owner names, sweeps and hunts run from 6pm. Customer-facing work (inbox, replies, receptionists, Telegram) never stops.
+  // Client copies keep running every day: their businesses may trade on weekends.
+  const bn = brisbaneNow(when), weekendQuiet = !inst.custom && (bn.dow === 6 || (bn.dow === 7 && bn.hour < 18));
+  const aiAny = (fn) => (key && !aiHold ? fn : () => CRON_NOT_DUE);
+  const ai = (fn) => (key && !aiHold && !weekendQuiet ? fn : () => CRON_NOT_DUE);
   const out = (fn) => (instMods.outreach ? fn : () => CRON_NOT_DUE);
   const k = (fn) => (key ? fn : () => CRON_NOT_DUE);
   return cronRun(e, [
@@ -123,7 +128,7 @@ async function teamScheduled(event, env) {
     ["Review desk", k(() => reviewDesk(e))],
     ["Phone calls", () => phoneSync(e)],
     ["Demo follow-ups", out(() => runDemoFollowups(e))],
-    ["Reply watch", out(ai(() => checkReplies(e, runAgent)))],
+    ["Reply watch", out(aiAny(() => checkReplies(e, runAgent)))],
     // 2. Guards and reports.
     ["AI budget", () => aiBudgetCheck(e)],
     ["Fair use", () => fairUseCheck(e)],
@@ -215,7 +220,7 @@ async function ownerFind(env, { limit = 8, force = false, ids = null } = {}) {
   const st = (await select(env, "team_settings", "key=eq.owner_find&select=value&limit=1").catch(() => []))?.[0]?.value || {};
   const tried = st.tried || {}, found = st.found || {};
   const h = brisbaneNow().hour;
-  if (!force && (h < 7 || h > 21)) return CRON_NOT_DUE;
+  if (!force && (h < 7 || h > 22)) return CRON_NOT_DUE;
   const rows = await select(env, "agent_prospects", "phone=not.is.null&decision_maker=is.null&status=in.(sent,to_send,nurture)&select=id,business_name,website,location,vertical,demo_token,score&order=score.desc.nullslast&limit=300").catch(() => []);
   const toks = rows.map((r) => r.demo_token).filter((t) => /^[a-f0-9]{40}$/.test(t || ""));
   const views = {};

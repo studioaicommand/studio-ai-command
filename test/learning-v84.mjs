@@ -93,7 +93,7 @@ r = await call("/api/v1/team/brain/rules", { rules: rules() });
 assert(r.j.rules.find((x) => x.id === keepIt.id)?.said === keepIt.said, "Editing the rulebook in Command keeps how many times each rule was said");
 
 // v86 nightly exam: a rule the team slips on gets pinned and Ty is told
-{ const RD2 = Date; const f2 = new RD2("2026-11-14T10:30:00Z").getTime();
+{ const RD2 = Date; const f2 = new RD2("2026-11-12T10:30:00Z").getTime();
   globalThis.Date = class extends RD2 { constructor(...a) { super(...(a.length ? a : [f2])); } static now() { return f2; } };
   tg.length = 0;
   const ps2 = []; await w.scheduled({ cron: "*/15 * * * *" }, env, { waitUntil(p) { ps2.push(p); } }); await Promise.all(ps2);
