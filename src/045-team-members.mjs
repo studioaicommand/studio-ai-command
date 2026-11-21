@@ -137,25 +137,25 @@ function memAllowed(role, p, m) {
   const write = !["GET", "HEAD", "OPTIONS"].includes(m);
   if (team != null && /^\/(fleet|fleet-info)(\/|$)/.test(team)) return false;
   if (role === "support") {
-    if (team != null && /^\/(money|costs|mission|book)(\/|$)/.test(team)) return false;
+    if (team != null && /^\/(money|costs|mission|book|value)(\/|$)/.test(team)) return false;
     if (!write) return true;
     if (m === "DELETE") return false;
     if (team != null && /^\/(actions|instance|settings|offers|charter|telegram\/setup|records\/(backfill|import-telegram)|money|book|clients|demo-followups)(\/|$)/.test(team)) return false;
     return !p.startsWith("/api/v1/operator/goals");
   }
   if (role === "manager") {
-    if (team != null && /^\/(money|costs|mission)(\/|$)/.test(team)) return false;
+    if (team != null && /^\/(money|costs|mission|value)(\/|$)/.test(team)) return false;
     if (!write) return true;
     if (team != null && /^\/(settings|offers|charter|telegram\/setup|records\/(backfill|import-telegram)|money|instance)(\/|$)/.test(team)) return false;
     return !p.startsWith("/api/v1/operator/goals");
   }
-  if (team != null && /^\/(money|costs|mission)(\/|$)/.test(team)) return false;
+  if (team != null && /^\/(money|costs|mission|value)(\/|$)/.test(team)) return false;
   if (!write) return true;
   if (/^\/api\/v1\/operator\/(chat|voice|tool)$/.test(p)) return true;
   return team != null && /^\/(website-demos|demos\/build|analyse|scan|rescan|business|chat|threads)(\/|$)/.test(team);
 }
 // Studio AI for the team: everyone gets it, but each role only gets the tools (and figures) their role allows.
-var MEM_MONEY_TOOL = /stripe|revenue|invoice|money|profit|cost|price|billing|payment|subscription|balance|clients_overview|autopilot|offer/i;
+var MEM_MONEY_TOOL = /stripe|revenue|invoice|money|profit|cost|price|billing|payment|subscription|balance|clients_overview|autopilot|offer|value_report/i;
 var MEM_STAFF_TOOLS = new Set(["ghl_search_contacts", "ghl_get_contact", "ghl_create_contact", "ghl_update_contact", "ghl_list_calendars", "ghl_free_slots", "ghl_list_appointments", "propose_ghl_appointment_book", "phone_calls", "team_jobs", "list_approvals", "recent_conversations", "conversation_messages", "show_on_screen", "send_telegram_to_ty", "find_website_leads", "build_website_demo", "adjust_website_demo", "query_prospects", "analyse_website", "leak_scan", "build_demo", "call_list", "list_saved_conversations", "read_saved_conversation"]);
 function memToolOk(role, name) {
   if (!role || role === "owner") return true;
@@ -727,8 +727,17 @@ async function fleetGate(request, env, ctx) {
   }
   if (p === "plan" && request.method === "POST") {
     const b = await request.json().catch(() => ({}));
+    if (b.plan_aud != null && b.tier == null) {
+      const v = Number(b.plan_aud);
+      if (!(v >= 0 && v <= 1e5)) return secJson({ ok: false, error: "Enter a monthly price in dollars." }, 400);
+      const cur = (await secGet(env, "plan_tier").catch(() => null)) || {};
+      await secPut(env, "plan_tier", { ...cur, plan_aud: Math.round(v * 100) / 100, plan_at: new Date().toISOString() });
+      await secLog(env, { actor: "Studio Flow", action: "plan_price_set", summary: `Command plan price set to $${Math.round(v * 100) / 100}/month (shown as the cost on the value ledger)` });
+      return secJson({ ok: true, plan_aud: Math.round(v * 100) / 100 });
+    }
     if (b.tier !== "core" && b.tier !== "company") return secJson({ ok: false, error: "Unknown plan." }, 400);
-    await secPut(env, "plan_tier", { tier: b.tier, at: new Date().toISOString() });
+    const prevTier = (await secGet(env, "plan_tier").catch(() => null)) || {};
+    await secPut(env, "plan_tier", { ...prevTier, tier: b.tier, at: new Date().toISOString() });
     await secLog(env, { actor: "Studio Flow", action: "plan_changed", summary: `Plan set to ${b.tier === "company" ? "Full Company" : "Core Team"}` });
     return secJson({ ok: true, tier: b.tier });
   }

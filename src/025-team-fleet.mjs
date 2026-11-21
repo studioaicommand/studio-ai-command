@@ -9,7 +9,8 @@ async function fleetInfo(env) {
   ]);
   const fuCap = Number((await secGet(env, "fair_use").catch(() => null) || {}).monthly_aud) || null;
   const setup = await setupProgress(env).catch(() => null);
-  return { ok: true, version: APP.v, setup, fair_use_aud: fuCap, ai_spend_month_aud: Math.round(usage.reduce((a, r) => a + (+r.cost_aud || 0), 0) * 100) / 100, approvals_waiting: pending.length, last_activity_at: last[0]?.occurred_at || null, people: M.users.filter((u) => !u.disabled && u.id !== SUPPORT_ID).length, passkeys: M.users.reduce((a, u) => a + (u.id === SUPPORT_ID ? 0 : (u.creds || []).length), 0) };
+  const value = await valueSummary(env).catch(() => null);
+  return { ok: true, version: APP.v, setup, value, fair_use_aud: fuCap, ai_spend_month_aud: Math.round(usage.reduce((a, r) => a + (+r.cost_aud || 0), 0) * 100) / 100, approvals_waiting: pending.length, last_activity_at: last[0]?.occurred_at || null, people: M.users.filter((u) => !u.disabled && u.id !== SUPPORT_ID).length, passkeys: M.users.reduce((a, u) => a + (u.id === SUPPORT_ID ? 0 : (u.creds || []).length), 0) };
 }
 async function fleetFairUseWatch(env) {
   const seen = await secGet(env, "fleet_fair_use_alerts").catch(() => null) || {};
@@ -100,6 +101,8 @@ async function fleetRoute(p, m, body, env, url, seg) {
       const v = Number(body.plan_aud);
       if (!(v >= 0 && v <= 1e5)) return J({ ok: false, error: "Enter what they pay per month, in dollars." }, 400);
       await secPut(env, "fleet", { items: items.map((x) => x.id === it.id ? { ...x, plan_aud: Math.round(v * 100) / 100 } : x) });
+      // v149 their Command shows its plan as the cost on their value ledger
+      await fleetCall(env, it, "plan", { method: "POST", body: JSON.stringify({ plan_aud: Math.round(v * 100) / 100 }) }).catch(() => null);
       await secLog(env, { actor: "Ty", action: "fleet_plan_set", summary: `Set ${it.business}'s plan to $${v}/month` });
       return J({ ok: true });
     }

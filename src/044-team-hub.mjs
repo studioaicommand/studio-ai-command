@@ -140,6 +140,7 @@ async function teamScheduled(event, env) {
     ["Leak tests", out(() => leakTestExpire(e))],
     ["Leak watch", () => leakWatch(e)],
     ["Monday report", () => mondayReport(e)],
+    ["Value report", () => valueMonthly(e)],
     ["DM desk", () => (instMods.outreach || instMods.social_outreach ? dmDaily(e) : CRON_NOT_DUE)],
     // 3. The team's AI work (each job is also queued and retried on its own).
     ["Task doer", ai(() => taskDoer(e)), { ms: 300000 }],
@@ -212,6 +213,7 @@ async function ceoHome(env) {
     waiting: { total: pend.length },
     team: { leads, back_office: backBusy.length ? backBusy.map((x) => x.short || x.name).join(", ") + " busy" : "All quiet" },
     pipeline: !client && P.length ? [["Found", P.length], ["Demo sent", P.filter((p) => p.demo_token).length], ["Interested", viewed + replied], ["Call booked", P.filter((p) => p.call_status === "booked").length], ["Won", P.filter((p) => p.status === "won").length]] : null,
+    value: await valueSummary(env).catch(() => null),
     feed: doneToday.slice(0, 6).map((a) => ({ at: a.created_at, text: String(a.summary || a.action || "").slice(0, 140) }))
   };
 }

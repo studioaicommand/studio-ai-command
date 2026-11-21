@@ -680,6 +680,10 @@ async function phoneList(env, { days = 7, limit = 30 } = {}) {
   return { days: clamp(days, 1, 90, 7), calls, totals: { calls: all.length, booked: all.filter((m) => m.booked).length, urgent: all.filter((m) => m.urgent).length, minutes: Math.round(all.reduce((a, m) => a + (m.duration_sec || 0), 0) / 6) / 10, cost_aud: Math.round(all.reduce((a, m) => a + (Number(m.cost_aud) || 0), 0) * 100) / 100 } };
 }
 Object.assign(TOOL_DEFS, {
+  value_report: {
+    description: "What Command has done for the business in dollars: bookings it made (valued at what a new customer is worth), staff hours saved, enquiries answered after hours, against what Command costs, with the return (e.g. 5.2x). This month so far or last month. Use for 'what has Command done for me', 'is it worth it', 'what's my ROI', reports and sales proof. Always say these are estimates.",
+    input_schema: { type: "object", properties: { month: { type: "string", enum: ["this", "last"], description: "This month so far (default) or last month." } } }
+  },
   google_rank_check: {
     description: "Where a website ranks on Google and Google Maps for a keyword in a suburb or city (live check, costs a fraction of a cent, capped monthly). Use for 'where do we rank for X', 'how does this prospect show up on Google', or before a sales call to say 'you're #14 for physio Noosa'. Needs the website domain, the keyword a customer would type, and the place.",
     input_schema: { type: "object", properties: { domain: { type: "string", description: "Their website, e.g. harbourphysio.com.au" }, keyword: { type: "string", description: "What a customer types, e.g. physio noosa" }, location: { type: "string", description: "Suburb or city, e.g. Noosa Heads QLD" } }, required: ["domain", "keyword"] }
@@ -1250,6 +1254,8 @@ async function mondayReport(env, { force = false } = {}) {
     L.push("🔎 New prospects researched: " + pros.length);
     L.push("👀 Demos opened by businesses: " + demos.length);
   }
+  const vl = valueLine(await valueSummary(env).catch(() => null));
+  if (vl) L.push("💰 " + vl.replace("this month", "so far this month"));
   if (waiting.length) L.push("⏳ Waiting for you now: " + waiting.length);
   if (!custom && use.length) L.push("🤖 AI cost: " + "$" + use.reduce((x, r) => x + (+r.cost_aud || 0), 0).toFixed(2));
   const W2 = [];
@@ -3961,6 +3967,10 @@ async function runTool(name, input, ctx) {
     }
     case "ghl_create_contact": case "ghl_update_contact": case "ghl_list_calendars": case "ghl_free_slots": case "ghl_create_opportunity": case "ghl_move_opportunity":
       return crmTool(env, name, input, dept);
+    case "value_report": {
+      const L = await valueLedger(env, { offset: input.month === "last" ? -1 : 0 });
+      return { period: L.period.label + (L.period.month_to_date ? " (so far)" : ""), estimated_value_aud: L.total_value, bookings: L.bookings, value_per_booking_aud: L.settings.per_booking, booking_value_aud: L.booking_value, hours_saved: L.hours_saved, staff_rate_aud: L.settings.hourly_rate, time_value_aud: L.time_value, answered: L.answered, after_hours: L.after_hours, cost_aud: L.cost.total, cost_is: L.cost.note, return_x: L.roi, breakdown: L.lines.map((l) => l.label + ": " + l.count), note: "Estimates from work Command actually finished. Bookings use the value per booking; other work counts as staff time saved. Owners change the values in Command > Value." };
+    }
     case "google_rank_check": {
       const r = await rankCheck(env, input);
       return { summary: r.domain + " for \"" + r.keyword + "\" in " + r.location + ": " + rankLine(r), organic: r.organic, maps: r.maps, local_pack: r.local_pack, ranking_url: r.url, google_top_3: r.top, maps_top_3: r.maps_top, ai_overview_shown: r.ai_overview };
