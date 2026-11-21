@@ -22,6 +22,7 @@ function isTeamPath(pathname) {
   if (pathname.startsWith("/w/") || pathname.startsWith("/api/v1/w/")) return true;
   if (pathname === "/api/v1/telegram/hook") return true;
   if (isAppAsset(pathname)) return true;
+  if (pathname === "/command-demo") return true;
   if (COMMAND_PATHS.has(pathname)) return hubReady();
   return SITE_PATHS.has(pathname) && typeof claudePublicPage === "function" && typeof claudeLivePage === "function";
 }
@@ -29,6 +30,7 @@ function teamFetch(request, env, ctx) {
   const url = new URL(request.url);
   if (url.pathname === "/offers" || url.pathname === "/offers/") return offersPublic(request,teamEnv(env));
   if (isAppAsset(url.pathname)) return appAsset(request);
+  if (url.pathname === "/command-demo") return commandDemoShell(request, teamEnv(env));
   if (url.pathname.startsWith("/leak-report/")) return leakReport(request, teamEnv(env), url);
   if (url.pathname.startsWith("/w/") || url.pathname.startsWith("/api/v1/w/")) return widgetPublic(request, teamEnv(env), url, ctx).catch(() => new Response("Unavailable.", { status: 503 }));
   if (url.pathname.startsWith("/demo/") || url.pathname.startsWith("/demo-assets/") || url.pathname.startsWith("/api/v1/demo/")) return demoPublic(request, teamEnv(env), url, ctx).catch(() => new Response("Demo unavailable.", { status: 503 }));
@@ -181,6 +183,13 @@ async function ceoHome(env) {
     select(env, "team_usage", "created_at=gte." + encodeURIComponent(new Date(Date.now() - 20 * 6e4).toISOString()) + "&select=department,source,created_at&order=created_at.desc&limit=50").catch(() => [])
   ]);
   const g = goal;
+  const inst = await instGet(env).catch(() => null), client = !!(inst && inst.custom);
+  let handled7 = 0, booked7 = 0;
+  if (client) {
+    const wk = encodeURIComponent(new Date(Date.now() - 7 * 864e5).toISOString());
+    const A = await select(env, "team_actions", "auto=is.true&created_at=gte." + wk + "&select=type,status&limit=2000").catch(() => []);
+    handled7 = A.length; booked7 = A.filter((a) => /book|appointment/i.test(a.type || "") && a.status !== "rejected").length;
+  }
   const mine = (a) => /^ty\b|owner|^you$/i.test(String(a || ""));
   const doneToday = aud.filter((a) => !mine(a.actor));
   const replied = P.filter((p) => ["replied", "interested"].includes(p.status) || p.call_status === "replied").length, viewed = Dm.filter((d) => +d.views > 0).length;
@@ -188,18 +197,20 @@ async function ceoHome(env) {
   const busy = new Map(); for (const u of usage) if (!busy.has(u.department)) busy.set(u.department, u.source);
   const waitBy = {}; for (const a of pend) waitBy[a.department || "chief_of_staff"] = (waitBy[a.department || "chief_of_staff"] || 0) + 1;
   const what = (src) => { const k = String(src || "").replace(/^shift:/, ""); return ({ sales_am: "morning sales run", sales_pm: "afternoon sales run", task_doer: "your to-dos", back_office: "weekly back office", owner_finder: "finding owner names" })[k] || k.replace(/_/g, " "); };
-  const leads = shape.filter((x) => x.group === "lead").map((x) => ({ id: x.id, team: x.team, status: waitBy[x.id] ? "needs_you" : busy.has(x.id) ? "working" : "quiet", note: waitBy[x.id] ? waitBy[x.id] + " waiting for your OK" : busy.has(x.id) ? "Working on " + what(busy.get(x.id)) : "Ready" }));
-  const backBusy = shape.filter((x) => x.group !== "lead" && (busy.has(x.id) || waitBy[x.id]));
+  const leadSrc = client ? shape.filter((x) => ["chief_of_staff", "head_of_sales", "head_of_client_success"].includes(x.id)).map((x) => ({ ...x, team: x.id === "chief_of_staff" ? "Command" : x.id === "head_of_sales" ? "Front desk & sales" : "Customers" })) : shape.filter((x) => x.group === "lead");
+  const leads = leadSrc.map((x) => ({ id: x.id, team: x.team, status: waitBy[x.id] ? "needs_you" : busy.has(x.id) ? "working" : "quiet", note: waitBy[x.id] ? waitBy[x.id] + " waiting for your OK" : busy.has(x.id) ? "Working on " + what(busy.get(x.id)) : "Ready" }));
+  const backBusy = shape.filter((x) => !leadSrc.some((l) => l.id === x.id) && (busy.has(x.id) || waitBy[x.id]));
   return {
     ok: true,
     greeting: (t.hour < 12 ? "Good morning" : t.hour < 17 ? "Good afternoon" : "Good evening") + ", " + ((await instGet(env).catch(() => null))?.owner_first || "Ty"),
     money: mission && mission.connected !== false ? { mtd: Math.round(+mission.revenue_month_to_date || 0), target: +mission.target || 0, pct: Math.min(100, +mission.percent_of_target || 0), days_left: mission.days_in_month && mission.day_of_month ? mission.days_in_month - mission.day_of_month : null } : null,
-    calls: g ? { booked: +g.booked || 0, goal: +g.goal || 0, label: g.label || "booked calls" } : null,
-    warm: { total: viewed + replied, viewed, replied },
+    calls: client ? (booked7 ? { booked: booked7, goal: Math.max(booked7, +g?.goal || 0), label: "bookings", goal_set: +g?.goal > 0 } : null) : g ? { booked: +g.booked || 0, goal: +g.goal || 0, label: g.label || "booked calls" } : null,
+    warm: client ? { total: handled7, label: "ANSWERED FOR YOU", text: "Enquiries and jobs handled in the last 7 days", href: "#/records" } : { total: viewed + replied, viewed, replied },
+    client,
     done_today: doneToday.length,
     waiting: { total: pend.length },
     team: { leads, back_office: backBusy.length ? backBusy.map((x) => x.short || x.name).join(", ") + " busy" : "All quiet" },
-    pipeline: P.length ? [["Found", P.length], ["Demo sent", P.filter((p) => p.demo_token).length], ["Interested", viewed + replied], ["Call booked", P.filter((p) => p.call_status === "booked").length], ["Won", P.filter((p) => p.status === "won").length]] : null,
+    pipeline: !client && P.length ? [["Found", P.length], ["Demo sent", P.filter((p) => p.demo_token).length], ["Interested", viewed + replied], ["Call booked", P.filter((p) => p.call_status === "booked").length], ["Won", P.filter((p) => p.status === "won").length]] : null,
     feed: doneToday.slice(0, 6).map((a) => ({ at: a.created_at, text: String(a.summary || a.action || "").slice(0, 140) }))
   };
 }

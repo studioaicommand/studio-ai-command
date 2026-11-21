@@ -7,6 +7,7 @@ var TYPES = {
   "/app/orb.js": ["text/javascript; charset=utf-8", () => APP.orb],
   "/app/app.css": ["text/css; charset=utf-8", () => APP.css + "\n" + THEMES_CSS],
   "/app/manifest.webmanifest": ["application/manifest+json", () => APP.manifest],
+  "/app/demo.js": ["text/javascript; charset=utf-8", () => COMMAND_DEMO_JS],
   "/app/logo.webp": ["image/webp", () => bin()["/app/logo.webp"]],
   "/app/mark.webp": ["image/webp", () => bin()["/app/mark.webp"]],
   "/app/icon.png": ["image/png", () => bin()["/app/icon.png"]],

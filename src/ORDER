@@ -38,6 +38,7 @@
 037-team-site-public.mjs
 038-app-assets.mjs
 039-app-serve.mjs
+047-command-demo.mjs
 040-team-site.mjs
 041-team-api.mjs
 042-team-hub-panel.mjs

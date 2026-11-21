@@ -785,7 +785,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
       '<div class="state" aria-live="polite"><span class="dot" data-vdot></span><span data-vstate>' + esc(VOICE.label) + "</span></div>" +
       '<div class="vctl" data-vctl></div><p class="mu xs hint" style="text-align:center;max-width:320px">Voice uses your microphone in this tab only. Anything that sends or spends money still needs your approval, with a code.</p></section>' +
       '<section class="card convo"><div class="welcome"' + (CHAT.length ? " hidden" : "") + '><h2>' + greeting() + ", Ty.</h2><p>Ask anything about the business, or tell the team what to do.</p>" +
-      '<div class="sugg">' + SUGG.map((s) => "<button type=\\"button\\">" + esc(s) + "</button>").join("") + "</div></div>" +
+      '<div class="sugg">' + (INST && INST.custom ? ["Brief me on the business today", "What needs my approval?", "Who enquired this week and did they book?", "How are we tracking to the monthly target?", "Draft a win-back message for past clients", "What did the team do overnight?"] : SUGG).map((s) => "<button type=\\"button\\">" + esc(s) + "</button>").join("") + "</div></div>" +
       '<div class="msgs" id="msgs" aria-live="polite">' + CHAT.map((m, i) => '<div data-mid="' + i + '">' + msgHtml(m) + "</div>").join("") + "</div>" +
       '<form class="composer" id="composer"><textarea id="cin" rows="1" placeholder="Message Studio AI\u2026" aria-label="Message Studio AI"></textarea><button class="btn icon ghost" type="button" data-vtoggle aria-label="Voice">' + ic("mic") + '</button><button class="btn pri icon" type="submit" aria-label="Send">' + ic("send") + "</button></form></section></div>";
     window.SFOrb.attach($("#studioOrb", el));
@@ -1468,13 +1468,13 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
   // \u2500\u2500 Team \u2500\u2500
   const TSUGG = {
     chief_of_staff: ["Give me today's briefing", "What should I focus on this week?", "Plan next month across every department"],
-    head_of_marketing: ["How do we look online right now?", "Plan a 30-day campaign for clinics", "What do clinic owners struggle with most?"],
+    head_of_marketing: ["How do we look online right now?", "Plan a 30-day campaign", "What do our customers ask about most?"],
     head_of_sales: ["What should I do in sales today?", "Who are my hottest leads?", "Draft follow-ups for anyone who went quiet"],
     head_of_finance: ["How's revenue vs last month?", "Any overdue invoices?", "Forecast the next 90 days"],
     head_of_operations: ["Is everything in the stack healthy?", "Write my client onboarding SOP", "What should I automate next?"],
     head_of_client_success: ["Which clients are at risk?", "Write my onboarding email sequence", "Who should I ask for a review?"],
-    head_of_systems: ["What's breaking or slowing us down?", "Spot-check the last 3 leak reports for false findings", "What should we improve next to get more booked calls?"],
-    head_of_content: ["Build next week's content calendar", "Write a carousel on missed calls in clinics", "5 Reel hooks for clinic owners"],
+    head_of_systems: ["What's breaking or slowing us down?", "Spot-check the last 3 replies the AI sent", "What should we improve next to get more bookings?"],
+    head_of_content: ["Build next week's content calendar", "Write a carousel our customers would save", "5 Reel hooks for our ideal customer"],
   };
   let TCUR = { dept: null, thread: null, busy: false };
   VIEWS.team = async (el) => {
@@ -2520,8 +2520,8 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
       + '<a class="btn pri" href="#/studio">Talk to Command</a></div>';
     const card = (title, text, ringHtml, warn, href) => '<a class="wf-glass v142-card' + (warn ? ' warn' : '') + '" href="' + (href || '#/today') + '" style="text-decoration:none;color:inherit">' + ringHtml + '<div><b>' + esc(title) + '</b><span>' + esc(text) + '</span></div></a>';
     const cards = [
-      c && c.goal ? card(c.label.toUpperCase(), (c.goal - c.booked > 0 ? (c.goal - c.booked) + ' more to hit this week' : 'Goal hit this week'), v142ring(88, 36, 8, 100 * c.booked / c.goal, 'var(--c)', c.booked + ' of ' + c.goal, c.booked + '/' + c.goal), false, '#/growth') : '',
-      card('WARM LEADS', d.warm.viewed + ' viewed a demo · ' + d.warm.replied + ' replied', v142ring(88, 36, 8, d.warm.total ? 100 : 0, 'var(--c2)', d.warm.total + ' warm leads', String(d.warm.total), false, 0.1), false, '#/growth'),
+      c && c.goal ? card(c.label.toUpperCase(), c.goal_set === false ? 'Booked by your AI in the last 7 days' : (c.goal - c.booked > 0 ? (c.goal - c.booked) + ' more to hit this week' : 'Goal hit this week'), v142ring(88, 36, 8, 100 * c.booked / c.goal, 'var(--c)', c.booked + ' of ' + c.goal, c.booked + '/' + c.goal), false, '#/growth') : '',
+      card(d.warm.label || 'WARM LEADS', d.warm.text || (d.warm.viewed + ' viewed a demo · ' + d.warm.replied + ' replied'), v142ring(88, 36, 8, d.warm.total ? 100 : 0, 'var(--c2)', d.warm.total + ' ' + (d.warm.label ? 'handled' : 'warm leads'), String(d.warm.total), false, 0.1), false, d.warm.href || '#/growth'),
       card('DONE FOR YOU', 'Jobs the AI finished today', v142ring(88, 36, 8, d.done_today ? 100 : 0, 'var(--c)', d.done_today + ' done today', String(d.done_today), false, 0.2), false, '#/records'),
       card('WAITING ON YOU', d.waiting.total ? 'Tap to approve' : 'All clear', v142ring(88, 36, 8, d.waiting.total ? 100 : 0, '#f5b54a', d.waiting.total + ' waiting', String(d.waiting.total), false, 0.3), d.waiting.total > 0, '#/approvals')
     ].join('');
@@ -2532,7 +2532,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     const pipe = d.pipeline ? '<div class="wf-glass v142-pipe"><h3>Your pipeline</h3><div class="v142-bars">' + d.pipeline.map((x, i) => '<div><i style="height:' + Math.max(6, Math.round(110 * x[1] / maxP)) + 'px;opacity:' + (0.35 + i * 0.16) + ';animation-delay:' + (i * 0.1) + 's"></i><strong>' + x[1] + '</strong><small>' + esc(x[0]) + '</small></div>').join('') + '</div></div>' : '';
     const feed = '<div class="wf-glass v142-feed"><h3>Done for you today</h3>' + (d.feed.length ? d.feed.map((f) => '<div><time>' + esc(new Date(f.at).toLocaleTimeString('en-AU', { timeZone: 'Australia/Brisbane', hour: 'numeric', minute: '2-digit' })) + '</time><span>' + esc(f.text) + '</span></div>').join('') : '<p class="mu sm" style="margin:0">Nothing yet today.</p>') + '</div>';
     const box = document.createElement('section'); box.className = 'v142';
-    box.innerHTML = '<div class="wf-glass v142-hero"><div class="v142-hello"><span class="wf-eyebrow">' + esc(new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Brisbane', weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()) + '</span><h1>' + esc(d.greeting) + (who ? ', <b>' + esc(who) + '.</b>' : '.') + '</h1><p>' + esc(line) + '</p></div>' + dial + '</div>'
+    box.innerHTML = '<div class="wf-glass v142-hero"><div class="v142-hello"><span class="wf-eyebrow">' + esc(new Date().toLocaleDateString('en-AU', { timeZone: 'Australia/Brisbane', weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()) + '</span><h1>' + (/, /.test(d.greeting) ? esc(d.greeting.replace(/, [^,]+$/, '')) + ', <b>' + esc(who || d.greeting.split(', ').pop()) + '.</b>' : esc(d.greeting) + (who ? ', <b>' + esc(who) + '.</b>' : '.')) + '</h1><p>' + esc(line) + '</p></div>' + dial + '</div>'
       + '<div class="v142-cards">' + cards + '</div><div class="v142-row">' + teamBox + pipe + feed + '</div>';
     el.prepend(box);
     const slot = box.querySelector('#ceoOrb');
@@ -2543,6 +2543,16 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     await T142(el);
     if (el.dataset.embed || !still('today', el)) return;
     v142hero(el);
+  };
+  // v146 client copies land on Overview (no outreach), so they get the same hero there
+  const H146 = VIEWS.home;
+  if (H146) VIEWS.home = async (el) => {
+    await H146(el);
+    if (el.dataset.embed || !still('home', el) || !(INST && INST.custom)) return;
+    await v142hero(el);
+    if (!el.querySelector('.v142')) return;
+    const dup = [...el.querySelectorAll('*')].find((n) => n.children.length > 1 && !n.closest('.v142') && /is online and/i.test(n.textContent || '') && n.querySelector('.orb-slot, canvas, .orb') && n.textContent.length < 600);
+    if (dup) dup.style.display = 'none';
   };
   // v54 Command Link card (Settings > Brand & features)
   const linkCard = async (host) => {
