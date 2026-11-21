@@ -73,3 +73,4 @@ assert(r.j.ok && bt2.kind === "autopilot" && bt2.id === bt.id, "Browser jobs sha
 
 const js = await (await w.fetch(new Request(O + "/app/app.js"), env, { waitUntil() {} })).text();
 assert(js.includes("VIEWS.copilot") && js.includes('["copilot", "Outreach chat"]') && js.includes("READY FOR YOUR OK"), "Sales has an Outreach chat screen with approval cards");
+assert(/social_outreach: \['dms', 'copilot'\]/.test(js), "Client copies with social outreach get the Outreach chat too (it follows the DM Desk switch)");

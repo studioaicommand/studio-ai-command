@@ -262,7 +262,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
   // White-label (v43): this copy's brand and switched-on features. Studio Flow's own Command has no profile and is unchanged.
   let INST = null, INST_HOME = 'today';
   const INST_OFF = new Set();
-  const INST_VIEWS = { outreach: ['today', 'growth', 'demos', 'business', 'outreach'], social_outreach: ['dms'], receptionist_product: ['clients'], offers_page: ['offers'] };
+  const INST_VIEWS = { outreach: ['today', 'growth', 'demos', 'business', 'outreach'], social_outreach: ['dms', 'copilot'], receptionist_product: ['clients'], offers_page: ['offers'] };
   function instWalk(root) {
     if (!INST || !INST.custom || !root) return;
     const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);

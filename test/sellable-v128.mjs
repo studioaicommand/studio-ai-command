@@ -50,7 +50,7 @@ assert(ctx.f("Hi Ty, your appointment is confirmed. Ty's booking is at 2pm.", i)
 // 3) DM Desk is its own module and writes as the client
 let r = await call("/dm-queue");
 assert(r.s === 200 && r.j.ok, "With DM Desk switched on, a client's copy can open it");
-assert(/DM Desk \(social outreach\)/.test(src) && /social_outreach: \['dms'\]/.test(src), "DM Desk is a separate module from Studio's lead machine (which stays Studio-only)");
+assert(/DM Desk \(social outreach\)/.test(src) && /social_outreach: \['dms', 'copilot'\]/.test(src), "DM Desk is a separate module from Studio's lead machine (which stays Studio-only)");
 assert(/WHO YOU WRITE AS: \$\{i\.owner_name \|\| i\.owner_first\}, who runs \$\{i\.business_name\}/.test(src), "On a client's copy, DMs are written as the client about the client's business");
 
 // 4) Privacy and AI notice
