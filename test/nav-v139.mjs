@@ -12,7 +12,7 @@ const tabs = [...hubs.matchAll(/\["([a-z]+)", "[^"]+"\]/g)].map((m) => m[1]);
 assert(hubs.match(/^\s*\["[a-z]+", "[^"]+", "[a-z]+", \[/gm).length === 5, "5 menus: Today, Sales, Clients, Studio AI, Settings");
 assert(!tabs.includes("performance") && !tabs.includes("reports") && !tabs.includes("records"), "Performance, Reports and History are out of the menus");
 assert(tabs.includes("chrome") && tabs.includes("fleet"), "Do it for me and Client Commands stay (Ty asked)");
-assert(tabs.filter((t) => t !== "setup").length === 19, "Ty sees 19 tabs (was 23) (Get set up only shows on client copies): " + tabs.length);
+assert(tabs.filter((t) => t !== "setup").length === 20, "Ty sees 20 tabs (was 23; v147 adds Google rankings) (Get set up only shows on client copies): " + tabs.length);
 assert(/reports: "today", records: "today"/.test(js) && /performance: "team"/.test(js) && /href="#\/performance">Performance/.test(js) && /href="#\/reports">Reports/.test(js), "Hidden pages still open from links (Team > Performance, Today > Reports)");
 assert(/team\('\/ui-usage'/.test(js), "Opening a page counts it");
 const r = await w.fetch(new Request(O + "/api/v1/team/ui-usage", { method: "POST", headers: { Authorization: "Bearer k", "content-type": "application/json" }, body: JSON.stringify({ view: "dms" }) }), env, { waitUntil() {} });

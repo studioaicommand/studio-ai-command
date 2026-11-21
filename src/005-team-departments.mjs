@@ -5,7 +5,7 @@ var GHL_READ = ["ghl_search_contacts", "ghl_get_contact", "ghl_list_pipelines", 
 var STRIPE_READ = ["stripe_revenue_summary", "stripe_list_invoices", "stripe_list_subscriptions", "stripe_get_balance"];
 var CONTACT_ACTIONS = ["ghl_create_contact", "ghl_update_contact", "ghl_create_opportunity", "ghl_move_opportunity", "propose_ghl_appointment_book", "propose_ghl_email", "propose_ghl_sms", "propose_ghl_tags", "propose_ghl_note", "propose_ghl_task", "propose_ghl_appointment_cancel", "propose_ghl_appointment_move", "propose_ghl_contact_archive"];
 var CONSULT = ["ask_department"];
-var GROWTH = ["analyse_website", "leak_scan", "build_demo", "find_website_leads", "build_website_demo", "adjust_website_demo", "save_prospect", "update_prospect", "campaign_status", "call_list"];
+var GROWTH = ["google_rank_check", "analyse_website", "leak_scan", "build_demo", "find_website_leads", "build_website_demo", "adjust_website_demo", "save_prospect", "update_prospect", "campaign_status", "call_list"];
 var ACQUIRE = ["start_clinic_hunt", "outreach_snapshot", "tidy_prospects", "manual_imports", "find_replies", "acquisition_costs"];
 var DEPARTMENTS = {
   chief_of_staff: {

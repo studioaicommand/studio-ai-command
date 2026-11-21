@@ -45,6 +45,7 @@ async function route2(request, env, url, ctx) {
   if (p === "/ui-theme" && m === "GET") { const v = await secGet(env, "ui_theme").catch(() => null); return json({ ok: true, theme: v?.theme || "midnight" }); }
   if (p === "/ui-theme" && m === "POST") { const mh = request.headers.get("x-sf-member") || ""; if (mh && mh.split("|")[1] !== "owner") return json({ ok: false, error: "Only the owner can change the look." }, 403); const t = String(body.theme || ""); if (!["midnight", "graphite", "ivory", "aurora"].includes(t)) return json({ ok: false, error: "Unknown look." }, 400); await secPut(env, "ui_theme", { theme: t, at: new Date().toISOString() }); await audit(env, { actor: "Ty", action: "look_changed", target_type: "settings", target_id: "ui_theme", summary: "Command look: " + t }).catch(() => {}); return json({ ok: true, theme: t }); }
   if (seg[0] === "dm-queue") { const dr = await dmRoute(p, m, body, env); if (dr) return dr; }
+  if (seg[0] === "rankings") { const rr = await rankRoute(p, m, m === "GET" ? Object.fromEntries(url.searchParams) : body, env); if (rr) return rr; }
   if (p === "/audit/verify" && m === "GET") return json({ ok: true, ...(await auditVerify(env, url.searchParams.get("limit"))) });
   if (seg[0] === "website-demos") { const wr = await wsdRoute(p, m, body, env, url, seg); if (wr) return wr; }
   if (seg[0] === "instance") { const ir = await instRoute(p, m, body, env, request); if (ir) return ir; }

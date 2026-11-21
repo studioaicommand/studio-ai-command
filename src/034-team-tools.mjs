@@ -680,6 +680,10 @@ async function phoneList(env, { days = 7, limit = 30 } = {}) {
   return { days: clamp(days, 1, 90, 7), calls, totals: { calls: all.length, booked: all.filter((m) => m.booked).length, urgent: all.filter((m) => m.urgent).length, minutes: Math.round(all.reduce((a, m) => a + (m.duration_sec || 0), 0) / 6) / 10, cost_aud: Math.round(all.reduce((a, m) => a + (Number(m.cost_aud) || 0), 0) * 100) / 100 } };
 }
 Object.assign(TOOL_DEFS, {
+  google_rank_check: {
+    description: "Where a website ranks on Google and Google Maps for a keyword in a suburb or city (live check, costs a fraction of a cent, capped monthly). Use for 'where do we rank for X', 'how does this prospect show up on Google', or before a sales call to say 'you're #14 for physio Noosa'. Needs the website domain, the keyword a customer would type, and the place.",
+    input_schema: { type: "object", properties: { domain: { type: "string", description: "Their website, e.g. harbourphysio.com.au" }, keyword: { type: "string", description: "What a customer types, e.g. physio noosa" }, location: { type: "string", description: "Suburb or city, e.g. Noosa Heads QLD" } }, required: ["domain", "keyword"] }
+  },
   phone_calls: {
     description: "Recent calls answered by the Phone AI receptionist: who rang, what they wanted, whether it booked them in or transferred them, and urgent ones to follow up. Use for 'who called', 'any missed calls', 'what did the phone AI do'.",
     input_schema: { type: "object", properties: { days: { type: "integer", description: "How far back (default 7)." } } }
@@ -3957,6 +3961,10 @@ async function runTool(name, input, ctx) {
     }
     case "ghl_create_contact": case "ghl_update_contact": case "ghl_list_calendars": case "ghl_free_slots": case "ghl_create_opportunity": case "ghl_move_opportunity":
       return crmTool(env, name, input, dept);
+    case "google_rank_check": {
+      const r = await rankCheck(env, input);
+      return { summary: r.domain + " for \"" + r.keyword + "\" in " + r.location + ": " + rankLine(r), organic: r.organic, maps: r.maps, local_pack: r.local_pack, ranking_url: r.url, google_top_3: r.top, maps_top_3: r.maps_top, ai_overview_shown: r.ai_overview };
+    }
     case "phone_calls":
       { const r = await phoneList(env, { days: input.days, limit: 40 }); delete r.totals.cost_aud; return r; }
     case "ask_department": {

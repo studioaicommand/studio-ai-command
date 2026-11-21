@@ -145,6 +145,7 @@ async function teamScheduled(event, env) {
     ["Task doer", ai(() => taskDoer(e)), { ms: 300000 }],
     ["Leak report tidy", out(ai(() => leakTidy(e))), { ms: 120000 }],
     ["Owner finder", out(ai(() => ownerFind(e))), { ms: 240000 }],
+    ["Google rankings", () => rankWeekly(e), { ms: 300000 }],
     ["Team shifts", ai(() => runDueShifts(e, when)), { ms: 360000 }],
     ["Arena", () => (key && brisbaneNow().hour === 2 && !bg102.held ? leanState(e).catch(() => ({})).then((ls) => arenaRun(e, { n: ls.lean ? 6 : 10 })) : CRON_NOT_DUE), { ms: 300000 }],
     ["No-show rebooker", ai(() => noShowWatch(e))],

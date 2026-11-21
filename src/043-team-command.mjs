@@ -12,6 +12,7 @@ var SHARED = [
   "ghl_free_slots",
   "propose_ghl_appointment_book",
   "phone_calls",
+  "google_rank_check",
   "ask_department",
   "get_mission_progress",
   "get_recent_reports",

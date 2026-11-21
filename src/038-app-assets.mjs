@@ -167,7 +167,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
   const HUBS = [
     ["today", "Today", "home", [["today", "Today"], ["approvals", "Waiting for you"], ["calls", "Phone calls"]]],
     ["growth", "Sales", "growth", [["outreach", "Outreach today"], ["dms", "DM Desk"], ["growth", "Pipeline"], ["demos", "Website demos"]]],
-    ["clients", "Clients", "shop", [["clients", "Clients"], ["fleet", "Client Commands"], ["money", "Money"]]],
+    ["clients", "Clients", "shop", [["clients", "Clients"], ["rankings", "Google rankings"], ["fleet", "Client Commands"], ["money", "Money"]]],
     ["studio", "Studio AI", "studio", [["studio", "Talk to Studio"], ["chrome", "Do it for me"], ["team", "Team"], ["knowledge", "Knowledge"]]],
     ["settings", "Settings", "sliders", [["setup", "Get set up"], ["connections", "Connections"], ["autopilot", "Autopilot"], ["offers", "Products & prices"], ["brand", "Brand & features"], ["security", "Security"]]],
   ];
@@ -200,6 +200,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     dms: ["DM Desk", "Instagram, Facebook, LinkedIn and TikTok messages, one unique message per person. You approve, the team does the rest"],
     outreach: ["Outreach today", "Researched, scored and ready: approve today\u2019s batch in one go"],
     calls: ["Phone calls", "Every call your AI receptionist answers, and the phone script builder"],
+    rankings: ["Google rankings", "Where your clients and prospects show up on Google and Google Maps, week by week"],
     fleet: ["Client Commands", "Every client\u2019s own Command: health, version, AI cost and support access"],
     brand: ["Brand & features", "Whose Command this is: name, logo, colours, industry and features"],
     security: ["Security", "Two-step login: your key plus a code to your phone"],
@@ -281,7 +282,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     INST = b;
     for (const [mod, views] of Object.entries(INST_VIEWS)) if (b.modules && b.modules[mod] === false) views.forEach((v) => INST_OFF.add(v));
     if (!b.custom) INST_OFF.add('setup');
-    if (b.custom) { INST_OFF.add('fleet'); INST_OFF.add('money'); if (TITLES.performance) TITLES.performance[1] = 'Every agent judged on results: work done, approvals and its weekly scorecard'; }
+    if (b.custom) { INST_OFF.add('fleet'); INST_OFF.add('money'); INST_OFF.add('rankings'); if (TITLES.performance) TITLES.performance[1] = 'Every agent judged on results: work done, approvals and its weekly scorecard'; }
     if (INST_OFF.has('today')) { INST_HOME = 'home'; if (!HUBS[0][3].some((x) => x[0] === 'home')) HUBS[0][3].unshift(['home', 'Overview']); }
     for (let hi = HUBS.length - 1; hi >= 0; hi--) { const h = HUBS[hi]; const keep = h[3].filter((s) => !INST_OFF.has(s[0])); if (keep.length) h[3] = keep; else if (hi) { HUBS.splice(hi, 1); const ti = TABS.findIndex((t) => t[0] === h[0]); if (ti >= 0) TABS.splice(ti, 1); document.querySelectorAll('[data-nav="' + h[0] + '"],[data-tab="' + h[0] + '"]').forEach((x) => x.remove()); } }
     Object.keys(b.modules || {}).forEach((k) => { document.documentElement.dataset['mod' + k.replace(/(^|_)([a-z])/g, (m, a, c) => c.toUpperCase())] = b.modules[k] ? 'on' : 'off'; });
@@ -1270,6 +1271,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
       if (!K.length) { body.innerHTML = '<div class="empty">No calls due yet. Businesses show up here 1\u20133 days after their Growth Pack email, or straight away if they only publish a phone number.</div>'; return; }
       body.innerHTML = K.map((c, i) => '<div class="item card" style="--d:' + Math.min(i, 8) * 40 + 'ms" data-id="' + esc(c.id) + '"><div class="row" style="flex-wrap:nowrap;align-items:flex-start"><span class="score ' + ((c.score || 0) >= 75 ? "hi" : "") + '">' + (c.score ?? "\u2013") + '</span><div class="grow"><h4>' + esc(c.business_name) + '</h4><div class="meta"><span>' + esc(VNAME[c.vertical] || c.vertical || "") + "</span>" + (c.location ? "<span>\xB7 " + esc(c.location) + "</span>" : "") + "<span>\xB7 " + (c.phone_only ? "phone only, call first" : c.emailed_days_ago != null ? "emailed " + c.emailed_days_ago + "d ago" : "not emailed yet") + '</span></div></div><a class="btn ok" href="tel:' + esc(String(c.phone).replace(/[^+\\d]/g, "")) + '">' + ic("phone") + '<span class="pv">' + esc(c.phone) + "</span></a></div>" +
         (c.decision_maker ? '<div class="sm" style="margin-top:10px"><b>Ask for:</b> ' + esc(c.decision_maker) + (c.owner_role ? " (" + esc(c.owner_role) + ")" : "") + (c.owner_source ? ' <span class="mu">\u00B7 found on ' + esc(c.owner_source) + "</span>" : "") + "</div>" : '<div class="mu sm" style="margin-top:10px">Owner not found yet. Ask: \u201cWho looks after the website and marketing there?\u201d</div>') +
+        (c.rank ? '<div class="sm" style="margin-top:6px"><b>Google:</b> ' + esc(c.rank.line) + ' <span class="mu">for \u201c' + esc(c.rank.keyword) + '\u201d</span></div>' : (c.website ? '<div style="margin-top:6px"><button type="button" class="btn sm ghost" data-rank="' + esc(c.id) + '" data-site="' + esc(c.website) + '" data-loc="' + esc(c.location || '') + '" data-kw="' + esc(((c.trade || ({ allied: 'physio', dental: 'dentist', medical: 'gp', trades: 'plumber', coaching: 'coach', beauty: 'beauty salon', fitness: 'gym', realestate: 'real estate agent' })[c.vertical] || c.vertical || '') + ' ' + String(c.location || '').split(',')[0]).trim()) + '">Check where they rank on Google</button></div>' : '')) +
         (c.demo ? '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">' + (c.demo.hot ? '<span class="chip ok">\u{1F525} ' + (c.demo.chats ? "tried their front desk" : "opened their pack") + "</span>" : '<span class="chip c">\u{1F4E6} Growth Pack ready</span>') + '<a class="btn sm" href="' + esc(c.demo.url) + '?preview=1" target="_blank" rel="noopener">Open Growth Pack</a>' + (c.demo.desk_url ? '<a class="btn sm ghost" href="' + esc(c.demo.desk_url) + '?preview=1" target="_blank" rel="noopener">Front desk</a>' : '') + '<button class="btn sm ghost" data-copy-demo="' + esc(c.demo.url) + '">Copy pack link</button></div>' : "") +
         '<details open><summary>Call notes</summary><p class="sm" style="margin-top:8px"><b>Noticed:</b> ' + esc(c.observation || "") + '</p><div class="pre">' + esc(c.opener || "") + '</div><ul class="sm" style="margin:8px 0 0 18px">' + (c.questions || []).map((x) => "<li>" + esc(x) + "</li>").join("") + '</ul><p class="mu sm" style="margin-top:8px">' + esc(c.close || "") + "</p></details>" +
         '<a class="btn sm" href="#/business/' + esc(c.id) + '">Timeline &amp; next step</a>' + callDemoCard(c) + '<div class="acts">' + [["awaiting_decision_maker", "Pack sent / Awaiting decision-maker", ""], ["booked", "Appointment booked", "ok"], ["interested", "Interested (confirmed)", ""], ["voicemail", "Voicemail", ""], ["no_answer", "No answer", ""], ["not_interested", "Not interested", "bad"]].map(([k, l, cl]) => '<button class="btn sm ' + cl + '" data-o="' + k + '">' + l + "</button>").join("") + "</div></div>").join("");
@@ -2554,6 +2556,42 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     const dup = [...el.querySelectorAll('*')].find((n) => n.children.length > 1 && !n.closest('.v142') && /is online and/i.test(n.textContent || '') && n.querySelector('.orb-slot, canvas, .orb') && n.textContent.length < 600);
     if (dup) dup.style.display = 'none';
   };
+  // v147 Google rankings: tracked businesses (DataForSEO) and real Search Console numbers
+  const rkPos = (n) => n ? '#' + n : '<span class="mu">—</span>';
+  const rkMove = (h, f) => { if (!h || h.length < 2) return ''; const a = h[h.length - 2][f], b = h[h.length - 1][f]; if (!a || !b || a === b) return ''; const up = a > b; return ' <small style="color:' + (up ? '#3ddc97' : '#f5b54a') + '">' + (up ? '▲' : '▼') + Math.abs(a - b) + '</small>'; };
+  VIEWS.rankings = async (el) => {
+    el.innerHTML = '<div class="wf-glass"><p class="mu">Loading rankings…</p></div>';
+    let d; try { d = await team('/rankings'); } catch (e) { el.innerHTML = '<div class="wf-glass"><p>' + esc(e.message) + '</p></div>'; return; }
+    if (!still('rankings', el)) return;
+    const c = d.connected || {};
+    const setup = (!c.tracker || !c.search_console) ? '<div class="wf-glass"><span class="wf-eyebrow">CONNECT</span><h3>Two sources, both optional</h3>'
+      + '<p class="sm"><b>' + (c.tracker ? '✓ Rank tracker connected' : 'Rank tracker (any site, any keyword, Google Maps by suburb)') + '</b>' + (c.tracker ? '' : ': sign up at dataforseo.com (pay as you go), then add <code>DATAFORSEO_LOGIN</code> and <code>DATAFORSEO_PASSWORD</code> in Cloudflare (Worker › Settings › Variables and secrets).') + '</p>'
+      + '<p class="sm"><b>' + (c.search_console ? '✓ Search Console connected' : 'Search Console (real clicks and positions for sites you manage)') + '</b>' + (c.search_console ? ': add <code>' + esc(c.service_email) + '</code> as a user on each site in Search Console.' : ': create a Google Cloud service account with the Search Console API on, then paste its JSON key as <code>GSC_SERVICE_ACCOUNT_JSON</code> in Cloudflare.') + '</p></div>' : '';
+    const spend = d.spend ? '<span class="mu sm">Rank checks this month: US$' + (+d.spend.usd).toFixed(2) + ' of US$' + d.spend.cap + '</span>' : '';
+    const rows = (d.items || []).map((it) => {
+      const last = Object.fromEntries((it.last || []).map((x) => [x.keyword, x]));
+      return '<div class="wf-glass" data-rk="' + esc(it.id) + '"><div class="row" style="justify-content:space-between;gap:10px;flex-wrap:wrap"><div><h3 style="margin:0">' + esc(it.label) + '</h3><span class="mu sm">' + esc(it.domain) + (it.location ? ' · ' + esc(it.location) : '') + (it.last_check ? ' · checked ' + esc(ago(it.last_check)) : ' · not checked yet') + '</span></div>'
+        + '<div class="row" style="gap:8px"><button class="btn sm pri" data-rkcheck="' + esc(it.id) + '"' + (c.tracker ? '' : ' disabled') + '>Check now</button>' + (it.gsc_site && c.search_console ? '<button class="btn sm ghost" data-rkgsc="' + esc(it.gsc_site) + '">Search Console</button>' : '') + '<button class="btn sm ghost" data-rkedit="' + esc(it.id) + '">Edit</button><button class="btn sm ghost" data-rkdel="' + esc(it.id) + '">Remove</button></div></div>'
+        + '<div style="overflow-x:auto;margin-top:12px"><table class="tbl" style="width:100%;font-size:14px"><thead><tr><th style="text-align:left">Keyword</th><th>Google</th><th>Google Maps</th><th style="text-align:left">Top of Google</th></tr></thead><tbody>'
+        + it.keywords.map((k) => { const x = last[k] || {}, h = (it.trend || {})[k] || []; return '<tr><td>' + esc(k) + '</td><td style="text-align:center">' + rkPos(x.organic) + rkMove(h, 'organic') + '</td><td style="text-align:center">' + rkPos(x.maps || x.local_pack) + rkMove(h, 'maps') + '</td><td class="mu sm">' + esc((x.top || []).map((t) => t.pos + '. ' + t.domain).join('  ')) + '</td></tr>'; }).join('')
+        + '</tbody></table></div><div class="rk-gsc"></div></div>';
+    }).join('');
+    el.innerHTML = setup + '<div class="wf-glass"><div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:10px"><div><span class="wf-eyebrow">TRACKED</span><h3 style="margin:4px 0 0">' + (d.items || []).length + ' business' + ((d.items || []).length === 1 ? '' : 'es') + '</h3>' + spend + '</div><button class="btn pri" id="rkAdd">Track a business</button></div>'
+      + '<p class="mu sm" style="margin-top:10px">Checked every Monday at 6am, with a summary on Telegram. Google = the normal results (top 100). Google Maps = the map listings for that search.</p></div>' + (rows || '<div class="wf-glass"><p class="mu">Nothing tracked yet. Add a client, or a prospect before you call them.</p></div>');
+    const form = async (it) => {
+      const v = await modal({ title: it ? 'Edit ' + it.label : 'Track a business', text: 'Keywords are what a customer types into Google, one per line. Up to 10.', fields: [
+        { id: 'label', label: 'Business name', value: it ? it.label : '' }, { id: 'domain', label: 'Website', value: it ? it.domain : '', placeholder: 'harbourphysio.com.au' },
+        { id: 'location', label: 'Suburb or city', value: it ? it.location : '', placeholder: 'Noosa Heads QLD' }, { id: 'keywords', label: 'Keywords', type: 'textarea', value: it ? it.keywords.join('\\n') : '', placeholder: 'physio noosa\\nsports physio sunshine coast' },
+        { id: 'gsc_site', label: 'Search Console site (optional)', value: it ? (it.gsc_site || '') : '', placeholder: 'sc-domain:harbourphysio.com.au' }], ok: it ? 'Save' : 'Start tracking' });
+      if (!v) return;
+      try { await team('/rankings/track', { method: 'POST', body: { ...v, id: it ? it.id : undefined } }); toast('Saved. Tap Check now to see where they rank.', 'ok'); VIEWS.rankings(el); } catch (e) { toast(e.message, 'bad'); }
+    };
+    $('#rkAdd', el).onclick = () => form(null);
+    el.querySelectorAll('[data-rkedit]').forEach((b) => { b.onclick = () => form((d.items || []).find((x) => x.id === b.dataset.rkedit)); });
+    el.querySelectorAll('[data-rkdel]').forEach((b) => { b.onclick = async () => { if (!(await modal({ title: 'Stop tracking?', text: 'Its ranking history is removed too.', ok: 'Remove', danger: true }))) return; await team('/rankings/remove', { method: 'POST', body: { id: b.dataset.rkdel } }).catch((e) => toast(e.message, 'bad')); VIEWS.rankings(el); }; });
+    el.querySelectorAll('[data-rkcheck]').forEach((b) => { b.onclick = async () => { b.disabled = true; b.textContent = 'Checking…'; try { const r = await team('/rankings/check', { method: 'POST', body: { id: b.dataset.rkcheck }, long: true }); const bad = (r.results || []).find((x) => x.error); if (bad) toast(bad.error, 'bad'); VIEWS.rankings(el); } catch (e) { toast(e.message, 'bad'); b.disabled = false; b.textContent = 'Check now'; } }; });
+    el.querySelectorAll('[data-rkgsc]').forEach((b) => { b.onclick = async () => { const box = b.closest('[data-rk]').querySelector('.rk-gsc'); box.innerHTML = '<p class="mu sm">Loading Search Console…</p>'; try { const r = (await team('/rankings/gsc?site=' + encodeURIComponent(b.dataset.rkgsc))).report; box.innerHTML = '<h4 style="margin-top:14px">Search Console, ' + esc(r.from) + ' to ' + esc(r.to) + '</h4><p class="sm"><b>' + r.clicks + '</b> clicks · <b>' + r.impressions + '</b> times shown · average position <b>' + r.position + '</b></p><table class="tbl" style="width:100%;font-size:13px"><thead><tr><th style="text-align:left">Search</th><th>Clicks</th><th>Shown</th><th>Avg position</th></tr></thead><tbody>' + r.queries.map((q) => '<tr><td>' + esc(q.query) + '</td><td style="text-align:center">' + q.clicks + '</td><td style="text-align:center">' + q.impressions + '</td><td style="text-align:center">' + q.position + '</td></tr>').join('') + '</tbody></table>'; } catch (e) { box.innerHTML = '<p class="sm" style="color:#f5b54a">' + esc(e.message) + '</p>'; } }; });
+  };
   // v54 Command Link card (Settings > Brand & features)
   const linkCard = async (host) => {
     let d; try { d = await team('/mac-link'); } catch (e) { return; }
@@ -2971,6 +3009,15 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     $("#gForm").addEventListener("submit", unlock);
     gate();
   }
+  document.addEventListener("click", async (e) => {
+    const b = e.target.closest && e.target.closest("[data-rank]"); if (!b) return;
+    e.preventDefault();
+    const v = await modal({ title: "Where do they rank on Google?", text: "A live Google and Google Maps check for what a customer would type. Costs a fraction of a cent.", fields: [{ id: "keyword", label: "Search", value: b.dataset.kw }, { id: "location", label: "Suburb or city", value: b.dataset.loc }], ok: "Check" });
+    if (!v) return;
+    b.disabled = true; b.textContent = "Checking Google\u2026";
+    try { const r = await team("/rankings/quick", { method: "POST", body: { domain: b.dataset.site, keyword: v.keyword, location: v.location, prospect_id: b.dataset.rank }, long: true }); const box = document.createElement("div"); box.className = "sm"; box.style.marginTop = "6px"; box.innerHTML = "<b>Google:</b> " + esc(r.line) + ' <span class="mu">for \u201c' + esc(v.keyword) + '\u201d</span>'; b.replaceWith(box); bust("calls"); }
+    catch (err) { toast(err.message, "bad"); b.disabled = false; b.textContent = "Check where they rank on Google"; }
+  });
   document.addEventListener("click", (e) => { const b = e.target.closest && e.target.closest("[data-copy-demo]"); if (!b) return; e.preventDefault(); const u = b.dataset.copyDemo; (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => toast("Demo link copied: paste it into your email or text", "ok")).catch(() => window.prompt("Copy the demo link:", u)); });
   document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", boot) : boot();
 })();
