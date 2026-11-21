@@ -40,6 +40,7 @@
 039-app-serve.mjs
 047-command-demo.mjs
 048-team-rankings.mjs
+049-outreach-chat.mjs
 040-team-site.mjs
 041-team-api.mjs
 042-team-hub-panel.mjs

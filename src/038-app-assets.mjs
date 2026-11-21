@@ -166,7 +166,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
   // v139 simpler menu: 5 menus. Performance sits inside Team, Reports and History open from links (Studio can still use them).
   const HUBS = [
     ["today", "Today", "home", [["today", "Today"], ["approvals", "Waiting for you"], ["calls", "Phone calls"]]],
-    ["growth", "Sales", "growth", [["outreach", "Outreach today"], ["dms", "DM Desk"], ["growth", "Pipeline"], ["demos", "Website demos"]]],
+    ["growth", "Sales", "growth", [["outreach", "Outreach today"], ["copilot", "Outreach chat"], ["dms", "DM Desk"], ["growth", "Pipeline"], ["demos", "Website demos"]]],
     ["clients", "Clients", "shop", [["clients", "Clients"], ["rankings", "Google rankings"], ["fleet", "Client Commands"], ["money", "Money"]]],
     ["studio", "Studio AI", "studio", [["studio", "Talk to Studio"], ["chrome", "Do it for me"], ["team", "Team"], ["knowledge", "Knowledge"]]],
     ["settings", "Settings", "sliders", [["setup", "Get set up"], ["connections", "Connections"], ["autopilot", "Autopilot"], ["offers", "Products & prices"], ["brand", "Brand & features"], ["security", "Security"]]],
@@ -200,6 +200,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     dms: ["DM Desk", "Instagram, Facebook, LinkedIn and TikTok messages, one unique message per person. You approve, the team does the rest"],
     outreach: ["Outreach today", "Researched, scored and ready: approve today\u2019s batch in one go"],
     calls: ["Phone calls", "Every call your AI receptionist answers, and the phone script builder"],
+    copilot: ["Outreach chat", "Work outreach together: Command finds people and writes each message, you approve every one, Command Chrome sends it"],
     rankings: ["Google rankings", "Where your clients and prospects show up on Google and Google Maps, week by week"],
     fleet: ["Client Commands", "Every client\u2019s own Command: health, version, AI cost and support access"],
     brand: ["Brand & features", "Whose Command this is: name, logo, colours, industry and features"],
@@ -2556,6 +2557,101 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     const dup = [...el.querySelectorAll('*')].find((n) => n.children.length > 1 && !n.closest('.v142') && /is online and/i.test(n.textContent || '') && n.querySelector('.orb-slot, canvas, .orb') && n.textContent.length < 600);
     if (dup) dup.style.display = 'none';
   };
+  // v148 Outreach chat: chat with Command, approve every message as a card, watch Command Chrome send it
+  (function () {
+    const css = '.oc{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,1fr);gap:16px;align-items:start}@media(max-width:980px){.oc{grid-template-columns:1fr}}'
+      + '.oc-chat{display:flex;flex-direction:column;min-height:70vh}.oc-log{display:flex;flex-direction:column;gap:12px;padding:6px 2px 12px}'
+      + '.oc-b{max-width:86%;padding:12px 16px;border-radius:18px;line-height:1.55;font-size:15px;white-space:pre-wrap;animation:ocIn .35s ease both}'
+      + '.oc-ty{align-self:flex-end;background:linear-gradient(135deg,var(--c),var(--c2));color:#04101f;border-bottom-right-radius:6px;font-weight:500}'
+      + '.oc-ai{align-self:flex-start;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-bottom-left-radius:6px}'
+      + '.oc-ev{align-self:center;font-size:12.5px;color:var(--mu);padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.04)}'
+      + '.oc-ev b{color:#3ddc97}@keyframes ocIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}'
+      + '.oc-cards{display:grid;gap:12px}.oc-card{border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px 16px;background:rgba(4,11,24,.55);animation:ocIn .35s ease both}'
+      + '.oc-card.ok{border-color:rgba(61,220,151,.55);box-shadow:0 0 0 1px rgba(61,220,151,.18) inset}.oc-card.wait{border-color:rgba(245,181,74,.6)}'
+      + '.oc-hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.oc-hd h4{margin:0;font-size:15px}.oc-ch{font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:rgba(90,168,240,.14);color:var(--c)}'
+      + '.oc-sc{margin-left:auto;font-size:12px;color:var(--mu)}.oc-why{font-size:12.5px;color:var(--mu);margin:6px 0 8px}.oc-msg{white-space:pre-wrap;font-size:14.5px;line-height:1.55;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04)}'
+      + '.oc-msg[contenteditable=true]{outline:2px solid var(--c);background:rgba(90,168,240,.08)}.oc-act{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}'
+      + '.oc-in{position:sticky;bottom:0;z-index:3;margin:10px -6px -6px;padding:10px 6px 8px;border-radius:18px;background:rgba(6,14,28,.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 -12px 24px rgba(4,11,24,.65)}@media(max-width:760px){.oc-in{bottom:calc(84px + env(safe-area-inset-bottom))}}.oc-in form{display:flex;gap:8px;align-items:flex-end}'
+      + '.oc-in textarea{flex:1;min-height:52px;max-height:180px;resize:none;border-radius:16px;padding:14px 16px;font-size:15px}'
+      + '.oc-think{align-self:flex-start;display:flex;gap:5px;padding:14px 16px}.oc-think i{width:7px;height:7px;border-radius:50%;background:var(--c);animation:ocDot 1.2s infinite ease-in-out}.oc-think i:nth-child(2){animation-delay:.15s}.oc-think i:nth-child(3){animation-delay:.3s}@keyframes ocDot{0%,80%,100%{opacity:.25;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}'
+      + '.oc-side{position:sticky;top:12px;display:grid;gap:12px}.oc-shot{width:100%;border-radius:12px;border:1px solid rgba(255,255,255,.1);display:block}'
+      + '.oc-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:#f5b54a}.oc-dot.on{background:#3ddc97;box-shadow:0 0 10px #3ddc97}'
+      + '.oc-steps{margin:8px 0 0;padding:0;list-style:none;font-size:12.5px;color:var(--mu);display:grid;gap:4px}'
+      + '@media (prefers-reduced-motion: reduce){.oc-b,.oc-card,.oc-think i{animation:none}}';
+    let st = null;
+    VIEWS.copilot = async (el) => {
+      if (!document.getElementById('ocCss')) { const t = document.createElement('style'); t.id = 'ocCss'; t.textContent = css; document.head.append(t); }
+      let D, busy = false, editing = null, timer = null, liveT = null, lastHash = '';
+      const chips = ['Find 3 physios on the Sunshine Coast to message on Instagram', 'Write 5 LinkedIn connection notes to clinic owners in Brisbane', 'Reply to my new Google reviews', 'What’s waiting for me?'];
+      const card = (c) => {
+        const ed = editing === c.id;
+        return '<div class="oc-card' + (c.approved ? ' ok' : '') + '" data-c="' + esc(c.id) + '"><div class="oc-hd"><h4>' + esc(c.name) + '</h4><span class="oc-ch">' + esc(c.channel_name) + (c.step === 'connect' ? ' · connect' : '') + '</span>' + (c.score ? '<span class="oc-sc">Reviewer ' + c.score + '/10</span>' : '') + '</div>'
+          + '<div class="oc-why">' + esc(c.why || c.business) + (c.profile_url ? ' · <a href="' + esc(c.profile_url) + '" target="_blank" rel="noopener">profile</a>' : '') + '</div>'
+          + '<div class="oc-msg"' + (ed ? ' contenteditable="true"' : '') + '>' + esc(c.message) + '</div>'
+          + (c.send_error ? '<p class="sm" style="color:#f5b54a;margin:8px 0 0">Last try: ' + esc(c.send_error) + '</p>' : '')
+          + '<div class="oc-act">' + (ed ? '<button class="btn sm pri" data-a="save">Save</button><button class="btn sm ghost" data-a="cancel">Cancel</button>'
+            : c.approved ? '<span class="sm" style="color:#3ddc97;align-self:center">✓ Approved, going out next</span><button class="btn sm ghost" data-a="unsend">Undo</button>'
+            : '<button class="btn sm pri" data-a="send">Send</button><button class="btn sm ghost" data-a="edit">Edit</button><button class="btn sm ghost" data-a="rewrite">Rewrite…</button><button class="btn sm ghost" data-a="skip">Skip</button>') + '</div></div>';
+      };
+      const side = (b) => {
+        const t = b.task, on = b.online;
+        let h = '<section class="wf-glass"><span class="wf-eyebrow">COMMAND CHROME ON YOUR MAC</span><p style="margin:8px 0 0"><span class="oc-dot' + (on ? ' on' : '') + '"></span>' + (on ? 'Online' : b.linked ? 'Your Mac is asleep or offline' : 'Command Link isn’t set up yet') + '</p>'
+          + (!b.linked ? '<p class="mu sm">Settings › Brand & features › Command Link. It lets Command use the Chrome window on your Mac where you’re logged in.</p>' : '');
+        if (t && t.live) {
+          h += '<p class="sm" style="margin:10px 0 4px"><b>' + esc(t.kind === 'autopilot' ? 'Sending your approved messages' : t.goal) + '</b></p>' + (t.progress ? '<p class="mu sm" style="margin:0">' + t.progress.sent + ' sent of ' + t.progress.of + (t.progress.held ? ', ' + t.progress.held + ' held back' : '') + '</p>' : '')
+            + '<div id="ocShot"><p class="mu sm">Live view loading…</p></div><ul class="oc-steps">' + t.steps.slice(-5).map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul><div class="oc-act"><button class="btn sm ghost" id="ocStop">Stop</button></div>';
+        } else if (t && t.result) h += '<p class="mu sm" style="margin-top:10px">Last job: ' + esc(t.result.slice(0, 220)) + '</p>';
+        h += '</section>';
+        if (t && t.pending) h += '<section class="wf-glass oc-card wait"><span class="wf-eyebrow" style="color:#f5b54a">NEEDS YOUR OK</span><p style="margin:8px 0"><b>' + esc(t.pending.summary) + '</b></p>' + (t.pending.details ? '<div class="oc-msg">' + esc(t.pending.details) + '</div>' : '') + '<div class="oc-act"><button class="btn sm pri" data-ok="' + esc(t.pending.action_id) + '">Yes, do it</button><button class="btn sm ghost" data-no="' + esc(t.pending.action_id) + '">No</button></div></section>';
+        if (t && t.ask) h += '<section class="wf-glass oc-card wait"><span class="wf-eyebrow" style="color:#f5b54a">YOUR TURN IN CHROME</span><p style="margin:8px 0">' + esc(t.ask) + '</p><div class="oc-act"><button class="btn sm pri" id="ocCont">Done, carry on</button></div></section>';
+        if (b.reply_check) h += '<section class="wf-glass oc-card wait"><span class="wf-eyebrow" style="color:#f5b54a">OLD CONVERSATION</span><p style="margin:8px 0"><b>' + esc(b.reply_check.title) + '</b></p>' + (b.reply_check.details ? '<div class="oc-msg">' + esc(b.reply_check.details) + '</div>' : '') + '<div class="oc-act"><button class="btn sm pri" data-ok="' + esc(b.reply_check.action_id) + '">Send it</button><button class="btn sm ghost" data-no="' + esc(b.reply_check.action_id) + '">Don’t</button></div></section>';
+        return h;
+      };
+      const paint = () => {
+        if (!still('copilot', el) || !D) return;
+        const keepIn = $('#ocIn', el) ? $('#ocIn', el).value : '';
+        const ev = (D.sent || []).map((c) => ({ at: c.sent_at, html: '<div class="oc-ev"><b>✓ Sent</b> to ' + esc(c.name) + ' on ' + esc(c.channel_name) + ' · ' + esc(ago(c.sent_at)) + '</div>' }));
+        const msgs = (D.messages || []).map((m) => ({ at: m.at, html: '<div class="oc-b ' + (m.role === 'ty' ? 'oc-ty' : 'oc-ai') + '">' + esc(m.text) + '</div>' }));
+        const log = [...msgs, ...ev].sort((a, b) => Date.parse(a.at) - Date.parse(b.at)).map((x) => x.html).join('');
+        const sending = (D.sending || []).length ? '<div class="oc-ev">Sending ' + D.sending.length + ' in Command Chrome: ' + esc(D.sending.map((c) => c.name).join(', ')) + '</div>' : '';
+        const empty = !(D.messages || []).length ? '<div class="oc-b oc-ai">G’day. Tell me who you want to reach and where, and I’ll find them and write each message. You approve every one before it goes out, and you can watch it send on the right.</div>' : '';
+        el.innerHTML = '<div class="oc"><section class="wf-glass oc-chat"><div class="oc-log" id="ocLog">' + empty + log + sending + (busy ? '<div class="oc-think" aria-label="Command is working"><i></i><i></i><i></i></div>' : '') + '</div>'
+          + ((D.cards || []).length ? '<div><p class="wf-eyebrow" style="margin:6px 0 10px">READY FOR YOUR OK · ' + D.cards.length + '</p><div class="oc-cards">' + D.cards.map(card).join('') + '</div></div>' : '')
+          + '<div class="oc-in">' + (!(D.messages || []).length ? '<div class="or-chips" style="margin-bottom:8px">' + chips.map((x) => '<button type="button" class="chip oc-chip">' + esc(x) + '</button>').join('') + '</div>' : '')
+          + '<form id="ocF"><textarea class="in" id="ocIn" rows="1" placeholder="Message Command…" aria-label="Message Command"' + (busy ? ' disabled' : '') + '></textarea><button class="btn pri" type="submit"' + (busy ? ' disabled' : '') + '>Send</button></form>'
+          + '<p class="mu xs" style="margin:6px 4px 0">Today: ' + Object.entries(D.today || {}).filter((x) => D.limits && D.limits[x[0]]).map((x) => ({ instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn', tiktok: 'TikTok' })[x[0]] + ' ' + x[1] + '/' + D.limits[x[0]]).join(' · ') + (D.messages && D.messages.length ? ' · <a href="#" id="ocClear">New chat</a>' : '') + '</p></div></section>'
+          + '<aside class="oc-side">' + side(D.browser || {}) + '</aside></div>';
+        const inp = $('#ocIn', el); if (inp) { inp.value = keepIn; inp.oninput = () => { inp.style.height = 'auto'; inp.style.height = Math.min(180, inp.scrollHeight) + 'px'; }; inp.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#ocF', el).requestSubmit(); } }; }
+        const lg = $('#ocLog', el); if (lg) lg.lastElementChild && lg.lastElementChild.scrollIntoView({ block: 'nearest' });
+        $('#ocF', el).onsubmit = async (e) => { e.preventDefault(); const v = inp.value.trim(); if (!v || busy) return; inp.value = ''; D.messages = [...(D.messages || []), { role: 'ty', text: v, at: new Date().toISOString() }]; busy = true; paint(); try { D = await team('/outreach-chat', { method: 'POST', body: { message: v }, long: true }); } catch (err) { toast(err.message, 'bad'); } busy = false; paint(); };
+        el.querySelectorAll('.oc-chip').forEach((b) => { b.onclick = () => { inp.value = b.textContent; $('#ocF', el).requestSubmit(); }; });
+        const clr = $('#ocClear', el); if (clr) clr.onclick = async (e) => { e.preventDefault(); D = await team('/outreach-chat/clear', { method: 'POST', body: {} }); paint(); };
+        el.querySelectorAll('.oc-card[data-c] [data-a]').forEach((b) => { b.onclick = async () => {
+          const id = b.closest('[data-c]').dataset.c, a = b.dataset.a;
+          if (a === 'edit') { editing = id; paint(); const m = el.querySelector('[data-c="' + id + '"] .oc-msg'); if (m) { m.focus(); } return; }
+          if (a === 'cancel') { editing = null; paint(); return; }
+          let body = { id, action: a };
+          if (a === 'save') body.message = el.querySelector('[data-c="' + id + '"] .oc-msg').innerText.trim();
+          if (a === 'rewrite') { const v = await modal({ title: 'How should it change?', fields: [{ id: 'i', label: 'Tell Command', placeholder: 'Shorter, and mention their new studio' }], ok: 'Rewrite' }); if (!v || !v.i) return; body.instruction = v.i; }
+          b.disabled = true; if (a === 'rewrite') b.textContent = 'Rewriting…';
+          try { D = await team('/outreach-chat/card', { method: 'POST', body, long: a === 'rewrite' }); if (a === 'save') editing = null; if (a === 'send') toast(D.kicked && D.kicked.started ? 'Sending now in Command Chrome.' : 'Approved. It goes out as soon as Command Chrome is free.', 'ok'); } catch (err) { toast(err.message, 'bad'); }
+          paint();
+        }; });
+        el.querySelectorAll('[data-ok],[data-no]').forEach((b) => { b.onclick = async () => { const id = b.dataset.ok || b.dataset.no; b.disabled = true; try { await team('/actions/' + id + '/' + (b.dataset.ok ? 'approve' : 'reject'), { method: 'POST', body: {}, long: true }); } catch (err) { toast(err.message, 'bad'); } load(); }; });
+        const stop = $('#ocStop', el); if (stop) stop.onclick = async () => { stop.disabled = true; await team('/browser/stop', { method: 'POST', body: {} }).catch(() => {}); load(); };
+        const cont = $('#ocCont', el); if (cont) cont.onclick = async () => { cont.disabled = true; await team('/browser/continue', { method: 'POST', body: {} }).catch(() => {}); load(); };
+        if (D.browser && D.browser.task && D.browser.task.live) shot();
+      };
+      const shot = async () => { clearTimeout(liveT); if (!still('copilot', el)) return; try { const v = await team('/browser/live'); const box = $('#ocShot', el); if (box && v.view && v.view.shot) box.innerHTML = '<img class="oc-shot" alt="Live view of Command Chrome" src="data:image/jpeg;base64,' + v.view.shot + '"><p class="mu xs" style="margin:6px 0 0">' + esc(v.view.url || '') + '</p>'; } catch (e) {} liveT = setTimeout(shot, 3500); };
+      const load = async () => {
+        clearTimeout(timer); if (!still('copilot', el)) return;
+        try { const n = await team('/outreach-chat'); const h = JSON.stringify([n.messages.length, n.cards.map((c) => c.id + c.approved + c.message.length), n.sending.length, n.sent.length, n.browser]); if (h !== lastHash && !busy && !editing) { D = n; lastHash = h; paint(); } else if (!D) { D = n; paint(); } } catch (e) { if (!D) el.innerHTML = '<section class="wf-glass"><p>' + esc(e.message) + '</p></section>'; }
+        timer = setTimeout(load, document.hidden ? 15000 : 4000);
+      };
+      el.innerHTML = '<section class="wf-glass"><p class="mu">Opening the outreach chat…</p></section>';
+      await load();
+    };
+  })();
   // v147 Google rankings: tracked businesses (DataForSEO) and real Search Console numbers
   const rkPos = (n) => n ? '#' + n : '<span class="mu">—</span>';
   const rkMove = (h, f) => { if (!h || h.length < 2) return ''; const a = h[h.length - 2][f], b = h[h.length - 1][f]; if (!a || !b || a === b) return ''; const up = a > b; return ' <small style="color:' + (up ? '#3ddc97' : '#f5b54a') + '">' + (up ? '▲' : '▼') + Math.abs(a - b) + '</small>'; };
