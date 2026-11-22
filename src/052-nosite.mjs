@@ -62,9 +62,12 @@ var NOSITE_FIND_TOOL = {
 async function noSiteSearchAI(env, u, q, n) {
   const out = await wsdAsk(env, u, "fast", {
     max_tokens: 3e3,
-    system: "You find real, operating Australian local businesses that have a Google Business Profile but NO website of their own (only a Google listing, Facebook page or directory listing). Only businesses you actually saw in search results, with a published phone number. Never guess.",
-    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5, user_location: { type: "approximate", country: "AU", timezone: "Australia/Brisbane" } }, NOSITE_FIND_TOOL],
-    messages: [{ role: "user", content: `Find up to ${n} "${q}" businesses with a Google Business Profile but no website. Then call save_businesses.` }]
+    system: "You find real, operating Australian local businesses that have NO website of their own: only a Google Business Profile, a Facebook page or directory listings. Only businesses you actually saw in search results, with a published phone number. Never guess.",
+    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 8, user_location: { type: "approximate", country: "AU", timezone: "Australia/Brisbane" } }, NOSITE_FIND_TOOL],
+    messages: [{ role: "user", content: `Find up to ${n} "${q}" businesses with no website of their own.
+Good places to look (free directories that show whether a business has a website): Yellow Pages (yellowpages.com.au), Localsearch, True Local, Hotfrog, hipages, Oneflare, Word of Mouth, and Google listings shown in search results. Pick listings that show a phone number but no website link, or only a Facebook page.
+For each give the phone, suburb, Google rating and review count if shown, and the listing or Google Maps link in maps_url. Leave website empty unless you saw their own website.
+Then call save_businesses.` }]
   }, "save_businesses");
   return (out.businesses || []).map((b) => ({ ...b, open: true, hours: [], summary: "", place_id: null }));
 }
