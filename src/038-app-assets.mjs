@@ -169,7 +169,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     ["growth", "Sales", "growth", [["outreach", "Outreach today"], ["copilot", "Outreach chat"], ["dms", "DM Desk"], ["growth", "Pipeline"], ["demos", "Website demos"]]],
     ["clients", "Clients", "shop", [["clients", "Clients"], ["rankings", "Google rankings"], ["fleet", "Client Commands"], ["money", "Money"]]],
     ["studio", "Studio AI", "studio", [["studio", "Talk to Studio"], ["chrome", "Do it for me"], ["team", "Team"], ["knowledge", "Knowledge"]]],
-    ["settings", "Settings", "sliders", [["setup", "Get set up"], ["connections", "Connections"], ["autopilot", "Autopilot"], ["offers", "Products & prices"], ["brand", "Brand & features"], ["security", "Security"]]],
+    ["settings", "Settings", "sliders", [["setup", "Get set up"], ["connections", "Connections"], ["autopilot", "Autopilot"], ["offers", "Products & prices"], ["brand", "Brand & features"], ["security", "Security"], ["trust", "Privacy & data"]]],
   ];
   const VIEW_HOST = { home: "today", goals: "today", reports: "today", records: "today", business: "growth", jobs: "team", performance: "team", brain: "knowledge", memory: "knowledge", systems: "autopilot", scout: "team" };
   const hubOf = (view) => HUBS.find((h) => h[3].some((t) => t[0] === view || t[0] === VIEW_HOST[view])) || HUBS[0];
@@ -178,6 +178,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
   const TITLES = {
     today: ["Today", "Your calls, follow-ups and client setup in one workspace"],
     value: ["Value", "What Command did for you this month, in dollars, against what it costs"],
+    trust: ["Privacy & data", "Your data is yours: see what Command stores, download all of it, and get your privacy policy wording"],
     jobs:["AI jobs","Saved assignments, scheduled work and results"],
     records:["Records","Search conversations, decisions and business history"],
     offers: ["Offers", "Receptionists, websites and connected packages"],
@@ -2594,6 +2595,29 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     if (sv) sv.onclick = async () => { const f = el.querySelector('#vForm'), body = {}; ['per_booking', 'hourly_rate', 'plan_aud'].forEach((k) => { const i = f.elements[k]; if (i && !i.disabled && i.value.trim() !== '') body[k] = i.value.trim(); }); try { await team('/value/settings', { method: 'POST', body }); toast('Saved. The ledger is updated.', 'ok'); VIEWS.value(el, last); } catch (e) { toast(e.message, 'bad'); } };
     const sn = el.querySelector('#vSend');
     if (sn) sn.onclick = async () => { try { const r = await team('/value/report', { method: 'POST', body: {} }); toast(r && r.empty ? 'Nothing to report for last month yet.' : 'Sent to your phone and saved in Reports.', 'ok'); } catch (e) { toast(e.message, 'bad'); } };
+  };
+  // v150 Privacy & data: what Command stores, one-click export, and privacy policy wording for automated decisions
+  const v150save = (r) => { try { const b = new Blob([r.content], { type: (r.mime || 'application/octet-stream') + ';charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = r.filename; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); } catch (e) { toast('Download failed: ' + e.message, 'bad'); } };
+  VIEWS.trust = async (el) => {
+    v142css();
+    let d, w; try { [d, w] = await Promise.all([team('/trust'), team('/trust/adm')]); } catch (e) { el.innerHTML = '<section class="wf-glass"><p class="mu">' + esc(e.message) + '</p></section>'; return; }
+    if (!still('trust', el)) return;
+    const total = d.tables.reduce((a, t) => a + t.rows, 0);
+    const rows = d.tables.map((t) => '<tr><td>' + esc(t.label) + '</td><td class="n">' + esc(t.rows.toLocaleString('en-AU')) + '</td><td class="n"><button class="btn sm ghost" data-csv="' + esc(t.table) + '">CSV</button></td></tr>').join('');
+    el.innerHTML = '<section class="wf-glass" style="padding:22px 24px"><span class="wf-eyebrow">YOUR DATA IS YOURS</span><h2 style="margin:6px 0">Everything Command keeps for ' + esc(d.business) + ' belongs to you</h2><p class="mu">Download all of it whenever you like, in formats any spreadsheet or system can open. Staff you add only see what their role allows.</p>'
+      + '<div class="row" style="gap:8px;margin-top:12px"><button class="btn pri" id="tAll">Download everything (' + esc(total.toLocaleString('en-AU')) + ' records)</button></div></section>'
+      + '<div class="v142-row" style="margin-top:14px"><section class="wf-glass" style="flex:999 1 420px;padding:20px 22px"><h3 style="margin:0 0 10px">What Command stores</h3>' + (rows ? '<table class="v149-t"><thead><tr><th>What</th><th class="n">Records</th><th class="n"></th></tr></thead><tbody>' + rows + '</tbody></table>' : '<p class="mu sm">Nothing stored yet.</p>') + '</section>'
+      + '<section class="wf-glass" style="flex:1 1 280px;padding:20px 22px"><h3 style="margin:0 0 10px">Never in a download</h3><ul class="sm" style="margin:0;padding-left:18px">' + d.never.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul><p class="mu xs" style="margin-top:12px">Every download is written to History, so you can see who exported what.</p></section></div>'
+      + '<section class="wf-glass" style="padding:20px 22px;margin-top:14px"><span class="wf-eyebrow">NEW PRIVACY RULES FROM 10 DECEMBER 2026</span><h3 style="margin:6px 0">Privacy policy wording for your AI</h3><p class="mu sm" style="margin:0 0 12px">Australian businesses covered by the Privacy Act must explain in their privacy policy when software makes or helps make decisions about people. ' + (w.health ? 'Health businesses are covered whatever their size. ' : '') + 'This wording is written from what your Command does today. Paste it into your privacy policy.</p>'
+      + '<div class="v149-form" style="margin-bottom:12px"><label>Privacy contact (email or phone)<input class="in" id="tContact" value="' + esc(w.contact || '') + '" placeholder="e.g. hello@yourbusiness.com.au"></label></div>'
+      + '<div class="md" id="tWord" style="padding:14px 16px;border:1px solid rgba(255,255,255,.1);border-radius:12px;max-height:620px;overflow:auto">' + md(w.markdown) + '</div>'
+      + '<p class="mu xs" style="margin:10px 0 0">Based on: ' + esc(w.based_on.join(' · ') || 'your current settings') + '</p><p class="mu xs" style="margin:4px 0 0">' + esc(w.note) + '</p>'
+      + '<div class="row" style="gap:8px;margin-top:12px"><button class="btn pri" id="tSave">Update wording</button><button class="btn ghost" id="tCopy">Copy</button><button class="btn ghost" id="tDl">Download</button></div></section>';
+    el.querySelector('#tAll').onclick = async (ev) => { const b = ev.currentTarget; b.disabled = true; b.textContent = 'Preparing\u2026'; try { v150save(await team('/trust/export', { long: true })); toast('Downloaded. Saved in History too.', 'ok'); } catch (e) { toast(e.message, 'bad'); } b.disabled = false; b.textContent = 'Download everything'; };
+    el.querySelectorAll('[data-csv]').forEach((b) => { b.onclick = async () => { try { v150save(await team('/trust/export?format=csv&table=' + encodeURIComponent(b.dataset.csv), { long: true })); } catch (e) { toast(e.message, 'bad'); } }; });
+    el.querySelector('#tSave').onclick = async () => { try { w = await team('/trust/adm', { method: 'POST', body: { contact: el.querySelector('#tContact').value } }); el.querySelector('#tWord').innerHTML = md(w.markdown); toast('Wording updated.', 'ok'); } catch (e) { toast(e.message, 'bad'); } };
+    el.querySelector('#tCopy').onclick = async () => { try { await navigator.clipboard.writeText(w.text); toast('Copied. Paste it into your privacy policy.', 'ok'); } catch (e) { toast('Select the wording and copy it.', 'bad'); } };
+    el.querySelector('#tDl').onclick = () => v150save({ content: w.markdown, filename: 'privacy-policy-automated-decisions.md', mime: 'text/markdown' });
   };
   // v148 Outreach chat: chat with Command, approve every message as a card, watch Command Chrome send it
   (function () {

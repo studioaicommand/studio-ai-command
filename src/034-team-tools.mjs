@@ -680,6 +680,10 @@ async function phoneList(env, { days = 7, limit = 30 } = {}) {
   return { days: clamp(days, 1, 90, 7), calls, totals: { calls: all.length, booked: all.filter((m) => m.booked).length, urgent: all.filter((m) => m.urgent).length, minutes: Math.round(all.reduce((a, m) => a + (m.duration_sec || 0), 0) / 6) / 10, cost_aud: Math.round(all.reduce((a, m) => a + (Number(m.cost_aud) || 0), 0) * 100) / 100 } };
 }
 Object.assign(TOOL_DEFS, {
+  privacy_wording: {
+    description: "Write the 'Automated decisions and AI' section for the business's privacy policy (required in Australia from 10 December 2026 under APP 1.7 to 1.9). Built from what this Command actually does: which channels the AI answers on its own, which a person approves, the Phone AI, follow-ups, review requests, and the health information line for health businesses. Use when the owner asks about privacy policy wording, automated decisions, the new privacy rules, or what to tell customers about AI. Say it isn't legal advice.",
+    input_schema: { type: "object", properties: { contact: { type: "string", description: "Optional email or phone people should contact about privacy. Saved for next time." } } }
+  },
   value_report: {
     description: "What Command has done for the business in dollars: bookings it made (valued at what a new customer is worth), staff hours saved, enquiries answered after hours, against what Command costs, with the return (e.g. 5.2x). This month so far or last month. Use for 'what has Command done for me', 'is it worth it', 'what's my ROI', reports and sales proof. Always say these are estimates.",
     input_schema: { type: "object", properties: { month: { type: "string", enum: ["this", "last"], description: "This month so far (default) or last month." } } }
@@ -3967,6 +3971,10 @@ async function runTool(name, input, ctx) {
     }
     case "ghl_create_contact": case "ghl_update_contact": case "ghl_list_calendars": case "ghl_free_slots": case "ghl_create_opportunity": case "ghl_move_opportunity":
       return crmTool(env, name, input, dept);
+    case "privacy_wording": {
+      const r = await trustAdm(env, input.contact ? { contact: input.contact } : {});
+      return { wording: r.markdown, based_on: r.based_on, starts: "10 December 2026", where: "Command > Settings > Privacy & data (copy or download it there)", note: r.note };
+    }
     case "value_report": {
       const L = await valueLedger(env, { offset: input.month === "last" ? -1 : 0 });
       return { period: L.period.label + (L.period.month_to_date ? " (so far)" : ""), estimated_value_aud: L.total_value, bookings: L.bookings, value_per_booking_aud: L.settings.per_booking, booking_value_aud: L.booking_value, hours_saved: L.hours_saved, staff_rate_aud: L.settings.hourly_rate, time_value_aud: L.time_value, answered: L.answered, after_hours: L.after_hours, cost_aud: L.cost.total, cost_is: L.cost.note, return_x: L.roi, breakdown: L.lines.map((l) => l.label + ": " + l.count), note: "Estimates from work Command actually finished. Bookings use the value per booking; other work counts as staff time saved. Owners change the values in Command > Value." };

@@ -137,25 +137,25 @@ function memAllowed(role, p, m) {
   const write = !["GET", "HEAD", "OPTIONS"].includes(m);
   if (team != null && /^\/(fleet|fleet-info)(\/|$)/.test(team)) return false;
   if (role === "support") {
-    if (team != null && /^\/(money|costs|mission|book|value)(\/|$)/.test(team)) return false;
+    if (team != null && /^\/(money|costs|mission|book|value|trust)(\/|$)/.test(team)) return false;
     if (!write) return true;
     if (m === "DELETE") return false;
     if (team != null && /^\/(actions|instance|settings|offers|charter|telegram\/setup|records\/(backfill|import-telegram)|money|book|clients|demo-followups)(\/|$)/.test(team)) return false;
     return !p.startsWith("/api/v1/operator/goals");
   }
   if (role === "manager") {
-    if (team != null && /^\/(money|costs|mission|value)(\/|$)/.test(team)) return false;
+    if (team != null && /^\/(money|costs|mission|value|trust)(\/|$)/.test(team)) return false;
     if (!write) return true;
     if (team != null && /^\/(settings|offers|charter|telegram\/setup|records\/(backfill|import-telegram)|money|instance)(\/|$)/.test(team)) return false;
     return !p.startsWith("/api/v1/operator/goals");
   }
-  if (team != null && /^\/(money|costs|mission|value)(\/|$)/.test(team)) return false;
+  if (team != null && /^\/(money|costs|mission|value|trust)(\/|$)/.test(team)) return false;
   if (!write) return true;
   if (/^\/api\/v1\/operator\/(chat|voice|tool)$/.test(p)) return true;
   return team != null && /^\/(website-demos|demos\/build|analyse|scan|rescan|business|chat|threads)(\/|$)/.test(team);
 }
 // Studio AI for the team: everyone gets it, but each role only gets the tools (and figures) their role allows.
-var MEM_MONEY_TOOL = /stripe|revenue|invoice|money|profit|cost|price|billing|payment|subscription|balance|clients_overview|autopilot|offer|value_report/i;
+var MEM_MONEY_TOOL = /stripe|revenue|invoice|money|profit|cost|price|billing|payment|subscription|balance|clients_overview|autopilot|offer|value_report|privacy_wording/i;
 var MEM_STAFF_TOOLS = new Set(["ghl_search_contacts", "ghl_get_contact", "ghl_create_contact", "ghl_update_contact", "ghl_list_calendars", "ghl_free_slots", "ghl_list_appointments", "propose_ghl_appointment_book", "phone_calls", "team_jobs", "list_approvals", "recent_conversations", "conversation_messages", "show_on_screen", "send_telegram_to_ty", "find_website_leads", "build_website_demo", "adjust_website_demo", "query_prospects", "analyse_website", "leak_scan", "build_demo", "call_list", "list_saved_conversations", "read_saved_conversation"]);
 function memToolOk(role, name) {
   if (!role || role === "owner") return true;

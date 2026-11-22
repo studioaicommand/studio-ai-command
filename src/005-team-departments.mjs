@@ -1,5 +1,5 @@
 // src/team/departments.js
-var CORE = ["leak_inside_scan", "get_business_snapshot", "get_mission_progress", "value_report", "read_memory", "save_memory", "get_recent_reports", "save_deliverable", "propose_owner_task"];
+var CORE = ["leak_inside_scan", "get_business_snapshot", "get_mission_progress", "value_report", "privacy_wording", "read_memory", "save_memory", "get_recent_reports", "save_deliverable", "propose_owner_task"];
 var LEADS = ["query_leads", "get_lead_conversation", "query_prospects", "query_table"];
 var GHL_READ = ["ghl_search_contacts", "ghl_get_contact", "ghl_list_pipelines", "ghl_search_opportunities", "ghl_list_appointments", "ghl_list_calendars", "ghl_free_slots", "phone_calls"];
 var STRIPE_READ = ["stripe_revenue_summary", "stripe_list_invoices", "stripe_list_subscriptions", "stripe_get_balance"];

@@ -99,8 +99,8 @@ assert(x.j.ok && DB.team_reports.some((r) => r.subkind === "value_report" && /Va
 
 const src = readFileSync(W, "utf8");
 assert(/var CORE = \[[^\]]*"value_report"/.test(src) && /"google_rank_check",\s*"value_report"/.test(src), "Every department and Studio AI can answer 'what has Command done for me'");
-assert(/offer\|value_report\/i/.test(src) && /money\|costs\|mission\|value\)/.test(src), "Staff and managers can't see the value ledger (it shows money)");
-assert(/\["Value report", \(\) => valueMonthly\(e\)\]/.test(src) && /"value_ledger"\]\.includes\(key\)/.test(src), "The monthly report runs on the 1st and its settings save");
+assert(/offer\|value_report\|privacy_wording\/i/.test(src) && /money\|costs\|mission\|value\|trust\)/.test(src), "Staff and managers can't see the value ledger (it shows money)");
+assert(/\["Value report", \(\) => valueMonthly\(e\)\]/.test(src) && /"value_ledger", "trust"\]\.includes\(key\)/.test(src), "The monthly report runs on the 1st and its settings save");
 const app = await (await w.fetch(new Request(S + "/app/app.js"), base, { waitUntil() {} })).text();
 assert(app.includes("VIEWS.value = async") && app.includes('["value", "Value"]') && app.includes("v149-val") && app.includes("Value to clients this month"), "Value has its own screen under Today, a strip on Home and a total on Client Commands");
 const demo = await (await w.fetch(new Request(S + "/app/demo.js"), base, { waitUntil() {} })).text();

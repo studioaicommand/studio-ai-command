@@ -14,6 +14,7 @@ var SHARED = [
   "phone_calls",
   "google_rank_check",
   "value_report",
+  "privacy_wording",
   "ask_department",
   "get_mission_progress",
   "get_recent_reports",
