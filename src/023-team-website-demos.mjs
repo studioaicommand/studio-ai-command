@@ -497,7 +497,8 @@ async function wsdCheckSite(website) {
   const cy = Math.max(0, ...[...h.matchAll(/(?:©|&copy;|copyright)\s*(?:\d{4}\s*[-–]\s*)?(\d{4})/gi)].map((m) => +m[1]).filter((y) => y > 1995 && y <= yr));
   if (cy && cy <= yr - 3) { s.push(`Copyright says ${cy}`); score += 15; }
   if (/^http:\/\//i.test(r.url || "")) { s.push("No HTTPS (shows 'Not secure')"); score += 15; }
-  if (/jquery[.-]1\.\d|swfobject|\.swf\b|<table[^>]+width=["']?\d{3}/i.test(h)) { s.push("Old web tech"); score += 12; }
+  // v151.3 also old CMS versions (WordPress 4 or older, Joomla 1-3, old Slider Revolution), found in a live test
+  if (/jquery[.-]1\.\d|swfobject|\.swf\b|<table[^>]+width=["']?\d{3}/i.test(h) || /<meta[^>]+generator[^>]+(WordPress [1-4]\.|Joomla! ?[1-3]\.|Slider Revolution [1-5]\.)/i.test(h)) { s.push("Old web tech"); score += 12; }
   if (/weebly|godaddy.*website.?builder|wsimg\.com|jimdo|webs\.com|yola/i.test(h)) { s.push("Basic site builder"); score += 8; }
   if (!/<h1[\s>]/i.test(h)) { s.push("No main heading (weak SEO)"); score += 8; }
   if (!/<meta[^>]+name=["']description/i.test(h)) { s.push("No meta description (weak SEO)"); score += 8; }
