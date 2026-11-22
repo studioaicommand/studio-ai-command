@@ -13,7 +13,8 @@ const places = [
   { id: "pl2", displayName: { text: "Fade Masters" }, nationalPhoneNumber: "0400 333 444", rating: 4.7, userRatingCount: 40, businessStatus: "OPERATIONAL", websiteUri: "https://www.facebook.com/fademasters", formattedAddress: "2 Main St, Noosa" },
   { id: "pl3", displayName: { text: "Sharp Cuts Studio" }, nationalPhoneNumber: "0400 555 666", rating: 4.8, userRatingCount: 12, businessStatus: "OPERATIONAL", websiteUri: "https://sharpcuts.com.au", formattedAddress: "3 Main St, Noosa" },
   { id: "pl4", displayName: { text: "Old Barber" }, nationalPhoneNumber: "0400 777 888", businessStatus: "CLOSED_PERMANENTLY", formattedAddress: "4 Main St, Noosa" },
-  { id: "pl5", displayName: { text: "Island Trims" }, nationalPhoneNumber: "0400 999 000", rating: 4.5, userRatingCount: 22, businessStatus: "OPERATIONAL", formattedAddress: "5 Main St, Noosa" }
+  { id: "pl5", displayName: { text: "Island Trims" }, nationalPhoneNumber: "0400 999 000", rating: 4.5, userRatingCount: 22, businessStatus: "OPERATIONAL", formattedAddress: "5 Main St, Noosa" },
+  { id: "pl6", displayName: { text: "Retro Hair Design" }, nationalPhoneNumber: "0400 121 212", rating: 4.6, userRatingCount: 64, businessStatus: "OPERATIONAL", websiteUri: "http://www.retrohair.com.au/", formattedAddress: "6 Main St, Noosa" }
 ];
 const contact = { "Coastal Barber Co": { email: "bookings@coastalbarber.com.au", email_source_url: "https://www.yellowpages.com.au/qld/noosa/coastal-barber-co", website: null, facebook: "https://facebook.com/coastalbarberco", about: "Classic cuts and hot towel shaves in Noosa since 2015.", owner_name: "Jake Morris", services: ["Haircuts", "Beard trims"] },
   "Fade Masters": { email: "fade@gmail.com", email_source_url: "https://www.facebook.com/fademasters", website: null, about: "Fades." },
@@ -39,6 +40,8 @@ globalThis.fetch = async (u, init = {}) => { u = String(u); const m = (init.meth
   if (u.startsWith("https://www.yellowpages.com.au/")) return new Response("<html><h1>Coastal Barber Co</h1><p>Email: bookings&#64;coastalbarber.com.au</p></html>", { status: 200, headers: { "content-type": "text/html" } });
   if (u.startsWith("https://www.hotfrog.com.au/")) return new Response("<html><h1>Some other business</h1><p>hi@islandtrims.com.au</p></html>", { status: 200, headers: { "content-type": "text/html" } });
   if (u.startsWith("https://www.facebook.com/")) return new Response("Log in to Facebook", { status: 200, headers: { "content-type": "text/html" } });
+  if (u.startsWith("https://sharpcuts.com.au")) return new Response('<html><head><meta name="viewport" content="width=device-width"><meta name="description" content="x"></head><body><h1>Sharp Cuts</h1>© 2026 <a>Book now</a></body></html>', { status: 200, headers: { "content-type": "text/html" } });
+  if (/retrohair\.com\.au/.test(u)) return new Response('<html><head><title>Retro Hair Design</title></head><body><table width="800"><tr><td><h1>Retro Hair Design</h1>Email us: info@retrohair.com.au<br>© 2014 Retro Hair Design</td></tr></table></body></html>', { status: 200, headers: { "content-type": "text/html" } });
   if (u.includes("cloudflare-dns.com")) return Response.json({ Status: 0, Answer: [{ type: 15, data: "10 mx.example.com." }] });
   return Response.json({ ok: true }); };
 globalThis.caches = undefined;
@@ -51,8 +54,11 @@ let x = await call("/nosite");
 assert(x.j.ok && x.j.cfg.daily === 20 && x.j.cfg.on === true && x.j.source === "google_places", "The no-website finder is on by default, 20 a day, using Google Maps results");
 x = await call("/nosite/run", { vertical: "beauty", city: "Noosa", count: 8 });
 const R = x.j.round;
-assert(x.j.ok && /Noosa/.test(R.query) && R.seen === 5, "It searches Google for one of our industries in an area: " + R.query);
-assert(R.no_website === 3 && !DB.agent_prospects.some((p) => p.business_name === "Sharp Cuts Studio" || p.business_name === "Old Barber"), "Businesses with a real website, or closed ones, are left out; a Facebook page doesn't count as a website");
+assert(x.j.ok && /Noosa/.test(R.query) && R.seen === 6, "It searches Google for one of our industries in an area: " + R.query);
+assert(R.no_website === 3 && R.outdated === 1 && R.modern_sites_skipped === 1 && !DB.agent_prospects.some((p) => p.business_name === "Sharp Cuts Studio" || p.business_name === "Old Barber"), "Modern websites and closed businesses are left out; a Facebook page doesn't count as a website");
+const rh = DB.agent_prospects.find((p) => p.business_name === "Retro Hair Design");
+assert(rh && rh.source === "outdated_site" && /retrohair\.com\.au$/.test(rh.website) && rh.leak_report.nosite.kind === "outdated" && rh.leak_report.nosite.outdated.why.some((w) => /not mobile-friendly/.test(w)) && rh.leak_report.nosite.outdated.why.some((w) => /2014/.test(w)), "A really outdated site (not mobile-friendly, copyright 2014) is kept, with exactly what's dated");
+assert(rh.email === "info@retrohair.com.au" && /retrohair\.com\.au/.test(rh.email_source_url) && rh.leak_report.nosite.stage === "needs_concept" && /phone/.test(rh.opener), "Its email comes from their own website, and the call opener mentions how it looks on a phone");
 const cb = DB.agent_prospects.find((p) => p.business_name === "Coastal Barber Co"), fm = DB.agent_prospects.find((p) => p.business_name === "Fade Masters"), it = DB.agent_prospects.find((p) => p.business_name === "Island Trims");
 assert(cb && cb.email === "bookings@coastalbarber.com.au" && /^Published by the business on yellowpages\.com\.au/.test(cb.consent_basis) && cb.leak_report.nosite.stage === "needs_concept", "An email the business published is kept once Command sees it on that page (even written as &#64;)");
 assert(fm && fm.email === null && fm.leak_report.nosite.stage === "call_only", "An email Command can't see on the page (Facebook needs a login) isn't used: they go on the call list");
@@ -71,6 +77,11 @@ const act = DB.team_actions.slice(before).find((a) => a.type === "campaign_enrol
 assert(/\/demo\/[0-9a-f]{40}\/site$/.test(x.j.concept_url) && act && act.params.body.includes(x.j.concept_url) && anth.some((b) => (b.tools || []).some((t) => t.name === "save_site_design")), "A homepage concept is built from their Google profile (no website needed) and linked under the email");
 assert(x.j.ok && act && act.status === "pending" && act.params.email === "bookings@coastalbarber.com.au" && /Published by the business on/.test(act.params.consent_basis || cb.consent_basis), "The email waits for Ty's approval like all cold outreach");
 assert(DB.agent_prospects.find((p) => p.id === cb.id).leak_report.nosite.stage === "queued" && DB.agent_prospects.find((p) => p.id === cb.id).status === "queued", "The business shows as waiting for Ty's OK");
+x = await call("/nosite/finish", { id: rh.id });
+const draft2 = anth.filter((b) => (b.tools || []).some((t) => t.name === "write_email")).pop();
+const sys2 = JSON.stringify(draft2.system), msg2 = JSON.stringify(draft2.messages);
+assert(/REALLY OUTDATED WEBSITE/.test(sys2) && /rebuild their website/.test(sys2) && /ONLY the confirmed_website_problems/.test(sys2) && /not mobile-friendly/.test(msg2), "Outdated sites get the rebuild offer, naming only the problems Command confirmed");
+assert(x.j.ok && DB.team_actions.some((a) => a.type === "campaign_enrol" && a.params.business_name === "Retro Hair Design" && a.status === "pending"), "Its email passes the published-email check (on their own site) and waits for Ty's OK");
 x = await call("/nosite/finish", { id: fm.id });
 assert(x.j.call_only && !DB.team_actions.some((a) => a.params?.business_name === "Fade Masters"), "No published email: no email is ever queued, they stay on the call list");
 
@@ -80,7 +91,7 @@ x = await call("/prospects/pX/queue", {});
 assert(!DB.team_actions.some((a) => a.params?.business_name === "Guess Co"), "A no-website business without a checked, published email can't be emailed");
 
 x = await call("/nosite");
-assert(x.j.today.found === 3 && x.j.today.emails === 1 && x.j.items.length >= 3 && x.j.items.find((i) => i.business === "Coastal Barber Co").stage === "queued", "Outreach shows today's count and each business's stage");
+assert(x.j.today.found === 4 && x.j.today.emails === 2 && x.j.items.find((i) => i.business === "Retro Hair Design").kind === "outdated" && x.j.items.length >= 3 && x.j.items.find((i) => i.business === "Coastal Barber Co").stage === "queued", "Outreach shows today's count and each business's stage");
 x = await call("/nosite/settings", { daily: 25, concepts: 5, cities: ["Noosa", "Maroochydore"], verticals: ["beauty", "trades", "nonsense"] });
 assert(x.j.cfg.daily === 25 && x.j.cfg.concepts === 5 && x.j.cfg.verticals.join() === "beauty,trades" && x.j.cfg.cities.length === 2, "Ty can change how many a day, concepts a day, areas and industries");
 
