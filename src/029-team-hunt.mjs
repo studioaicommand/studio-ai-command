@@ -160,8 +160,10 @@ var CANDIDATE_TOOL = {
     required: ["clinics"]
   }
 };
-async function startHunt(env, { vertical, city, count: count2 = 15, source = "prospect_hunt", pitch } = {}) {
+async function startHunt(env, { vertical, city, count: count2 = 15, source = "prospect_hunt", pitch, given, note } = {}) {
   const settings = await getSettings(env);
+  // v152 businesses Ty names himself (a screenshot, a link): no search, straight into the same research, concept, email and approval steps
+  if (Array.isArray(given) && given.length) return startGiven(env, { given, vertical, city, pitch, note });
   const recent = (settings.hunts || []).find((j) => Date.now() - Date.parse(j.started_at || 0) < 12 * 36e5);
   vertical = OUTREACH[vertical] ? vertical : await pickVertical(env, settings, recent?.vertical);
   const IND = OUTREACH[vertical];
@@ -352,9 +354,9 @@ async function huntStep(env, id) {
     const feedback = await select(env, "team_memory", "category=eq.feedback&order=created_at.desc&limit=12&select=fact").catch(() => []);
     const system = `You are the Head of Sales at Studio Flow & Systems (Brisbane), writing outreach to established Australian ${(OUTREACH[job.vertical] || {}).name || "service"} businesses for Ty's GHL campaign. The offer behind it: their Growth Pack (where enquiries slip, a homepage concept in their brand, and a front desk that answers every enquiry in under a minute with missed-call text-back and follow-up until they book), and for bigger teams a command hub that runs the whole back office. Never promise ROI or quote prices.
 ${industryBrief(job.vertical)}${brainRulesText(await brainRules(env).catch(() => []), "outreach")}${await brainMarket(env, job.vertical).catch(() => "")}
-${EMAIL_RULES}${outPitchText(env, job.pitch)}${feedback.length ? "\nTy's feedback on past drafts (follow it):\n" + feedback.map((f) => "- " + f.fact).join("\n") : ""}`;
+${EMAIL_RULES}${outPitchText(env, job.pitch)}${job.manual ? "\nTy picked these businesses himself. Where a clinic has angle_from_ty, build the email around that angle, still only claiming what its research confirmed." : ""}${feedback.length ? "\nTy's feedback on past drafts (follow it):\n" + feedback.map((f) => "- " + f.fact).join("\n") : ""}`;
     await Promise.all(ready.map(async (r) => {
-      const band = scoreProspect({ leak_score: r.leak.leak_score, google_rating: r.c.google_rating, google_reviews: r.c.google_reviews, locations: r.c.locations, practitioners: r.c.practitioners }).band;
+      const band = job.manual ? "high" : scoreProspect({ leak_score: r.leak.leak_score, google_rating: r.c.google_rating, google_reviews: r.c.google_reviews, locations: r.c.locations, practitioners: r.c.practitioners }).band;
       if (band === "low") return;
       try {
         r.demo = await buildDemo(env, { id: r.c.prospect_id, website: r.c.website, business_name: r.c.business_name, vertical: r.c.vertical, phone: r.c.phone }, { usage, settings });
@@ -365,7 +367,7 @@ ${EMAIL_RULES}${outPitchText(env, job.pitch)}${feedback.length ? "\nTy's feedbac
     let siteLeft = Math.min(2, await outSiteLeft(env).catch(() => 0));
     for (const r of ready) {
       if (siteLeft <= 0) break;
-      const band = scoreProspect({ leak_score: r.leak.leak_score, google_rating: r.c.google_rating, google_reviews: r.c.google_reviews, locations: r.c.locations, practitioners: r.c.practitioners }).band;
+      const band = job.manual ? "high" : scoreProspect({ leak_score: r.leak.leak_score, google_rating: r.c.google_rating, google_reviews: r.c.google_reviews, locations: r.c.locations, practitioners: r.c.practitioners }).band;
       if (band !== "high" || !r.c.email || !r.demo?.token) continue;
       try {
         r.site = await wsdBuild(env, { website: r.c.website, name: r.c.business_name, vertical: r.c.vertical, area: r.c.location || job.city, reuse: { demo: r.demo, scan: leakForAgent(r.rep, r.leak) } });
@@ -374,7 +376,7 @@ ${EMAIL_RULES}${outPitchText(env, job.pitch)}${feedback.length ? "\nTy's feedbac
         job.results.errors.push({ where: `homepage concept (${r.c.business_name})`, error: String(e.message).slice(0, 160) });
       }
     }
-    const briefOf = ({ c, leak, rep, demo, site }) => ({ ...(() => { const b = demoBrief(env, demo); return b ? { demo_can_answer: b.demo_can_answer, demo_highlight: b.demo_highlight } : {}; })(), ...(demo?.token && (demo.quality === "good" || site?.site) ? { pack_url: wsdLinks(env, demo.token).pack, has_site: !!site?.site, has_front_desk: demo.quality === "good" } : {}), ...(leak.search ? { search: { query: leak.search.query, position: leak.search.position, ahead: leak.search.ahead } } : {}), website: c.website, clinic: c.business_name, vertical: c.vertical, location: c.location || job.city, google: c.google_rating ? `${c.google_rating}\u2605 (${c.google_reviews ?? "?"} reviews)` : null, locations: c.locations || null, practitioners: c.practitioners || null, leak_score: leak.leak_score, strengths: (leak.strengths || []).map((x) => x.finding), findings: leak.checks.filter((x) => (x.status === "fail" || x.status === "warn") && x.confidence === "confirmed").map((x) => `${x.label} (confirmed${x.angle ? `, angle: ${x.angle}` : ""}): ${x.finding}`), never_claim: leak.checks.filter((x) => x.confidence !== "confirmed").map((x) => `${x.label}: ${x.finding}`), write_emails: !!c.email, site_title: rep.home?.title || null, why_fit: c.why_fit || null });
+    const briefOf = ({ c, leak, rep, demo, site }) => ({ ...(() => { const b = demoBrief(env, demo); return b ? { demo_can_answer: b.demo_can_answer, demo_highlight: b.demo_highlight } : {}; })(), ...(demo?.token && (demo.quality === "good" || site?.site) ? { pack_url: wsdLinks(env, demo.token).pack, has_site: !!site?.site, has_front_desk: demo.quality === "good" } : {}), ...(leak.search ? { search: { query: leak.search.query, position: leak.search.position, ahead: leak.search.ahead } } : {}), website: c.website, clinic: c.business_name, vertical: c.vertical, ...(c.note ? { angle_from_ty: c.note } : {}), location: c.location || job.city, google: c.google_rating ? `${c.google_rating}\u2605 (${c.google_reviews ?? "?"} reviews)` : null, locations: c.locations || null, practitioners: c.practitioners || null, leak_score: leak.leak_score, strengths: (leak.strengths || []).map((x) => x.finding), findings: leak.checks.filter((x) => (x.status === "fail" || x.status === "warn") && x.confidence === "confirmed").map((x) => `${x.label} (confirmed${x.angle ? `, angle: ${x.angle}` : ""}): ${x.finding}`), never_claim: leak.checks.filter((x) => x.confidence !== "confirmed").map((x) => `${x.label}: ${x.finding}`), write_emails: !!c.email, site_title: rep.home?.title || null, why_fit: c.why_fit || null });
     const write = async (items, fix) => {
       const data = await callClaude(env, { model: model2, max_tokens: 8e3, tools: [WRITE_TOOL], tool_choice: { type: "tool", name: "write_outreach" }, system, messages: [{ role: "user", content: "Write for these clinics (scan data below is from their public websites):\n" + JSON.stringify(items.map(briefOf), null, 1) + (fix ? "\n\n" + fix : "") }] });
       addUsage(usage, data.usage);
@@ -414,13 +416,14 @@ ${EMAIL_RULES}${outPitchText(env, job.pitch)}${feedback.length ? "\nTy's feedbac
       const w = drafts.get(c);
       const dlink = demoBrief(env, demo)?.demo_url;
       const plink = demo?.token && (dlink || site?.site) ? wsdLinks(env, demo.token).pack : null;
-      const clink = job.pitch === "command" ? outCommandDemo(env) : null;
+      const clink = job.pitch === "command" || job.pitch === "front_desk" ? outCommandDemo(env) : null;
       if (w && clink && c.email && !String(w.body || "").includes(clink)) w.body = String(w.body || "").trim() + "\n\n" + clink;
       else if (w && plink && c.email && !String(w.body || "").includes(plink)) w.body = String(w.body || "").trim() + "\n\n" + plink;
       if (w && plink && c.email && w.follow_up_1 && !String(w.follow_up_1).includes(plink)) w.follow_up_1 = String(w.follow_up_1).trim() + "\n\n" + plink;
       const sc = scoreProspect({ leak_score: leak.leak_score, google_rating: c.google_rating, google_reviews: c.google_reviews, locations: c.locations, practitioners: c.practitioners });
       const packet = { snapshot: { vertical: c.vertical, location: c.location || job.city, locations: c.locations || null, practitioners: c.practitioners || null, google_rating: c.google_rating || null, google_reviews: c.google_reviews ?? null, contact: { email: c.email || null, phone: c.phone || null } }, gaps: leak.top, fit_notes: w?.fit_notes || c.why_fit || null, score: sc.score, track: sc.track, score_reason: sc.reason, route: null, drafted: !!w, follow_up_1: w?.follow_up_1 || null, follow_up_2: w?.follow_up_2 || null };
-      let route3 = sc.band === "high" ? c.email ? "enrol" : "call" : sc.band === "mid" ? c.email ? "nurture" : "call" : "skip";
+      const band3 = job.manual ? "high" : sc.band; // businesses Ty picked are never dropped for a low score
+      let route3 = band3 === "high" ? c.email ? "enrol" : "call" : band3 === "mid" ? c.email ? "nurture" : "call" : "skip";
       if (route3 === "enrol" && !w) route3 = "needs_draft";
       if (route3 === "enrol" && ghl_exports && enabled(env)) {
         const sup = await suppressed(env, c.email).catch(() => null);
@@ -546,6 +549,29 @@ ${r.errors.map((e) => `- ${e.where}: ${e.error}`).join("\n")}` : "\nNo errors."
   job.report_id = rep?.id || null;
   job.finished_at = now2();
   await saveJob(env, job);
+  return job;
+}
+function givenSite(v) { const s = String(v || "").trim(); if (!s || /\s/.test(s) || !/\.[a-z]{2,}/i.test(s)) return ""; return siteKey(/^https?:\/\//i.test(s) ? s : "https://" + s); }
+async function startGiven(env, { given, vertical, city, pitch, note } = {}) {
+  vertical = OUTREACH[vertical] ? vertical : "multi";
+  pitch = OUT_PITCHES[pitch] ? pitch : (await outCfg(env).catch(() => ({}))).pitch || "growth_pack";
+  const existing = await select(env, "agent_prospects", "select=website&limit=5000").catch(() => []);
+  const known = new Set(existing.map((r) => siteKey(r.website)).filter(Boolean));
+  const clean = (v, n) => String(v || "").replace(/[<>]/g, "").trim().slice(0, n);
+  const job = { id: crypto.randomUUID(), vertical, city: clean(city, 60) || "Australia", count: 0, source: "manual_add", manual: true, pitch, note: clean(note, 600) || null, status: "running", started_at: now2(), candidates: [], done: 0, results: { saved: 0, queued: 0, call_only: 0, skipped: [], errors: [] }, report_id: null };
+  const seen = new Set();
+  for (const g of given.slice(0, 10)) {
+    const name = clean(g?.business_name || g?.name, 120), key = givenSite(g?.website);
+    const why = !name ? "needs a business name" : !key ? "needs their website (for a business with no website, use the no-website finder)" : known.has(key) ? "already in prospects" : seen.has(key) ? "duplicate" : "";
+    if (why) { job.results.skipped.push({ name: name || String(g?.website || "?").slice(0, 80), why }); continue; }
+    seen.add(key);
+    const email = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(String(g.email || "").trim()) ? String(g.email).trim().toLowerCase() : null;
+    job.candidates.push({ business_name: name, website: key, vertical: OUTREACH[g.vertical] ? g.vertical : vertical, phone: clean(g.phone, 40) || null, location: clean(g.location, 80) || job.city, email, email_source_url: email ? clean(g.email_source_url, 300) || "https://" + key : null, note: clean(g.note, 600) || job.note, why_fit: "Ty picked this business himself", state: "pending" });
+  }
+  job.count = job.candidates.length;
+  job.status = job.candidates.length ? "running" : "done";
+  await saveJob(env, job);
+  if (!job.candidates.length) await finishHunt(env, job);
   return job;
 }
 async function continueHunts(env, batches = 2) {

@@ -1443,9 +1443,10 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     const toast = (t, k) => { $$(".toast").forEach((x) => x.remove()); toastAll(t, k); };
     try {
       toast("Finding clinics\u2026 (about a minute)");
-      let h = (await team("/hunt/start", { method: "POST", body: opts, long: true })).hunt;
+      let h = (await team(opts.businesses ? "/prospects/add" : "/hunt/start", { method: "POST", body: opts, long: true })).hunt;
       if (h.status === "failed") throw new Error((h.results.errors[0] || {}).error || "The search didn't work. Try again in a minute.");
-      toast("Found " + h.candidates.length + " " + h.vertical + " clinics in " + h.city + ". Scanning 3 at a time\u2026");
+      if (opts.businesses && !h.candidates.length) throw new Error("Nothing added: " + (h.results.skipped || []).map((x) => x.name + " (" + x.why + ")").join(", "));
+      toast(opts.businesses ? "Added " + h.candidates.length + ". Researching 3 at a time\u2026" : "Found " + h.candidates.length + " " + h.vertical + " clinics in " + h.city + ". Scanning 3 at a time\u2026");
       for (let i = 0; i < 8 && h.status === "running"; i++) {
         h = (await team("/hunt/step", { method: "POST", body: { id: h.id }, long: true })).hunt;
         toast(h.done + " of " + h.candidates.length + " done \xB7 " + h.results.queued + " queued \xB7 " + h.results.call_only + " to call");
@@ -2118,6 +2119,24 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
     $('#nsSave', box).onclick = async () => { try { await team('/nosite/settings', { method: 'POST', body: { on: $('#nsOn', box).checked, daily: Number($('#nsDaily', box).value) || 0, concepts: Number($('#nsConcepts', box).value) || 0, cities: $('#nsCities', box).value.split(',').map((x) => x.trim()).filter(Boolean), verticals: $$('.ns-v', box).filter((b) => b.checked).map((b) => b.value) } }); toast('Saved', 'ok'); box.remove(); v151nosite(el); } catch (e) { toast(e.message, 'bad'); } };
     $('#nsRun', box).onclick = async (ev) => { const b = ev.currentTarget; b.disabled = true; b.textContent = 'Searching\u2026 (about a minute)'; try { const r = await team('/nosite/run', { method: 'POST', body: {}, long: true }); const x = r.round || {}; toast(x.error ? x.error : 'Found ' + (x.saved || 0) + ' with no website (' + (x.emails || 0) + ' with a published email) for \u201c' + (x.query || '') + '\u201d', x.error ? 'bad' : 'ok'); box.remove(); v151nosite(el); } catch (e) { toast(e.message, 'bad'); b.disabled = false; b.textContent = 'Find some now'; } };
   };
+  // v152 add businesses Ty names himself (from a screenshot or a link): same research, concept, email and approval steps as a hunt
+  const v152add = (el, pitches) => {
+    const box = document.createElement('section'); box.className = 'wf-glass'; box.id = 'addBox';
+    box.innerHTML = '<span class="wf-eyebrow">ADD BUSINESSES YOURSELF</span><h3 style="margin:4px 0">Saw a business you want to pitch? Add it here.</h3>'
+      + '<p class="mu sm" style="margin:0 0 10px">One per line: <b>name, website</b>, and their email if they publish one. Command researches each site, builds a homepage concept and writes the email. Emails wait for your OK; if they publish no email, they go on your call list. Or just send Studio AI a screenshot and say “add these”.</p>'
+      + '<textarea class="in" id="addList" rows="4" placeholder="Bronte Dental Centre, brontedentalcentre.com.au, info@brontedentalcentre.com.au"></textarea>'
+      + '<div class="row" style="gap:12px;flex-wrap:wrap;margin-top:10px"><label class="lab" style="flex:0 1 230px">What the email sells<select class="in" id="addPitch">' + (pitches || []).map((x) => '<option value="' + esc(x.id) + '"' + (x.id === 'front_desk' ? ' selected' : '') + '>' + esc(x.name) + '</option>').join('') + '</select></label>'
+      + '<label class="lab" style="flex:0 1 170px">Industry<select class="in" id="addVert"><option value="dental">Dental</option><option value="allied">Allied health</option><option value="medical">Medical</option><option value="aesthetics">Aesthetics</option><option value="psychology">Psychology</option><option value="beauty">Beauty and hair</option><option value="fitness">Fitness</option><option value="trades">Trades</option><option value="multi">Other</option></select></label>'
+      + '<label class="lab" style="flex:1 1 260px">Your angle (optional)<input class="in" id="addNote" placeholder="e.g. their assistant answers the phone between patients"></label></div>'
+      + '<div class="row" style="gap:8px;margin-top:10px"><button class="btn pri" id="addGo">Add and research</button></div>';
+    el.appendChild(box);
+    $('#addGo', box).onclick = (ev) => {
+      const nl = String.fromCharCode(10);
+      const businesses = $('#addList', box).value.split(nl).map((l) => l.split(',').map((x) => x.trim())).filter((p) => p[0]).map((p) => ({ business_name: p[0], website: p[1] || '', email: (p.slice(2).find((x) => x.includes('@')) || '') }));
+      if (!businesses.length) { toast('Add at least one business: name, website', 'bad'); return; }
+      runHunt({ businesses, pitch: $('#addPitch', box).value, vertical: $('#addVert', box).value, note: $('#addNote', box).value.trim() || undefined }, ev.currentTarget);
+    };
+  };
   VIEWS.outreach = async (el) => {
     el.innerHTML = '<section class="wf-glass">' + sk(200) + '</section>';
     let d, t;
@@ -2141,6 +2160,7 @@ var APP = { "v": "8d227734d8", "js": `// Studio AI Intelligence: command centre 
       '<p class="lab" style="margin:14px 0 6px">Industries (none ticked = all)</p><div class="or-verts">' + d.verticals.map((v) => '<label><input type="checkbox" class="or-v" value="' + esc(v.id) + '"' + (vert.has(v.id) ? ' checked' : '') + '> ' + esc(v.name) + '</label>').join('') + '</div>' +
       '<p class="mu xs" style="margin-top:12px">Emails per day = emails per sending domain × number of domains' + (d.sending ? ' (now ' + esc(d.sending.per) + ' × ' + esc(d.sending.domains.length) + ' = <b>' + esc(d.sending.total) + ' a day</b>)' : '') + '. In GHL, set the outreach workflow’s Sender domain to the same domain listed here. Warm-up: a new sending domain starts at 20 a day and steps up every 3 days (20, 35, 50 …) to your number, so emails land in inboxes, not spam. Homepage concepts are only built for what can be sent that day.' + (c.start ? ' Started ' + esc(new Date(c.start).toLocaleDateString('en-AU')) + '.' : '') + '</p>' +
       '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn pri" id="orSave">Save settings</button>' + (c.on ? '<button class="btn ghost" id="orRun">Run a hunt now</button>' : '') + '</div></section>';
+    v152add(el, d.pitches);
     v151nosite(el);
     const ticked = () => $$('.or-item', el).filter((n) => $('.or-tick', n).checked).map((n) => n.dataset.id);
     const sendBtn = $('#orSend', el);

@@ -6,7 +6,7 @@ var STRIPE_READ = ["stripe_revenue_summary", "stripe_list_invoices", "stripe_lis
 var CONTACT_ACTIONS = ["ghl_create_contact", "ghl_update_contact", "ghl_create_opportunity", "ghl_move_opportunity", "propose_ghl_appointment_book", "propose_ghl_email", "propose_ghl_sms", "propose_ghl_tags", "propose_ghl_note", "propose_ghl_task", "propose_ghl_appointment_cancel", "propose_ghl_appointment_move", "propose_ghl_contact_archive"];
 var CONSULT = ["ask_department"];
 var GROWTH = ["google_rank_check", "analyse_website", "leak_scan", "build_demo", "find_website_leads", "build_website_demo", "adjust_website_demo", "save_prospect", "update_prospect", "campaign_status", "call_list"];
-var ACQUIRE = ["find_no_website_businesses", "start_clinic_hunt", "outreach_snapshot", "tidy_prospects", "manual_imports", "find_replies", "acquisition_costs"];
+var ACQUIRE = ["find_no_website_businesses", "add_businesses_to_outreach", "start_clinic_hunt", "outreach_snapshot", "tidy_prospects", "manual_imports", "find_replies", "acquisition_costs"];
 var DEPARTMENTS = {
   chief_of_staff: {
     id: "chief_of_staff",
@@ -170,7 +170,7 @@ FOLLOW-UP MESSAGE RULES
 Personal, short, reference something they actually said, one clear next step, no guilt or pressure. Never invent urgency, discounts or scarcity.
 
 OUTBOUND PROSPECTING (prospect hunts \u2192 Ty's GHL campaign)
-To find new prospects, call start_clinic_hunt (despite the name it hunts any target industry and runs the whole pipeline in safe
+When Ty names specific businesses (a screenshot, a link, a list), call add_businesses_to_outreach with each one's own website instead of a hunt. To find new prospects, call start_clinic_hunt (despite the name it hunts any target industry and runs the whole pipeline in safe
 batches). Use the manual steps below only for one specific business Ty names, or for imports. Never propose_campaign_enrol a business
 without a published email or outside the target industries: it will be refused. Phone-only businesses: save_prospect with the phone;
 they go to Ty's call list.

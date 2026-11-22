@@ -308,6 +308,13 @@ async function route2(request, env, url, ctx) {
     await audit(env, { actor: "Ty", action: "hunt_started", target_type: "hunt", target_id: job.id, summary: `${job.vertical} in ${job.city}: ${job.candidates.length} candidates` });
     return json({ ok: true, hunt: slim(job) });
   }
+  if (p === "/prospects/add" && m === "POST") {
+    if (!env.ANTHROPIC_API_KEY) return json({ ok: false, error: "ANTHROPIC_API_KEY is missing." }, 503);
+    if (!Array.isArray(body.businesses) || !body.businesses.length) return json({ ok: false, error: "Add at least one business with its website." }, 400);
+    const job = await startHunt(env, { given: body.businesses, vertical: body.vertical, pitch: body.pitch, note: body.note, source: "manual_add" });
+    await audit(env, { actor: "Ty", action: "prospects_added", target_type: "hunt", target_id: job.id, summary: `Added ${job.candidates.length}: ${job.candidates.map((c) => c.business_name).join(", ")}`.slice(0, 300) });
+    return json({ ok: true, hunt: slim(job) });
+  }
   if (p === "/hunt/step" && m === "POST") {
     try {
       return json({ ok: true, hunt: slim(await huntStep(env, String(body.id || ""))) });

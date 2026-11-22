@@ -16,6 +16,7 @@ var SHARED = [
   "value_report",
   "privacy_wording",
   "find_no_website_businesses",
+  "add_businesses_to_outreach",
   "ask_department",
   "get_mission_progress",
   "get_recent_reports",

@@ -196,6 +196,15 @@ var TOOL_DEFS = {
       required: ["url", "vertical"]
     }
   },
+  add_businesses_to_outreach: {
+    description: "Add specific businesses Ty names (from a screenshot, a link or a name) to outreach WITHOUT searching: each website gets the same research as a hunt (leak scan, homepage concept, emails), then the email waits in Approvals (or goes to the call list if they publish no email). Use this whenever Ty says 'add these businesses'. Look up each business's OWN website first if Ty only gave a name. Only pass an email the business itself published.",
+    input_schema: { type: "object", properties: {
+      businesses: { type: "array", maxItems: 10, items: { type: "object", properties: { business_name: { type: "string" }, website: { type: "string" }, email: { type: "string", description: "Only one they published." }, phone: { type: "string" }, location: { type: "string" }, note: { type: "string", description: "Ty's angle for this one business." } }, required: ["business_name", "website"] } },
+      vertical: { type: "string", enum: ["allied", "dental", "aesthetics", "psychology", "medical", "property", "trades", "coaching", "fitness", "beauty", "realestate", "accounting", "legal", "hospitality", "multi"] },
+      pitch: { type: "string", enum: ["front_desk", "command", "growth_pack"], description: "What the emails sell. front_desk = AI receptionist, missed-call text back, follow-ups, past-client recalls, automatic Google reviews, CRM (and a new website if theirs is dated)." },
+      note: { type: "string", description: "Ty's angle for all of them, in his words." }
+    }, required: ["businesses"] }
+  },
   start_clinic_hunt: {
     description: "THE way to find new prospects in any target industry (clinics, property managers, trades, coaches, multi-location): starts the hunt pipeline in the background (AI search for candidates, then batches of 3: leak scan, save, write emails, queue the ones with a published email, phone-only ones to Calls today). Returns after the first batch; the rest finish automatically within ~2 hours and land in Reports + Approvals. Don't research clinics one by one yourself.",
     input_schema: { type: "object", properties: { vertical: { type: "string", enum: ["allied", "dental", "aesthetics", "psychology", "medical", "property", "trades", "coaching", "multi"], description: "Omit to fill the biggest gap among the industries Ty has switched on." }, city: { type: "string" }, count: { type: "integer", default: 10 } } }
@@ -920,9 +929,17 @@ var OUT_RAMP = [[0, 20], [3, 35], [6, 50], [9, 70], [12, 85], [15, 100]];
 var OUT_DEFAULT = { on: false, target: 50, start: null, cities: ["Brisbane", "Gold Coast", "Sunshine Coast", "Sydney", "Melbourne"], verticals: [], hours: [6, 19], pitch: "growth_pack" };
 // v151 What the cold emails sell. "growth_pack": their homepage concept, leak report and front desk demo (as before).
 // "command": Studio AI Command, the team that runs the front desk and follow-up, with the live demo clinic to click through.
-var OUT_PITCHES = { growth_pack: "Their Growth Pack", command: "Studio AI Command (with the live demo)" };
+var OUT_PITCHES = { growth_pack: "Their Growth Pack", command: "Studio AI Command (with the live demo)", front_desk: "Full front desk (AI receptionist, reviews, past clients)" };
 function outCommandDemo(env) { return String(env.PUBLIC_ORIGIN || "https://studioflowandsystems.app").replace(/\/+$/, "") + "/command-demo"; }
 function outPitchText(env, pitch) {
+  if (pitch === "front_desk") return `
+
+THIS CAMPAIGN SELLS THE FULL FRONT DESK (overrides the Growth Pack offer above)
+- The offer: a front desk that never misses anyone. An AI receptionist on their website and phone answers questions and books people in, day and night. Missed calls get a text back straight away. Every new enquiry is followed up until it books. Existing and past clients get personal check-ins and recall reminders so they come back. Happy clients are asked for a Google review automatically after their visit. It all sits in one simple CRM, set up in their brand. If their website is dated or hard to use on a phone, a new website comes with it.
+- The angle: in a lot of practices the front desk is covered by an assistant (a dental assistant, nurse or practitioner) in between clients, so calls, website enquiries and messages wait or slip through while they're busy with someone. Put this as a common pattern or a question ("in a lot of practices..."), never as a fact about them unless their research confirms it.
+- Use one confirmed finding from their research as the reason to write. Invite them to click through a live demo of a clinic running on it: refer to it as "the live demo below", never paste a link yourself.
+- No prices. One clear next step: a free 30-minute call with Ty to see it set up for their business.
+- Follow-up 1: the existing-clients side (bringing past clients back, more Google reviews) plus the demo. Follow-up 2: short, polite close.`;
   if (pitch !== "command") return "";
   return `
 
@@ -3838,6 +3855,11 @@ async function runTool(name, input, ctx) {
       ctx.run.scans ||= {};
       for (const k of [siteKey(input.url), siteKey(rep.url || "")]) if (k) ctx.run.scans[k] = leak;
       return leakForAgent(rep, leak);
+    }
+    case "add_businesses_to_outreach": {
+      const job = await startHunt(env, { given: input.businesses || [], vertical: input.vertical, pitch: input.pitch, note: input.note, source: "manual_add" });
+      const first = job.status === "running" ? await huntStep(env, job.id) : job;
+      return { started: !!job.candidates.length, hunt_id: job.id, pitch: job.pitch, added: job.candidates.map((c) => c.business_name), skipped: job.results.skipped, status: first.status, so_far: first.results, note: "Researching in the background (3 at a time). Emails wait in Approvals; ones with no published email go to the call list." };
     }
     case "start_clinic_hunt": {
       const job = await startHunt(env, { vertical: input.vertical, city: input.city, count: input.count, source: "prospect_hunt" });

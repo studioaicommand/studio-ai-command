@@ -115,7 +115,7 @@ assert(x.j.cfg.pitch === "growth_pack" && x.j.pitches.some((p) => p.id === "comm
 x = await call("/outreach/daily", { pitch: "command" });
 assert(x.j.cfg.pitch === "command", "Ty can switch cold emails to sell Studio Command");
 const src = readFileSync(W, "utf8");
-assert(/THIS CAMPAIGN SELLS STUDIO COMMAND/.test(src) && /job\.pitch === "command" \? outCommandDemo\(env\)/.test(src) && /pitch = OUT_PITCHES\[pitch\] \? pitch : \(await outCfg/.test(src), "Command campaign emails get the Command offer and the live demo link under email 1");
+assert(/THIS CAMPAIGN SELLS STUDIO COMMAND/.test(src) && /job\.pitch === "command" (\|\| job\.pitch === "front_desk" )?\? outCommandDemo\(env\)/.test(src) && /pitch = OUT_PITCHES\[pitch\] \? pitch : \(await outCfg/.test(src), "Command campaign emails get the Command offer and the live demo link under email 1");
 assert(/\["No-website finder", out\(ai\(\(\) => noSiteStep\(e\)\)\)/.test(src) && /var ACQUIRE = \["find_no_website_businesses"/.test(src) && /"privacy_wording",\s*"find_no_website_businesses"/.test(src), "It runs every day by itself, and Studio AI and Sales can run it on request");
 const app = await (await w.fetch(new Request(O + "/app/app.js"), env, { waitUntil() {} })).text();
 assert(app.includes("BUSINESSES WITH NO WEBSITE") && app.includes("What the cold emails sell") && app.includes("name=\"orPitch\""), "Outreach shows the no-website panel and the pitch switch");
