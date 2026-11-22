@@ -151,6 +151,7 @@ async function teamScheduled(event, env) {
     ["Arena", () => (key && brisbaneNow().hour === 2 && !bg102.held ? leanState(e).catch(() => ({})).then((ls) => arenaRun(e, { n: ls.lean ? 6 : 10 })) : CRON_NOT_DUE), { ms: 300000 }],
     ["No-show rebooker", ai(() => noShowWatch(e))],
     ["Prospect hunts", out(ai(() => continueHunts(e, 2))), { ms: 240000 }],
+    ["No-website finder", out(ai(() => noSiteStep(e))), { ms: 240000 }],
     ["Outreach autopilot", out(ai(async () => outreachAutopilot(e, await getSettings(e).catch(() => null))))],
     ["Scout", out(ai(() => scoutDaily(e)))],
     ["Team leader", ai(() => coachDaily(e))],

@@ -680,6 +680,10 @@ async function phoneList(env, { days = 7, limit = 30 } = {}) {
   return { days: clamp(days, 1, 90, 7), calls, totals: { calls: all.length, booked: all.filter((m) => m.booked).length, urgent: all.filter((m) => m.urgent).length, minutes: Math.round(all.reduce((a, m) => a + (m.duration_sec || 0), 0) / 6) / 10, cost_aud: Math.round(all.reduce((a, m) => a + (Number(m.cost_aud) || 0), 0) * 100) / 100 } };
 }
 Object.assign(TOOL_DEFS, {
+  find_no_website_businesses: {
+    description: "Find local businesses in our industries that have a Google Business Profile but NO website (a Facebook page or directory listing doesn't count). For each it looks for an email the business itself published and checks it's really on that page, then saves them to Prospects. Daily it also builds homepage concepts and drafts the 'website built for you + front desk + CRM + automatic Google reviews' email for Ty to approve. Use for 'find businesses with no website', 'who hasn't got a website in X'. Runs by itself every day too (Growth > Outreach > No-website businesses).",
+    input_schema: { type: "object", properties: { vertical: { type: "string", description: "Industry id: trades, beauty, fitness, allied, aesthetics, coaching, accounting, property, realestate, dental, psychology, medical. Leave out to rotate." }, city: { type: "string", description: "Suburb or city, e.g. 'Noosa' or 'Brisbane'." }, count: { type: "integer", description: "How many to find this time (1 to 10, default 8)." } } }
+  },
   privacy_wording: {
     description: "Write the 'Automated decisions and AI' section for the business's privacy policy (required in Australia from 10 December 2026 under APP 1.7 to 1.9). Built from what this Command actually does: which channels the AI answers on its own, which a person approves, the Phone AI, follow-ups, review requests, and the health information line for health businesses. Use when the owner asks about privacy policy wording, automated decisions, the new privacy rules, or what to tell customers about AI. Say it isn't legal advice.",
     input_schema: { type: "object", properties: { contact: { type: "string", description: "Optional email or phone people should contact about privacy. Saved for next time." } } }
@@ -913,7 +917,21 @@ async function aiBudgetRoute(p, m, body, env) {
 // AI search, scores it, builds a homepage concept + leak report + AI receptionist demo, and writes the email.
 // Sending ramps up with the new outreach domain's warm-up, and demos are only built for what can be sent that day.
 var OUT_RAMP = [[0, 20], [3, 35], [6, 50], [9, 70], [12, 85], [15, 100]];
-var OUT_DEFAULT = { on: false, target: 50, start: null, cities: ["Brisbane", "Gold Coast", "Sunshine Coast", "Sydney", "Melbourne"], verticals: [], hours: [6, 19] };
+var OUT_DEFAULT = { on: false, target: 50, start: null, cities: ["Brisbane", "Gold Coast", "Sunshine Coast", "Sydney", "Melbourne"], verticals: [], hours: [6, 19], pitch: "growth_pack" };
+// v151 What the cold emails sell. "growth_pack": their homepage concept, leak report and front desk demo (as before).
+// "command": Studio AI Command, the team that runs the front desk and follow-up, with the live demo clinic to click through.
+var OUT_PITCHES = { growth_pack: "Their Growth Pack", command: "Studio AI Command (with the live demo)" };
+function outCommandDemo(env) { return String(env.PUBLIC_ORIGIN || "https://studioflowandsystems.app").replace(/\/+$/, "") + "/command-demo"; }
+function outPitchText(env, pitch) {
+  if (pitch !== "command") return "";
+  return `
+
+THIS CAMPAIGN SELLS STUDIO COMMAND (overrides the Growth Pack offer above)
+- The offer: Command, a team that runs inside their business. It answers every call, message and enquiry day and night, books people in, follows up the ones who went quiet, asks happy customers for Google reviews, and shows the owner every morning what came in and what it's worth. The owner approves anything important.
+- Use one confirmed finding from their research as the reason to write (a gap in how enquiries are handled, after-hours, Google position or reviews), then invite them to click through a live demo of a clinic running on it. The link is added under the email automatically: refer to it as "the live demo below", never paste a link yourself.
+- Say it's set up for them in their brand and connected to what they already use. No prices. One clear next step: a free 30-minute call with Ty to see it set up for their business.
+- Follow-up 1: one more real benefit for their kind of business plus the demo. Follow-up 2: short, polite close.`;
+}
 var OUT_PREMIUM = `PREMIUM POSITIONING (Studio Flow & Systems)
 - We are the premium choice: senior, local, design-led, and we build the systems behind the website too. Never sound cheap, desperate or salesy. No discounts in cold emails, no prices.
 - Lead with what we already made for THEM (their homepage concept, their AI receptionist, their leak report), then one clear, easy next step: a free 30-minute call with Ty.
@@ -1064,7 +1082,7 @@ async function outreachRoute(p, m, body, env) {
   const J = (o, s = 200) => json(o, s);
   if (p === "/outreach/daily" && m === "GET") {
     const cfg = await outCfg(env);
-    return J({ ok: true, cfg, capacity: outCapacity(cfg), email_cap: sendingPlan((await getSettings(env)).campaign).per, sending: sendingPlan((await getSettings(env)).campaign), stats: await outStats(env), verticals: Object.keys(OUTREACH).map((k) => ({ id: k, name: OUTREACH[k].name })) });
+    return J({ ok: true, cfg, capacity: outCapacity(cfg), email_cap: sendingPlan((await getSettings(env)).campaign).per, sending: sendingPlan((await getSettings(env)).campaign), stats: await outStats(env), verticals: Object.keys(OUTREACH).map((k) => ({ id: k, name: OUTREACH[k].name })), pitches: Object.entries(OUT_PITCHES).map(([id, name]) => ({ id, name })), command_demo: outCommandDemo(env) });
   }
   if (p === "/outreach/daily" && m === "POST") {
     const cur = await outCfg(env);
@@ -1073,11 +1091,12 @@ async function outreachRoute(p, m, body, env) {
     if ("target" in body) next.target = Math.max(5, Math.min(150, Math.round(+body.target || 50)));
     if (Array.isArray(body.cities)) next.cities = body.cities.map((c) => String(c).trim().slice(0, 40)).filter(Boolean).slice(0, 12);
     if (Array.isArray(body.verticals)) next.verticals = body.verticals.filter((v) => OUTREACH[v]);
+    if (OUT_PITCHES[body.pitch]) next.pitch = body.pitch;
     if (body.restart_warmup) next.start = new Date().toISOString();
     if (+body.email_cap >= 5 && +body.email_cap <= 100 || Array.isArray(body.domains)) { const st = await getSettings(env); const cc = { ...st.campaign || {} }; if (+body.email_cap >= 5 && +body.email_cap <= 100) cc.per_domain_cap = Math.round(+body.email_cap); if (Array.isArray(body.domains)) { const ds = body.domains.map((x) => String(x).trim().toLowerCase()).filter((x) => /^[a-z0-9.-]+[.][a-z]{2,}$/.test(x)).slice(0, 10); if (ds.length) cc.sending_domains = ds; } await saveSetting(env, "campaign", cc); }
     if (!next.cities.length) next.cities = OUT_DEFAULT.cities;
     await saveSetting(env, "outreach_daily", next);
-    await audit(env, { actor: "Ty", action: "outreach_daily", summary: `Outreach autopilot ${next.on ? "on" : "off"}, target ${next.target}/day` }).catch(() => {});
+    await audit(env, { actor: "Ty", action: "outreach_daily", summary: `Outreach autopilot ${next.on ? "on" : "off"}, target ${next.target}/day, selling ${OUT_PITCHES[next.pitch] || OUT_PITCHES.growth_pack}` }).catch(() => {});
     return J({ ok: true, cfg: next, capacity: outCapacity(next) });
   }
   if (p === "/outreach/today" && m === "GET") return J({ ok: true, ...await outToday(env), stats: await outStats(env) });
@@ -3971,6 +3990,10 @@ async function runTool(name, input, ctx) {
     }
     case "ghl_create_contact": case "ghl_update_contact": case "ghl_list_calendars": case "ghl_free_slots": case "ghl_create_opportunity": case "ghl_move_opportunity":
       return crmTool(env, name, input, dept);
+    case "find_no_website_businesses": {
+      const r = await noSiteRound(env, { vertical: input.vertical, city: input.city, want: Math.max(1, Math.min(10, +input.count || 8)) });
+      return { searched: r.query, via: r.via === "google_places" ? "Google Maps" : "web search", google_results: r.seen, without_a_website: r.no_website, saved: r.saved, with_published_email: r.emails, turned_out_to_have_a_website: r.had_site, error: r.error || undefined, next: "Saved to Prospects. Homepage concepts and email drafts are made through the day; emails wait in Outreach today for Ty's approval. Phone-only ones are on the call list." };
+    }
     case "privacy_wording": {
       const r = await trustAdm(env, input.contact ? { contact: input.contact } : {});
       return { wording: r.markdown, based_on: r.based_on, starts: "10 December 2026", where: "Command > Settings > Privacy & data (copy or download it there)", note: r.note };

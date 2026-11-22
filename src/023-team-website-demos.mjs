@@ -361,15 +361,15 @@ async function wsdRetro(env, { force = false } = {}) {
   if (out?.summary) await notify(env, "\u{1F3A8} <b>Design team retro</b>\n" + esc6(brain.retro.summary) + `\n${n} concepts \u00B7 ${sentN} sent \u00B7 ${opened} opened \u00B7 ${booked} booked` + (added ? `\n${added} new lesson${added > 1 ? "s" : ""} for the Creative Director.` : "")).catch(() => {});
   return { ok: true, retro: brain.retro };
 }
-async function wsdBuild(env, { website, name, industry, vertical, area, lead_id, direction, reuse } = {}) {
-  if (!website) throw new Error("Give a website.");
+async function wsdBuild(env, { website, name, industry, vertical, area, lead_id, direction, reuse, profile, maps_url, phone } = {}) {
+  if (!website && !profile) throw new Error("Give a website.");
   const u = wsdUsage();
   const brain = await wsdBrain(env);
   const v = vertical || "other";
   const [demo, look, scan] = await Promise.all([
-    reuse?.demo?.token && reuse.demo.kb ? reuse.demo : buildDemo(env, { website, business_name: name || website, vertical: v }, { force: true, usage: u.smart }),
-    wsdLook(env, website),
-    reuse?.scan ? reuse.scan : leakScan({ url: website, vertical: OUTREACH[v] ? v : "other", env }).then(({ rep, leak }) => leakForAgent(rep, leak)).catch(() => null)
+    reuse?.demo?.token && reuse.demo.kb ? reuse.demo : buildDemo(env, website ? { website, business_name: name || website, vertical: v } : { profile, maps_url, phone, business_name: name, vertical: v }, { force: true, usage: u.smart }),
+    website ? wsdLook(env, website) : Promise.resolve(wsdNoLook(name, maps_url, profile)),
+    !website ? Promise.resolve(null) : reuse?.scan ? reuse.scan : leakScan({ url: website, vertical: OUTREACH[v] ? v : "other", env }).then(({ rep, leak }) => leakForAgent(rep, leak)).catch(() => null)
   ]);
   const bizName = shortName(demo.kb?.clinic_name || name || look.title || website);
   const reviews = await wsdReviews(env, u, bizName, look.url, area || demo.kb?.locations?.[0]?.address || "");
@@ -388,6 +388,10 @@ async function wsdBuild(env, { website, name, industry, vertical, area, lead_id,
   brain.recent.push({ ...wsdFingerprint(spec), industry: rec.industry });
   await wsdBrainSave(env, brain);
   return { ok: true, token: demo.token, name: bizName, ...wsdLinks(env, demo.token), cost_aud: cost, style: spec.style, why: spec.why || "", reviews: { rating: reviews.rating, found: reviews.items.length } };
+}
+// v151 a business with no website: nothing to copy, so the designer works from their Google profile
+function wsdNoLook(name, maps_url, profile) {
+  return { url: maps_url || "", title: String(name || ""), brand: {}, logos: [], icon: null, images: [], colours: [], neutrals: [], fonts: [], text: String(profile || "").slice(0, 5e3), tech: {} };
 }
 async function wsdAdjust(env, token, message, { regenerate = false } = {}) {
   const rec = await wsdGet(env, token);

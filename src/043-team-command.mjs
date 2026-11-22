@@ -15,6 +15,7 @@ var SHARED = [
   "google_rank_check",
   "value_report",
   "privacy_wording",
+  "find_no_website_businesses",
   "ask_department",
   "get_mission_progress",
   "get_recent_reports",

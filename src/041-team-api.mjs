@@ -46,6 +46,7 @@ async function route2(request, env, url, ctx) {
   if (p === "/ui-theme" && m === "POST") { const mh = request.headers.get("x-sf-member") || ""; if (mh && mh.split("|")[1] !== "owner") return json({ ok: false, error: "Only the owner can change the look." }, 403); const t = String(body.theme || ""); if (!["midnight", "graphite", "ivory", "aurora"].includes(t)) return json({ ok: false, error: "Unknown look." }, 400); await secPut(env, "ui_theme", { theme: t, at: new Date().toISOString() }); await audit(env, { actor: "Ty", action: "look_changed", target_type: "settings", target_id: "ui_theme", summary: "Command look: " + t }).catch(() => {}); return json({ ok: true, theme: t }); }
   if (seg[0] === "dm-queue") { const dr = await dmRoute(p, m, body, env); if (dr) return dr; }
   if (seg[0] === "outreach-chat") { const rr = await ocRoute(p, m, body, env); if (rr) return rr; }
+  if (seg[0] === "nosite") { const rr = await noSiteRoute(p, m, m === "GET" ? Object.fromEntries(url.searchParams) : body, env); if (rr) return rr; }
   if (seg[0] === "trust") { const rr = await trustRoute(p, m, m === "GET" ? Object.fromEntries(url.searchParams) : body, env); if (rr) return rr; }
   if (seg[0] === "value") { const rr = await valueRoute(p, m, m === "GET" ? Object.fromEntries(url.searchParams) : body, env); if (rr) return rr; }
   if (seg[0] === "rankings") { const rr = await rankRoute(p, m, m === "GET" ? Object.fromEntries(url.searchParams) : body, env); if (rr) return rr; }

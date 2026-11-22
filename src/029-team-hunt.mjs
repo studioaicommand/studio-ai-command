@@ -100,6 +100,12 @@ async function enrolCheck(env, p) {
   const website = pr?.website || p.website;
   if (pr?.source === "manual_import" && (pr.consent_basis || p.consent_basis)) return null;
   if (/^Given by/i.test(pr?.consent_basis || "") && pr?.email_source_url === "given on call") return null;
+  // v151 no-website businesses: the email must be one Command saw published by the business on a public page (Facebook, a directory listing)
+  if (!website && pr?.source === "no_website") {
+    if (!pr.email_source_url || !/^Published by the business on /.test(pr.consent_basis || "")) return "Not enrolled: no published email on file for this business. Call them or message them on Facebook instead.";
+    const bg = await bounceGate(env, p.email); if (bg) return bg;
+    return null;
+  }
   if (!website) return "Not enrolled: no website on file, so the email can't be checked as published. Add the website or call them instead.";
   const ok = publishedEmail({ email: p.email, website, sourceUrl: pr?.email_source_url || p.evidence_url });
   if (!ok || ok.email !== String(p.email || "").trim().toLowerCase()) return `Not enrolled: ${p.email || "no email"} isn't published on ${domainOf(website)} (or its domain). Phone-only clinics go to Calls today instead.`;
@@ -154,7 +160,7 @@ var CANDIDATE_TOOL = {
     required: ["clinics"]
   }
 };
-async function startHunt(env, { vertical, city, count: count2 = 15, source = "prospect_hunt" } = {}) {
+async function startHunt(env, { vertical, city, count: count2 = 15, source = "prospect_hunt", pitch } = {}) {
   const settings = await getSettings(env);
   const recent = (settings.hunts || []).find((j) => Date.now() - Date.parse(j.started_at || 0) < 12 * 36e5);
   vertical = OUTREACH[vertical] ? vertical : await pickVertical(env, settings, recent?.vertical);
@@ -167,7 +173,9 @@ async function startHunt(env, { vertical, city, count: count2 = 15, source = "pr
   city = String(city).slice(0, 60);
   const existing = await select(env, "agent_prospects", "select=website,business_name&limit=5000").catch(() => []);
   const knownSites = new Set(existing.map((r) => siteKey(r.website)).filter(Boolean));
-  const job = { id: crypto.randomUUID(), vertical, city, count: n, source, status: "searching", started_at: now2(), candidates: [], done: 0, results: { saved: 0, queued: 0, call_only: 0, skipped: [], errors: [] }, report_id: null };
+  // v151 what the cold emails sell: the Growth Pack (default) or Studio Command with the live demo
+  pitch = OUT_PITCHES[pitch] ? pitch : (await outCfg(env).catch(() => ({}))).pitch || "growth_pack";
+  const job = { id: crypto.randomUUID(), vertical, city, count: n, source, pitch, status: "searching", started_at: now2(), candidates: [], done: 0, results: { saved: 0, queued: 0, call_only: 0, skipped: [], errors: [] }, report_id: null };
   await saveJob(env, job);
   const usage = emptyUsage();
   const model2 = env.TEAM_MODEL || MODEL;
@@ -344,7 +352,7 @@ async function huntStep(env, id) {
     const feedback = await select(env, "team_memory", "category=eq.feedback&order=created_at.desc&limit=12&select=fact").catch(() => []);
     const system = `You are the Head of Sales at Studio Flow & Systems (Brisbane), writing outreach to established Australian ${(OUTREACH[job.vertical] || {}).name || "service"} businesses for Ty's GHL campaign. The offer behind it: their Growth Pack (where enquiries slip, a homepage concept in their brand, and a front desk that answers every enquiry in under a minute with missed-call text-back and follow-up until they book), and for bigger teams a command hub that runs the whole back office. Never promise ROI or quote prices.
 ${industryBrief(job.vertical)}${brainRulesText(await brainRules(env).catch(() => []), "outreach")}${await brainMarket(env, job.vertical).catch(() => "")}
-${EMAIL_RULES}${feedback.length ? "\nTy's feedback on past drafts (follow it):\n" + feedback.map((f) => "- " + f.fact).join("\n") : ""}`;
+${EMAIL_RULES}${outPitchText(env, job.pitch)}${feedback.length ? "\nTy's feedback on past drafts (follow it):\n" + feedback.map((f) => "- " + f.fact).join("\n") : ""}`;
     await Promise.all(ready.map(async (r) => {
       const band = scoreProspect({ leak_score: r.leak.leak_score, google_rating: r.c.google_rating, google_reviews: r.c.google_reviews, locations: r.c.locations, practitioners: r.c.practitioners }).band;
       if (band === "low") return;
@@ -406,7 +414,9 @@ ${EMAIL_RULES}${feedback.length ? "\nTy's feedback on past drafts (follow it):\n
       const w = drafts.get(c);
       const dlink = demoBrief(env, demo)?.demo_url;
       const plink = demo?.token && (dlink || site?.site) ? wsdLinks(env, demo.token).pack : null;
-      if (w && plink && c.email && !String(w.body || "").includes(plink)) w.body = String(w.body || "").trim() + "\n\n" + plink;
+      const clink = job.pitch === "command" ? outCommandDemo(env) : null;
+      if (w && clink && c.email && !String(w.body || "").includes(clink)) w.body = String(w.body || "").trim() + "\n\n" + clink;
+      else if (w && plink && c.email && !String(w.body || "").includes(plink)) w.body = String(w.body || "").trim() + "\n\n" + plink;
       if (w && plink && c.email && w.follow_up_1 && !String(w.follow_up_1).includes(plink)) w.follow_up_1 = String(w.follow_up_1).trim() + "\n\n" + plink;
       const sc = scoreProspect({ leak_score: leak.leak_score, google_rating: c.google_rating, google_reviews: c.google_reviews, locations: c.locations, practitioners: c.practitioners });
       const packet = { snapshot: { vertical: c.vertical, location: c.location || job.city, locations: c.locations || null, practitioners: c.practitioners || null, google_rating: c.google_rating || null, google_reviews: c.google_reviews ?? null, contact: { email: c.email || null, phone: c.phone || null } }, gaps: leak.top, fit_notes: w?.fit_notes || c.why_fit || null, score: sc.score, track: sc.track, score_reason: sc.reason, route: null, drafted: !!w, follow_up_1: w?.follow_up_1 || null, follow_up_2: w?.follow_up_2 || null };
