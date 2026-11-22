@@ -72,7 +72,30 @@ async function bounceGate(env, email) {
   const st = await emailStatsGet(env).catch(() => null);
   if (st && (st.recent || []).some((x) => x.event === "bounced" && String(x.email || "").toLowerCase() === email)) return "Not enrolled: " + email + " has bounced before.";
   if (!(await mailServerOk(email))) return "Not enrolled: " + email.split("@")[1] + " has no working mail server, so the email would bounce. Call them instead.";
+  const v = await mailboxCheck(env, email);
+  if (v && v.verdict === "bad") return "Not enrolled: the email checker says " + email + " " + v.why + ", so it would bounce. Call them instead.";
   return null;
+}
+// v152 optional mailbox check before anything is enrolled. Uses MILLIONVERIFIER_KEY or ZEROBOUNCE_KEY if Ty adds one
+// (a few dollars a month at our volume). Without a key, the free checks above still run. Results are kept for 90 days.
+async function mailboxCheck(env, email) {
+  const mv = env.MILLIONVERIFIER_KEY, zb = env.ZEROBOUNCE_KEY;
+  if (!mv && !zb) return null;
+  const cache = (await linkGet(env, "mailbox_checks").catch(() => null)) || {};
+  const hit = cache[email];
+  if (hit && Date.now() - Date.parse(hit.at) < 90 * 864e5) return hit;
+  let raw = "";
+  try {
+    if (mv) { const r = await fetch("https://api.millionverifier.com/api/v3/?api=" + encodeURIComponent(mv) + "&email=" + encodeURIComponent(email) + "&timeout=10", { signal: AbortSignal.timeout(15e3) }); const d = await r.json(); raw = String(d.result || d.error || "").toLowerCase(); }
+    else { const r = await fetch("https://api.zerobounce.net/v2/validate?api_key=" + encodeURIComponent(zb) + "&email=" + encodeURIComponent(email), { signal: AbortSignal.timeout(15e3) }); const d = await r.json(); raw = String(d.status || d.error || "").toLowerCase(); }
+  } catch (e) { return null; } // the checker being down never blocks an email the free checks passed
+  const BAD = { invalid: "doesn't exist", disposable: "is a throwaway address", spamtrap: "is a spam trap", abuse: "belongs to someone who reports email as spam", do_not_mail: "shouldn't be emailed" };
+  const verdict = BAD[raw.replace(/[\s-]/g, "_")] ? "bad" : /^(ok|valid)$/.test(raw) ? "good" : raw ? "risky" : null;
+  if (!verdict) return null;
+  const out = { at: new Date().toISOString(), verdict, result: raw, why: BAD[raw.replace(/[\s-]/g, "_")] || "" };
+  const keys = Object.keys(cache).slice(-1500);
+  await saveSetting(env, "mailbox_checks", { ...Object.fromEntries(keys.map((k) => [k, cache[k]])), [email]: out }).catch(() => {});
+  return out;
 }
 async function bounceBrake(env) {
   const st = await emailStatsGet(env).catch(() => null);
@@ -81,11 +104,15 @@ async function bounceBrake(env) {
   for (let i = 0; i < 7; i++) days.push(new Date(now - i * 864e5).toISOString().slice(0, 10));
   const bounces = days.reduce((n, d) => n + ((st.days || {})[d]?.bounced || 0), 0);
   if (bounces < 3) return null;
-  const since = new Date(Date.now() - 7 * 864e5).toISOString();
-  const sent = (await select(env, "team_actions", `type=eq.campaign_enrol&status=eq.done&decided_at=gte.${since}&select=id&limit=2000`).catch(() => [])).length;
+  // v152 bounces this week come from email 1 AND the follow-ups, which go to people enrolled up to 3 weeks ago.
+  // Count emails actually sent: delivered + bounced events this week, or (if GHL doesn't report deliveries) 3 emails per contact enrolled in the last 21 days.
+  const since = new Date(Date.now() - 21 * 864e5).toISOString();
+  const enrolled = (await select(env, "team_actions", `type=eq.campaign_enrol&status=eq.done&created_at=gte.${since}&select=id&limit=3000`).catch(() => [])).length;
+  const delivered = days.reduce((n, d) => n + ((st.days || {})[d]?.delivered || 0), 0);
+  const sent = Math.max(delivered + bounces, enrolled * 3);
   const rate = bounces / Math.max(sent, 1);
   if (rate < 0.05) return null;
-  const msg = "Outreach is on hold: " + bounces + " bounces from " + sent + " new contacts this week (" + Math.round(rate * 100) + "%). GHL warns at 3% and suspends email at 5%. Clean the list before more go out; held emails send themselves when the rate is back under 5%.";
+  const msg = "Outreach is on hold: " + bounces + " bounces from about " + sent + " emails sent this week (" + Math.round(rate * 100) + "%). GHL warns at 3% and suspends email at 5%. Clean the list before more go out; held emails send themselves when the rate is back under 5%.";
   const ns = (await linkGet(env, "notify_state").catch(() => null)) || {};
   const day = now.toISOString().slice(0, 10);
   if (ns.bounce_brake !== day) { await saveSetting(env, "notify_state", { ...ns, bounce_brake: day }).catch(() => {}); await notify(env, "\u{1F6D1} <b>Bounce brake</b>\n" + esc6(msg), { urgent: true }).catch(() => {}); }
@@ -314,7 +341,7 @@ async function huntStep(env, id) {
         return;
       }
       await outSearch(env, c, leak, su).catch(() => null);
-      if (leak.search?.position && leak.search.position <= 3 && (leak.leak_score || 0) < 35) {
+      if (!job.manual && leak.search?.position && leak.search.position <= 3 && (leak.leak_score || 0) < 35) {
         c.state = "skipped";
         job.results.skipped.push({ name: c.business_name, why: `already #${leak.search.position} on Google with a sound site (not in pain)` });
         return;
@@ -544,7 +571,7 @@ async function finishHunt(env, job) {
 ${r.errors.map((e) => `- ${e.where}: ${e.error}`).join("\n")}` : "\nNo errors."
   ].filter(Boolean).join("\n");
   const date = (/* @__PURE__ */ new Date()).toLocaleDateString("en-AU", { timeZone: "Australia/Brisbane", weekday: "short", day: "numeric", month: "short" });
-  const [rep] = await insert(env, "team_reports", [{ department: "head_of_sales", kind: "shift", subkind: "prospect_hunt", title: job.kind === "rescan" ? `Re-scan: ${job.candidates.length} prospects \xB7 ${r.queued} new drafts, ${r.call_only} to call (${date})` : `Clinic hunt: ${job.vertical} in ${job.city} \xB7 ${r.queued} queued, ${r.call_only} to call (${date})`, body }]).catch(() => []);
+  const [rep] = await insert(env, "team_reports", [{ department: "head_of_sales", kind: "shift", subkind: "prospect_hunt", title: job.manual ? `Added by Ty: ${job.candidates.map((c) => c.business_name).join(", ")}`.slice(0, 120) + ` \xB7 ${r.queued} queued, ${r.call_only} to call` : job.kind === "rescan" ? `Re-scan: ${job.candidates.length} prospects \xB7 ${r.queued} new drafts, ${r.call_only} to call (${date})` : `Clinic hunt: ${job.vertical} in ${job.city} \xB7 ${r.queued} queued, ${r.call_only} to call (${date})`, body }]).catch(() => []);
   job.status = "done";
   job.report_id = rep?.id || null;
   job.finished_at = now2();

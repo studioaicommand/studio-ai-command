@@ -46,7 +46,16 @@ const src = readFileSync(W, "utf8");
 assert(/THIS CAMPAIGN SELLS THE FULL FRONT DESK/.test(src) && /dental assistant, nurse or practitioner\) in between clients/.test(src) && /never as a fact about them unless their research confirms it/.test(src), "The pitch covers the assistant-on-the-front-desk angle without claiming it as fact");
 assert(/Google review automatically/.test(src) && /past clients come back|so they come back/.test(src) && /new website comes with it/.test(src), "It offers reviews, past-client recalls and a new website when theirs is dated");
 assert(/job\.manual \? "high" : sc\.band/.test(src) && (src.match(/job\.manual \? "high" : scoreProspect/g) || []).length === 2, "Businesses Ty picks are never dropped for a low score");
+assert(/if \(!job\.manual && leak\.search\?\.position/.test(src) && /title: job\.manual \? `Added by Ty:/.test(src), "...or for already ranking well on Google, and the report says Ty added them");
 assert(/job\.pitch === "command" \|\| job\.pitch === "front_desk" \? outCommandDemo/.test(src), "Front desk emails carry the live demo link");
 assert(/var ACQUIRE = \["find_no_website_businesses", "add_businesses_to_outreach"/.test(src) && /"find_no_website_businesses",\s*"add_businesses_to_outreach",/.test(src), "Studio AI can add businesses from a screenshot");
 const app = await (await w.fetch(new Request("https://studioflowandsystems.app/app/app.js"), base, { waitUntil() {} })).text();
 assert(app.includes("ADD BUSINESSES YOURSELF") && app.includes('"/prospects/add"') && app.includes("v152add(el, d.pitches)"), "Outreach has an Add businesses yourself box");
+
+// Bounce brake counts emails actually sent (follow-ups too), not just contacts enrolled this week
+const day = new Date(Date.now() + 10 * 36e5).toISOString().slice(0, 10);
+DB.team_settings.push({ key: "email_stats", value: { days: { [day]: { bounced: 3, delivered: 0 } }, recent: [], seen: {} } });
+DB.team_actions = [...Array(20)].map((_, i) => ({ id: "a" + i, type: "campaign_enrol", status: "done", created_at: new Date(Date.now() - 12 * 864e5).toISOString() }));
+const okSrc = src.includes("bounces from about ") && src.includes("enrolled * 3") && src.includes("created_at=gte.${since}");
+assert(okSrc && /21 \* 864e5/.test(src), "Bounce brake divides by emails sent over the follow-up window (3 per contact enrolled in 21 days), not new contacts this week");
+assert(/MILLIONVERIFIER_KEY/.test(src) && /ZEROBOUNCE_KEY/.test(src) && /the email checker says/.test(src) && /the checker being down never blocks/.test(src), "An optional mailbox checker stops dead addresses before they're enrolled");
