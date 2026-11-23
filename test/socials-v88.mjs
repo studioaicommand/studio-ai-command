@@ -106,5 +106,5 @@ assert(task().status === "done" && /1 of 2 messages sent/.test(task().result) &&
 }
 const app = await (await w.fetch(new Request(O + "/app/app.js"), env, { waitUntil() {} })).text();
 new Function(app);
-assert(/Log in to my socials/.test(app) && /dmCont/.test(app) && /Send ticked for me/.test(app) && /Scan my friends/.test(app) && /COMMAND CHROME ON YOUR MAC/.test(app), "The DM Desk has Scan my friends, Send ticked for me and the Command Chrome status");
+assert(/Log in to my accounts/.test(app) && /dmCont/.test(app) && /Send ticked for me/.test(app) && /Scan my friends/.test(app) && /COMMAND CHROME ON YOUR MAC/.test(app), "The DM Desk has Scan my friends, Send ticked for me and the Command Chrome status");
 console.log("socials-v88 OK");

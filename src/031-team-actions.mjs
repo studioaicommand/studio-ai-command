@@ -579,7 +579,7 @@ async function dmRoute(p, m, body, env) {
   if (p === "/dm-queue" && m === "GET") {
     const since = Date.now() - 7 * 864e5, wk = q.items.filter((x) => x.sent_at && Date.parse(x.sent_at) > since);
     return json({ ok: true, cfg: q.cfg, channels: Object.fromEntries(Object.entries(DM_CHANNELS).map(([k, v]) => [k, { name: v.name, max: v.max }])), today: dmToday(q.items),
-      browser: await (async () => { const bt = await browserGet(env).catch(() => null); const c = await linkGet(env, "mac_link").catch(() => null); return { online: linkOnline(c), agent: c?.agent || 0, task: bt && ["dm_send", "friends_scan", "social_login", "autopilot"].includes(bt.kind) ? { kind: bt.kind, sweep: !!(bt.ap && bt.ap.mode === "sweep"), status: bt.status, live: browserLive(bt), result: bt.result, last: (bt.steps || []).slice(-3).map((x) => x.desc), ask: bt.ask } : null }; })(),
+      browser: await (async () => { const bt = await browserGet(env).catch(() => null); const c = await linkGet(env, "mac_link").catch(() => null); return { online: linkOnline(c), agent: c?.agent || 0, signin: c?.signin && Date.now() - Date.parse(c.signin.at || 0) < 3 * 3600e3 ? { state: c.signin.state, sites: c.signin.sites || [] } : null, task: bt && ["dm_send", "friends_scan", "social_login", "autopilot"].includes(bt.kind) ? { kind: bt.kind, sweep: !!(bt.ap && bt.ap.mode === "sweep"), status: bt.status, live: browserLive(bt), result: bt.result, last: (bt.steps || []).slice(-3).map((x) => x.desc), ask: bt.ask } : null }; })(),
       warm_count: (await select(env, "agent_prospects", "source=in.(warm_facebook,warm_instagram,warm_linkedin,warm_tiktok)&select=id&limit=8000").catch(() => [])).length,
       li_week: liWeek(q.items), ready: q.items.filter((x) => x.status === "ready").sort((a, b) => (b.review?.score || 0) - (a.review?.score || 0)), waiting: q.items.filter((x) => x.status === "sent").slice(-60).reverse(),
       verticals: Object.entries(OUTREACH).map(([id, v]) => ({ id, name: v.name })), scan_presets: DM_SCAN_PRESETS, stats: { sent_7d: wk.length, replies_7d: wk.filter((x) => x.status === "replied").length } });
@@ -599,11 +599,18 @@ async function dmRoute(p, m, body, env) {
   }
   if (p === "/dm-queue/linkedin-fill" && m === "POST") return json({ ok: true, ...(await liFill(env, { count: Math.max(1, Math.min(25, +body.count || 10)), manual: true })) });
   if (p === "/dm-queue/login" && m === "POST") {
-    const ALL = { facebook: { name: "Facebook", url: "https://www.facebook.com/" }, instagram: { name: "Instagram", url: "https://www.instagram.com/accounts/login/" }, linkedin: { name: "LinkedIn", url: "https://www.linkedin.com/login" }, tiktok: { name: "TikTok", url: "https://www.tiktok.com/login" } };
+    const ALL = { google: { name: "Google", url: "https://accounts.google.com/" }, facebook: { name: "Facebook", url: "https://www.facebook.com/" }, instagram: { name: "Instagram", url: "https://www.instagram.com/accounts/login/" }, linkedin: { name: "LinkedIn", url: "https://www.linkedin.com/login" }, tiktok: { name: "TikTok", url: "https://www.tiktok.com/login" } };
     const which = (Array.isArray(body.sites) && body.sites.length ? body.sites : ["facebook", "instagram", "linkedin", ...(q.cfg.handles?.tiktok ? ["tiktok"] : [])]).filter((k) => ALL[k]);
     const sites = which.map((k) => ALL[k]);
     // v125: helpers v5+ open every site in its own tab and stay still while Ty logs in; older helpers keep the one-by-one flow
     const ml = await linkGet(env, "mac_link").catch(() => null), tabs = ml?.agent >= 5;
+    // v153 helpers v7+: a normal (not automated) Chrome window on Command Chrome's own profile, so Google and the socials
+    // let Ty sign in, and the logins are kept, locked with his Mac's Keychain. Google is included for GHL and Business Profile.
+    if (ml?.agent >= 7) {
+      const all = Array.isArray(body.sites) && body.sites.length ? sites : [ALL.google, ...sites];
+      await saveSetting(env, "mac_link", { ...ml, signin: { state: "requested", at: new Date().toISOString(), urls: all.map((x) => x.url), sites: all.map((x) => x.name) } });
+      return json({ ok: true, normal: true, sites: all.map((x) => x.name), note: "A normal Chrome window is opening on your Mac with " + all.map((x) => x.name).join(", ") + ". Sign in to each one and tick \u201cRemember me\u201d or \u201cStay signed in\u201d. Close that window when you\u2019re done and Command takes over with your logins saved." });
+    }
     const r = await dmBrowserTask(env, { kind: "social_login", goal: "Log in to " + sites.map((x) => x.name).join(", ") + " in Command Chrome", start_url: sites[0].url, login: tabs ? { sites, tabs: true, next: 1, home: false, asked: false } : { sites, i: 0, opened: true, asked: false } });
     if (r.ok) r.sites = sites.map((x) => x.name);
     if (r.ok && !tabs) r.note = "Update Command Link once (Settings › Brand & features › Command Link › Set up again) so each site opens in its own tab and it updates itself from then on.";

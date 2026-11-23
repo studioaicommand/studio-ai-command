@@ -9,16 +9,46 @@
 // 4) v5: stays still while Ty is doing something himself (logging in, a CAPTCHA): no window jumps, no screenshots, no page
 //    tagging until he presses Continue. Keeps itself up to date: when Command has a newer helper, it downloads it from
 //    Ty's own Command (same login token) between tasks and restarts.
+// 6) v7: logins stay. Command Chrome keeps its saved logins locked with the Mac's own Keychain (Windows: the user's own
+//    encryption), not Playwright's stand-in key, and closes cleanly before a restart so nothing is lost. "Log in to my
+//    accounts" opens the same profile as a normal Chrome window (not automated), so Google and the socials let Ty sign in;
+//    when he closes that window, the helper picks the logins up. Its folder is readable by Ty's Mac account only.
 import { chromium } from 'playwright-core';
 import { execFile } from 'node:child_process';
-import { writeFileSync, existsSync } from 'node:fs';
+import { writeFileSync, existsSync, lstatSync, chmodSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const T = process.env.SF_T, O = process.env.SF_O, DIR = process.env.SF_DIR;
-const H = { Authorization: 'Bearer ' + T, 'X-SF-Agent': '6', 'X-SF-OS': process.platform, 'Content-Type': 'application/json' };
+const H = { Authorization: 'Bearer ' + T, 'X-SF-Agent': '7', 'X-SF-OS': process.platform, 'Content-Type': 'application/json' };
 const RISKY = /\b(send|submit|pay|purchase|buy|checkout|delete|remove|post|publish|confirm|approve|sign up|subscribe|transfer|place order)\b/i;
 const CURSOR = `(() => { if (window.__sfc) return; window.__sfc = 1; const add = () => { if (!document.body || document.getElementById('sf-cur')) return; const c = document.createElement('div'); c.id = 'sf-cur'; c.style.cssText = 'position:fixed;left:-40px;top:-40px;width:26px;height:26px;z-index:2147483647;pointer-events:none;transition:left .45s cubic-bezier(.2,.7,.2,1),top .45s cubic-bezier(.2,.7,.2,1);filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))'; c.innerHTML = '<svg width="26" height="26" viewBox="0 0 24 24"><path d="M4 2l15 10-6.5 1.4L16 21l-3 1.4-3.6-7.6L4 19z" fill="#22d3ee" stroke="#04131f" stroke-width="1.4" stroke-linejoin="round"/></svg>'; const b = document.createElement('div'); b.id = 'sf-say'; b.style.cssText = 'position:fixed;right:14px;bottom:14px;z-index:2147483647;pointer-events:none;max-width:360px;padding:9px 13px;border-radius:12px;background:rgba(4,19,31,.9);color:#e6f7ff;font:500 13px/1.35 -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35);border:1px solid rgba(34,211,238,.35);display:none'; document.body.append(c, b); }; if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add(); window.__sfMove = (x, y) => { add(); const c = document.getElementById('sf-cur'); if (c) { c.style.left = (x - 3) + 'px'; c.style.top = (y - 2) + 'px'; } }; window.__sfTap = (x, y) => { const r = document.createElement('div'); r.style.cssText = 'position:fixed;left:' + (x - 14) + 'px;top:' + (y - 14) + 'px;width:28px;height:28px;border-radius:50%;border:2px solid #22d3ee;z-index:2147483646;pointer-events:none;transition:transform .5s,opacity .5s'; document.body.append(r); requestAnimationFrame(() => { r.style.transform = 'scale(2)'; r.style.opacity = '0'; }); setTimeout(() => r.remove(), 600); }; window.__sfSay = (t) => { add(); const b = document.getElementById('sf-say'); if (b) { b.textContent = t ? 'Command: ' + t : ''; b.style.display = t ? 'block' : 'none'; } }; })();`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const KEYS = new Set(['Enter', 'Tab', 'Escape', 'ArrowDown', 'ArrowUp', 'PageDown', 'PageUp']);
+// v7 Opens Command Chrome's own profile as a NORMAL Chrome window (no automation) so Ty can sign in himself. Never through a shell.
+function chromeExe() {
+  const roots = [process.env.ProgramFiles, process.env['ProgramFiles(x86)'], process.env.LOCALAPPDATA].filter(Boolean);
+  return roots.map((r) => r + '\\Google\\Chrome\\Application\\chrome.exe').find((f) => existsSync(f));
+}
+function openSignInWindow(urls) {
+  const args = ['--user-data-dir=' + PROFILE, '--no-first-run', '--no-default-browser-check', '--new-window', ...urls];
+  if (process.platform === 'darwin') return execFile('/usr/bin/open', ['-na', 'Google Chrome', '--args', ...args], () => {});
+  if (process.platform === 'win32') { const c = chromeExe(); if (c) return execFile(c, args, () => {}); return; }
+  return execFile('google-chrome', args, () => {});
+}
+async function signIn(s) {
+  const urls = (Array.isArray(s.urls) ? s.urls : []).filter((u) => /^https:\/\//i.test(String(u))).slice(0, 8);
+  const say = (state) => api('/api/v1/link/signin', { state }).catch(() => {});
+  await closeBrowser();
+  if (chromeOpen()) return say('busy');
+  openSignInWindow(urls);
+  let seen = false;
+  for (let i = 0; i < 30 && !seen; i++) { await sleep(1000); seen = chromeOpen(); }
+  if (!seen) return say('failed');
+  await say('open');
+  const t0 = Date.now();
+  while (chromeOpen() && Date.now() - t0 < 2 * 3600e3) await sleep(3000); // nothing else runs until Ty closes that window
+  await sleep(1500);
+  return say(chromeOpen() ? 'timeout' : 'done');
+}
 // Opens a page in the person's normal Chrome. Never through a shell, so nothing in a link can run as a command.
 function openInChrome(url) {
   if (process.platform === 'darwin') return execFile('/usr/bin/open', ['-a', 'Google Chrome', url], (err) => { if (err) execFile('/usr/bin/open', [url], () => {}); });
@@ -35,9 +65,18 @@ async function api(path, body) {
   return r.json();
 }
 let ctx = null;
+const PROFILE = DIR + '/chrome-profile';
+if (process.platform !== 'win32') { try { chmodSync(DIR, 0o700); } catch (e) {} }
+// Chrome holds a lock file in the profile while it's open (any window, automated or not)
+function chromeOpen() { for (const f of ['SingletonLock', 'lockfile']) { try { lstatSync(PROFILE + '/' + f); return true; } catch (e) {} } return false; }
+async function closeBrowser() {
+  if (ctx) { const c = ctx; ctx = null; try { await c.close(); } catch (e) {} } // a clean close writes the logins to disk
+  for (let i = 0; i < 20 && chromeOpen(); i++) await sleep(500);
+}
 async function browser() {
   if (ctx) { try { ctx.pages(); return ctx; } catch (e) { ctx = null; } }
-  ctx = await chromium.launchPersistentContext(DIR + '/chrome-profile', { channel: process.env.SF_CHANNEL === 'bundled' ? undefined : 'chrome', headless: process.env.SF_HEADLESS === '1', viewport: null, args: ['--no-first-run', '--no-default-browser-check'] });
+  // Keep the real Keychain (macOS) / the user's own encryption for saved logins: drop Playwright's stand-in key switches.
+  ctx = await chromium.launchPersistentContext(PROFILE, { channel: process.env.SF_CHANNEL === 'bundled' ? undefined : 'chrome', headless: process.env.SF_HEADLESS === '1', viewport: null, ignoreDefaultArgs: ['--use-mock-keychain', '--password-store=basic'], args: ['--no-first-run', '--no-default-browser-check'] });
   await ctx.addInitScript(CURSOR).catch(() => {});
   ctx.on('close', () => { ctx = null; });
   return ctx;
@@ -380,6 +419,7 @@ async function runPlaybook(task) {
   }
   await api('/api/v1/link/pb', { task_id: task.id, fatal: 'Ran for three hours, so it stopped.' });
 }
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { closeBrowser().finally(() => process.exit(0)); setTimeout(() => process.exit(0), 8000); });
 for (;;) {
   try {
     const r = await api('/api/v1/link/next');
@@ -390,9 +430,11 @@ for (;;) {
       const code = res.ok ? await res.text() : '';
       if (code.startsWith('// Studio Command Link agent') && code.length > 5000 && /X-SF-Agent/.test(code)) {
         writeFileSync(fileURLToPath(import.meta.url), code);
+        await closeBrowser(); // close Command Chrome cleanly first so its logins are saved
         process.exit(3); // launchd starts the new version straight away (it only stays down after a clean exit)
       }
     }
+    if (r.signin) { await signIn(r.signin); continue; }
     if (r.url && /^https?:\/\//i.test(r.url)) openInChrome(r.url);
     if (r.task) await runTask(r.task).catch((e) => api('/api/v1/link/step', { task_id: r.task.id, fatal: String(e.message).slice(0, 300) }).catch(() => {}));
   } catch (e) { /* offline: try again shortly */ }
