@@ -312,7 +312,7 @@ async function bookRoute(env, m, seg, body) {
 function moneyCfg(v) {
   v = v && typeof v === "object" ? v : {};
   const costs = (Array.isArray(v.costs) ? v.costs : []).filter((c) => c && String(c.name || "").trim()).slice(0, 40).map((c) => ({ name: String(c.name).trim().slice(0, 60), amount: Math.max(0, Math.min(1e6, +c.amount || 0)), every: c.every === "year" ? "year" : "month" }));
-  return { costs, gst: v.gst === true, tax_pct: Math.max(0, Math.min(50, Number.isFinite(+v.tax_pct) ? +v.tax_pct : 25)), due_days: Math.max(0, Math.min(60, Number.isFinite(+v.due_days) ? +v.due_days : 7)), auto_draft: v.auto_draft !== false, ghl_user_id: String(v.ghl_user_id || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 40) };
+  return { costs, gst: v.gst === true, tax_pct: Math.max(0, Math.min(50, Number.isFinite(+v.tax_pct) ? +v.tax_pct : 25)), due_days: Math.max(0, Math.min(60, Number.isFinite(+v.due_days) && !(+v.due_days === 7 && v.due_days_set !== true) ? +v.due_days : 0)), due_days_set: v.due_days_set === true, /* v154: due on receipt by default; an old stored default of 7 becomes 0 unless Ty set it himself (Ty, 23 Nov) */ auto_draft: v.auto_draft !== false, ghl_user_id: String(v.ghl_user_id || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 40) };
 }
 var monthKey = (d = new Date()) => { const p = Object.fromEntries(new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Brisbane", year: "numeric", month: "2-digit" }).formatToParts(d).map((x) => [x.type, x.value])); return p.year + "-" + p.month; };
 var monthLabel = (key) => { const [y, m] = key.split("-"); return new Date(Date.UTC(+y, +m - 1, 15)).toLocaleDateString("en-AU", { month: "long", year: "numeric", timeZone: "UTC" }); };
