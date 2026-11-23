@@ -1,5 +1,5 @@
 // v125 Log in to my socials: each site in its own tab, one ask, quiet waits (no window jumps), TikTok, helper self-update.
-let AG = "6";
+let AG = "7"; // the helper polling for tasks is current; mac_link starts at agent 5 so the tabbed (pre-v7) login is what is tested
 import crypto from "node:crypto";
 const W = process.argv[2] || "/home/claude/w/worker.mjs";
 const assert = (c, m) => { if (!c) { console.error("FAIL:", m); process.exit(1); } console.log("✓", m); };
